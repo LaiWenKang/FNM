@@ -74,6 +74,13 @@ The smallest product that delivers the core promise for one person.
 - **Scoring:** taste-vector match (cuisine, price band, distance tolerance,
   familiar-vs-adventurous) + context adjustments (meal period, rain → closer/sheltered,
   recency penalty for recently eaten cuisines/places).
+- **Context-to-flavor nudges:** weather adjusts flavor-dimension weights, not just
+  logistics — rain/cool evening boosts soupy/warm dishes; hot afternoon boosts
+  light/cold ones. NEA realtime data + the shared flavor space make this a set of
+  weight rules, not new architecture.
+- **Stated intent (health-aware, no health data):** optional one-tap intents —
+  "eating lighter this month," "more protein," "want comfort food" — nudge ranking.
+  This delivers health-awareness inside the PWA without any health-data integration.
 - **Implicit meal history:** a selected recommendation counts as eaten unless corrected.
   Post-meal one-tap feedback (👍/👎) is optional gravy — never depend on it.
 - **Explanations:** short LLM-generated "why this matches you" from structured signals.
@@ -114,6 +121,27 @@ the curated chain tier — see the dish/flavor catalog tiers below.)
   the three catalog tiers (curated chains → LLM review mining → imports/feedback), each
   widening coverage from independent restaurants outward.
 - Trusted-source graph: which creators/friends does this user's taste actually track?
+
+### Phase 3.5 — Health integration (requires native wrapper)
+
+HealthKit (iOS) and Health Connect (Android) are unreachable from a PWA — a native
+wrapper (e.g. Capacitor) is the prerequisite, which is why this phase follows the
+PWA-proven core rather than leading it. Also sequencing by trust: health permission
+requests convert only after the app has earned daily reliance.
+
+- **Activity & sleep signals (opt-in):** big workout today → heartier, protein-forward
+  picks; poor sleep → comfort or lighter, per the user's stated preference.
+- **Cycle-aware wellness mode (strictly opt-in):** for users who track their cycle and
+  grant permission, lean toward warm, iron-rich, nourishing options during menstruation
+  — culturally resonant framing (warm/nourishing vs. "cooling" foods), never medical
+  claims. Hard rules:
+  - Opt-in only, presented as a switchable "wellness mode" — never inferred, never default.
+  - Never visible or hinted at in group mode; recommendations must not reveal why they
+    leaned a certain way for any member.
+  - Nudges ranking only; no calorie policing, no lectures, no medical advice — keeps
+    the app joyful and keeps it clear of medical-device/advice territory.
+  - Deletable, minimum retention, never sold — as with all profile data, but enforced
+    most strictly here.
 
 ### Phase 4 — Monetisation + expansion
 
@@ -173,6 +201,10 @@ mining → imports/feedback). Same-space matching is what makes flavor-level out
 - Users can delete location history, taste profile, imports, and meal history.
 - Private dislikes are never revealed to other group members (a veto is anonymous).
 - Never sell identifiable preference or location data.
+- Health signals (activity, sleep, cycle) are opt-in, processed with minimum retention,
+  deletable independently of the rest of the profile, and never surfaced — directly or
+  by implication — to other users. PDPA-compliant handling is a launch requirement for
+  the health phase, not an afterthought.
 
 ## 6. Success Metrics
 
@@ -189,6 +221,8 @@ searching elsewhere anyway (failure signal).
 | Cold start: first recommendation is generic | Dish-photo swipe bootstrap yields a flavor vector before first recommendation |
 | Hawker/stall data coverage is poor | Manual curation of launch clusters is in-scope for MVP |
 | Dish/flavor data doesn't exist off the shelf | Three-tier catalog: curated chains at launch, LLM review mining, then imports/feedback; degrade to restaurant-level where uncovered |
+| Health features feel creepy or judgy | Opt-in only, nudge-never-lecture rule, invisible in group mode; stated intents deliver health-awareness before any health data is touched |
+| HealthKit/Health Connect need a native app | Phase 1–2 stay PWA with stated intents; native wrapper (Capacitor) unlocks health data in Phase 3.5 |
 | Post-meal feedback won't be given | Implicit tracking; selection = eaten unless corrected |
 | Google Places ToS limits storage | Store place IDs, fetch details on demand, cache within policy |
 | Habit competition ("we just walk downstairs") | Phase 0 concierge test proves/disproves demand before build |
