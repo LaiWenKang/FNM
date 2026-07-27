@@ -1,0 +1,97 @@
+// Persistence upgrade path (not wired yet — Phase 1 stores the taste profile in
+// a cookie; see lib/profile.ts). When accounts and group sessions land, point
+// DATABASE_URL at a Postgres instance (Neon/Supabase, Singapore region per
+// PLAN.md), add prisma + @prisma/client, and migrate the cookie profile in.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  profile   TasteProfile?
+  swipes    Swipe[]
+  meals     Meal[]
+  members   GroupMember[]
+}
+
+model TasteProfile {
+  userId     String @id
+  user       User   @relation(fields: [userId], references: [id])
+  vector     Json   // FlavorVector from lib/flavor.ts
+  swipeCount Int    @default(0)
+  priceMax   Int    @default(3)
+  maxKm      Float  @default(1.5)
+  updatedAt  DateTime @updatedAt
+}
+
+model Swipe {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  cardId    String
+  liked     Boolean
+  createdAt DateTime @default(now())
+}
+
+model Place {
+  id         String  @id
+  name       String
+  cuisine    String
+  lat        Float
+  lng        Float
+  priceLevel Int
+  flavor     Json
+  openHour   Int
+  closeHour  Int
+  sheltered  Boolean @default(true)
+  source     String  // "curated" | "google" | "import"
+  dishes     Dish[]
+  meals      Meal[]
+}
+
+model Dish {
+  id       String @id
+  placeId  String
+  place    Place  @relation(fields: [placeId], references: [id])
+  name     String
+  flavor   Json
+  priceSgd Float
+}
+
+model Meal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  placeId   String
+  place     Place    @relation(fields: [placeId], references: [id])
+  dishId    String?
+  feedback  Int?     // 1 = thumbs up, -1 = thumbs down, null = implicit
+  createdAt DateTime @default(now())
+}
+
+// Phase 2: group sessions joined via shared link.
+model GroupSession {
+  id        String        @id @default(cuid())
+  createdAt DateTime      @default(now())
+  closesAt  DateTime
+  lat       Float
+  lng       Float
+  members   GroupMember[]
+}
+
+model GroupMember {
+  id        String       @id @default(cuid())
+  sessionId String
+  session   GroupSession @relation(fields: [sessionId], references: [id])
+  userId    String?      // null = guest joiner
+  user      User?        @relation(fields: [userId], references: [id])
+  vetoes    Json         // place ids / cuisines this member vetoed (kept anonymous in UI)
+  budgetMax Int?
+}
