@@ -16,11 +16,16 @@ interface Pick {
 
 interface RecommendResponse {
   context: { mealPeriod: string; raining: boolean; forecast: string | null };
+  note: string | null;
   swipeCount: number;
   best: Pick;
   safer: Pick | null;
   adventurous: Pick | null;
   error?: string;
+}
+
+function distanceLabel(pick: Pick): string {
+  return pick.walkMinutes <= 45 ? `${pick.walkMinutes} min walk` : `${pick.distanceKm} km away`;
 }
 
 const DEFAULT_ORIGIN = { lat: 1.2841, lng: 103.8515 };
@@ -98,7 +103,7 @@ export default function Recommend() {
             <span className="label">{decided.name}</span>
             {decided.dish && <p style={{ marginTop: 8 }}>Get the {decided.dish.name}</p>}
             <p style={{ color: "var(--muted)", marginTop: 8 }}>
-              {decided.walkMinutes} min walk · enjoy!
+              {distanceLabel(decided)} · enjoy!
             </p>
           </div>
           <Link className="big-btn secondary" href="/">
@@ -128,6 +133,7 @@ export default function Recommend() {
           <p className="context-line">
             {data.context.mealPeriod}
             {data.context.raining ? " · 🌧️ raining — factored in" : ""}
+            {data.note ? ` · ${data.note}` : ""}
             {data.swipeCount === 0 ? " · tip: teach it your taste for sharper picks" : ""}
           </p>
 
@@ -140,7 +146,7 @@ export default function Recommend() {
               </div>
             )}
             <div className="meta">
-              {data.best.walkMinutes} min walk · {"$".repeat(data.best.priceLevel)}
+              {distanceLabel(data.best)} · {"$".repeat(data.best.priceLevel)}
             </div>
             <div className="why">{data.best.explanation}</div>
             <div className="row">
@@ -168,7 +174,7 @@ export default function Recommend() {
                     </div>
                   )}
                   <div className="meta">
-                    {pick.walkMinutes} min walk · {"$".repeat(pick.priceLevel)}
+                    {distanceLabel(pick)} · {"$".repeat(pick.priceLevel)}
                   </div>
                   <div className="row">
                     <button className="big-btn secondary" onClick={() => void choose(pick)}>

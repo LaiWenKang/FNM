@@ -13,7 +13,11 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 function templateExplanation(pick: ScoredPlace, ctx: Context): string {
   const bits: string[] = [];
   if (pick.bestDish) bits.push(`get the ${pick.bestDish.name}`);
-  bits.push(`${pick.walkMinutes} min walk`);
+  bits.push(
+    pick.walkMinutes <= 45
+      ? `${pick.walkMinutes} min walk`
+      : `${Math.round(pick.distanceKm)} km away`,
+  );
   if (pick.bestDish) bits.push(`~$${pick.bestDish.priceSgd}`);
   const contextReason = pick.reasons.find((r) => r.includes("rain") || r.includes("hot afternoon"));
   if (contextReason) bits.push(contextReason);
