@@ -12,6 +12,19 @@
   --accent: #d95d39;
   --accent-soft: #fdeee8;
   --border: #eee6dc;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171310;
+    --card: #221c17;
+    --ink: #f2ece5;
+    --muted: #a2968b;
+    --accent: #e8734d;
+    --accent-soft: #3b2419;
+    --border: #352b23;
+  }
 }
 
 body {

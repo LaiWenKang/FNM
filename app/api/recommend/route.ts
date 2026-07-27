@@ -36,10 +36,36 @@ export async function GET(req: NextRequest) {
     getCandidatePlaces(lat, lng, profile.maxKm),
   ]);
 
-  const rec = recommend(profile, places, ctx, { lat, lng }, exclude);
+  // Never dead-end: if the strict filters leave nothing, relax them step by
+  // step (wider radius, then any budget, then nearest matches anywhere) and
+  // tell the user what was relaxed.
+  const relaxSteps: { maxKm: number; priceMax: 1 | 2 | 3 | 4; note: string | null }[] = [
+    { maxKm: profile.maxKm, priceMax: profile.priceMax, note: null },
+    { maxKm: Math.max(3, profile.maxKm), priceMax: profile.priceMax, note: "widened the search to ~3 km" },
+    { maxKm: 8, priceMax: 4, note: "widened the search to ~8 km" },
+    { maxKm: 50, priceMax: 4, note: "nothing close by — showing options further out" },
+    { maxKm: 40075, priceMax: 4, note: "showing the nearest open matches (demo catalog covers Singapore CBD)" },
+  ];
+
+  let rec = null;
+  let note: string | null = null;
+  for (const step of relaxSteps) {
+    rec = recommend(
+      { ...profile, maxKm: step.maxKm, priceMax: step.priceMax },
+      places,
+      ctx,
+      { lat, lng },
+      exclude,
+    );
+    if (rec) {
+      note = step.note;
+      break;
+    }
+  }
+
   if (!rec) {
     return NextResponse.json(
-      { error: "No open places match right now — try widening your radius.", context: ctx },
+      { error: "Everything seems closed right now — even the fallbacks. Try again shortly.", context: ctx },
       { status: 404 },
     );
   }
@@ -50,6 +76,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     context: { mealPeriod: ctx.mealPeriod, raining: ctx.raining, forecast: ctx.forecast },
+    note,
     swipeCount: profile.swipeCount,
     best: serialize(rec.best, bestExplanation),
     safer: serialize(rec.safer ?? null),
