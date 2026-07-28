@@ -1732,3 +1732,151 @@ main {
     opacity: 1;
   }
 }
+
+/* ===== Plan bar — the two inputs behind every pick ===== */
+
+.plan-bar {
+  margin: 14px 0 4px;
+  border-radius: var(--r-md);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--inset-top), var(--shadow-card);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  overflow: hidden;
+}
+.plan-bar-skeleton {
+  height: 52px;
+  opacity: 0.5;
+}
+
+.plan-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.plan-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink-2);
+}
+.plan-slot svg {
+  flex: none;
+  color: var(--accent);
+}
+.plan-value {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plan-meal {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--data);
+  border: 1px solid var(--data-border);
+  background: var(--data-soft);
+  border-radius: var(--r-pill);
+  padding: 2px 6px;
+}
+.plan-div {
+  width: 1px;
+  height: 18px;
+  background: var(--hairline);
+  flex: none;
+}
+.plan-edit {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.plan-editor {
+  padding: 4px 14px 16px;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: rise var(--dur-2) var(--ease-out) both;
+}
+.plan-editor .eyebrow {
+  margin-top: 8px;
+}
+.locate-chip {
+  align-self: flex-start;
+  color: var(--data);
+  border-color: var(--data-border);
+  background: var(--data-soft);
+}
+.locate-chip:disabled {
+  opacity: 0.6;
+}
+.plan-error {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--danger);
+}
+.plan-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.plan-time-row input[type="time"] {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* ===== Account / sign-in ===== */
+
+.google-btn {
+  background: #fff;
+  color: #1f1f1f;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+.google-btn:active {
+  background: #f1f1f1;
+}
+
+.signin-privacy {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-align: left;
+}
+.signin-privacy svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.account-card .big-btn {
+  margin-top: 4px;
+}

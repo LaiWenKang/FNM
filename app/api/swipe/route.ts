@@ -15,12 +15,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "cardId and liked are required" }, { status: 400 });
   }
 
-  const profile = readProfile(req);
+  const profile = await readProfile(req);
   const weight = Math.max(0.08, 0.3 / (1 + profile.swipeCount * 0.15));
   profile.vector = nudge(profile.vector, card.flavor, liked, weight);
   profile.swipeCount += 1;
 
   const res = NextResponse.json({ swipeCount: profile.swipeCount, vector: profile.vector });
-  writeProfile(res, profile);
+  await writeProfile(res, profile);
   return res;
 }

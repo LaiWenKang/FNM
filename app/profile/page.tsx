@@ -1,18 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import BrandRow from "@/components/BrandRow";
-import { ShieldIcon, TagIcon, WalkIcon } from "@/components/icons";
+import { PersonIcon, ShieldIcon, TagIcon, WalkIcon } from "@/components/icons";
 
-// The You tab: search settings and data controls. No accounts yet — everything
-// lives in this device's cookie (see PLAN.md privacy rules).
+// The You tab: account, search settings, and data controls.
+
+interface Account {
+  signedIn: boolean;
+  name: string | null;
+  email: string | null;
+  storage: "cloud" | "device";
+  googleConfigured: boolean;
+}
 
 interface Settings {
   maxKm: number;
   priceMax: number;
   swipeCount: number;
   recentCount: number;
+  account?: Account;
 }
 
 const PRICE_LABELS = ["", "$ hawker", "$$ casual", "$$$ restaurant", "$$$$ anything"];
@@ -58,7 +67,33 @@ export default function ProfilePage() {
         <div className="center">Loading…</div>
       ) : (
         <>
-          <div className="setting-card" style={{ animationDelay: "0ms", marginTop: 16 }}>
+          <div className="setting-card account-card" style={{ animationDelay: "0ms", marginTop: 16 }}>
+            <p className="module-head">
+              <PersonIcon size={20} />
+              Account
+            </p>
+            {settings.account?.signedIn ? (
+              <>
+                <p className="setting-label">{settings.account.name ?? "Signed in"}</p>
+                <p className="setting-note">{settings.account.email}</p>
+                <a className="big-btn secondary" href="/api/auth/signout">
+                  Sign out
+                </a>
+              </>
+            ) : (
+              <>
+                <p className="setting-note">
+                  You&apos;re browsing as a guest — your palate lives on this device only. Sign in
+                  to sync it everywhere.
+                </p>
+                <Link className="big-btn" href="/signin">
+                  Sign in
+                </Link>
+              </>
+            )}
+          </div>
+
+          <div className="setting-card" style={{ animationDelay: "60ms" }}>
             <p className="module-head">
               <WalkIcon size={20} />
               Range
@@ -79,7 +114,7 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          <div className="setting-card" style={{ animationDelay: "90ms" }}>
+          <div className="setting-card" style={{ animationDelay: "120ms" }}>
             <p className="module-head">
               <TagIcon size={20} />
               Budget
@@ -105,10 +140,12 @@ export default function ProfilePage() {
               Data
             </p>
             <p className="setting-note">
-              No account, no name, no tracking — your taste profile (
-              <span className="data-num">{settings.swipeCount}</span> swipes,{" "}
-              <span className="data-num">{settings.recentCount}</span> recent meals) lives in this
-              device&apos;s browser only.
+              Your taste profile (<span className="data-num">{settings.swipeCount}</span> swipes,{" "}
+              <span className="data-num">{settings.recentCount}</span> recent meals){" "}
+              {settings.account?.storage === "cloud"
+                ? "is stored in our database against your account, so it follows you across devices."
+                : "lives in this device's browser only — nothing leaves your phone."}{" "}
+              We never store contacts, payments, or a location history.
             </p>
             <button className="big-btn secondary danger" type="button" onClick={() => void reset()}>
               Erase my data

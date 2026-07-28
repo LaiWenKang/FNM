@@ -1,6 +1,7 @@
 import Link from "next/link";
 import BrandRow from "@/components/BrandRow";
 import MoodCard from "@/components/MoodCard";
+import PlanBar from "@/components/PlanBar";
 import TasteRadar from "@/components/TasteRadar";
 import { TargetIcon } from "@/components/icons";
 import { SEED_PLACES } from "@/lib/data/seed";
@@ -24,6 +25,7 @@ export default function Home() {
         <p className="sub">
           One confident pick, two backups. Under <span className="data-num">60</span> seconds.
         </p>
+        <PlanBar />
         <MoodCard />
         <Link className="hud-chip hud-link" href="/onboarding">
           <TargetIcon size={13} strokeWidth={2} />

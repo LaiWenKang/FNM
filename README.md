@@ -27,6 +27,21 @@ npm run dev
 |---|---|
 | `GOOGLE_PLACES_API_KEY` | Live nearby restaurants merged into the candidate pool |
 | `ANTHROPIC_API_KEY` | Claude-written "why this pick" explanations |
+| `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` + `AUTH_SECRET` | Google sign-in |
+| `REQUIRE_AUTH=true` | Makes sign-in mandatory (ignored unless Google keys are set) |
+| `DATABASE_URL` | Postgres — signed-in profiles sync across devices |
+
+## Where user data is stored
+
+| State | Storage |
+|---|---|
+| Signed out, or no `DATABASE_URL` | The taste profile lives in an httpOnly cookie **on the user's own device**. Nothing leaves the phone. |
+| Signed in with `DATABASE_URL` set | One row in a Postgres `profiles` table (created automatically), keyed by the Google account id, so the profile follows the user across devices. Use Neon or Supabase in the Singapore region. |
+
+Stored per user: the six-dimension flavour vector, swipe count, distance and
+budget settings, and recent meals (for the "don't repeat" penalty). Never
+stored: contacts, payment details, or a location history — the plan bar's
+location is used for the request and not retained.
 
 ## Deploy
 

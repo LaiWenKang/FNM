@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import BrandRow from "@/components/BrandRow";
+import PlanBar from "@/components/PlanBar";
 import ScoreRing from "@/components/ScoreRing";
 import { ArrowIcon, CloudRainIcon, TargetIcon, WalkIcon } from "@/components/icons";
+import { Plan, planParams } from "@/lib/plan";
 
 interface Pick {
   placeId: string;
@@ -18,7 +20,13 @@ interface Pick {
 }
 
 interface RecommendResponse {
-  context: { mealPeriod: string; raining: boolean; forecast: string | null };
+  context: {
+    mealPeriod: string;
+    raining: boolean;
+    forecast: string | null;
+    hour: number;
+    locationLabel: string | null;
+  };
   note: string | null;
   swipeCount: number;
   best: Pick;
@@ -43,8 +51,6 @@ function PriceTier({ level }: { level: number }) {
   );
 }
 
-const DEFAULT_ORIGIN = { lat: 1.2841, lng: 103.8515 };
-
 // Fixed presentation scores — "computed, not guessed" (no API change).
 const SIDE_PICKS = [
   { key: "safer" as const, tag: "Safer bet", tagClass: "tag-safe", score: 74, gid: "rgB" },
@@ -57,16 +63,16 @@ export default function Recommend() {
   const [loading, setLoading] = useState(true);
   const [decided, setDecided] = useState<Pick | null>(null);
   const excluded = useRef<string[]>([]);
-  const origin = useRef(DEFAULT_ORIGIN);
+  const plan = useRef<Plan | null>(null);
 
   const load = useCallback(async () => {
+    if (!plan.current) return;
     setLoading(true);
     setError(null);
     try {
       const mood = new URLSearchParams(window.location.search).get("mood") ?? "";
       const params = new URLSearchParams({
-        lat: String(origin.current.lat),
-        lng: String(origin.current.lng),
+        ...planParams(plan.current),
         exclude: excluded.current.join(","),
         mood,
       });
@@ -85,24 +91,16 @@ export default function Recommend() {
     }
   }, []);
 
-  useEffect(() => {
-    // Optimistic first paint: fetch with the default origin right away so the
-    // skeleton never waits on the geolocation prompt; refine (and refetch)
-    // only if the device lands somewhere meaningfully different.
-    void load();
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const moved =
-          Math.abs(pos.coords.latitude - origin.current.lat) > 0.002 ||
-          Math.abs(pos.coords.longitude - origin.current.lng) > 0.002;
-        origin.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        if (moved) void load();
-      },
-      () => {},
-      { timeout: 2500, maximumAge: 300000 },
-    );
-  }, [load]);
+  // The plan bar owns where/when: it reports the stored plan on mount and any
+  // change the user makes, and each report triggers a fresh pick.
+  const onPlanChange = useCallback(
+    (next: Plan) => {
+      plan.current = next;
+      excluded.current = [];
+      void load();
+    },
+    [load],
+  );
 
   async function choose(pick: Pick) {
     setDecided(pick);
@@ -160,6 +158,7 @@ export default function Recommend() {
   return (
     <main>
       <BrandRow label="Your pick" />
+      <PlanBar onChange={onPlanChange} />
       {loading && (
         <div className="load-state" aria-label="Finding your pick" role="status">
           <div className="skeleton-card glass" aria-hidden="true">

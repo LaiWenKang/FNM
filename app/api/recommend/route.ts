@@ -31,10 +31,13 @@ export async function GET(req: NextRequest) {
   const lng = parseFloat(searchParams.get("lng") ?? "") || DEFAULT_ORIGIN.lng;
   const exclude = (searchParams.get("exclude") ?? "").split(",").filter(Boolean);
   const moods = (searchParams.get("mood") ?? "").split(",").filter(isValidMood);
+  const hourParam = searchParams.get("hour");
+  const hour = hourParam !== null && hourParam !== "" ? Number(hourParam) : undefined;
+  const label = (searchParams.get("label") ?? "").slice(0, 60) || null;
 
-  const profile = applyMoods(readProfile(req), moods);
+  const profile = applyMoods(await readProfile(req), moods);
   const [ctx, places] = await Promise.all([
-    buildContext(lat, lng),
+    buildContext(lat, lng, hour),
     getCandidatePlaces(lat, lng, profile.maxKm),
   ]);
 
@@ -77,7 +80,17 @@ export async function GET(req: NextRequest) {
   const bestExplanation = await explain(rec.best, profile, ctx);
 
   return NextResponse.json({
-    context: { mealPeriod: ctx.mealPeriod, raining: ctx.raining, forecast: ctx.forecast },
+    // Echo back exactly what the pick was computed from, so the UI can show the
+    // user the inputs rather than making them trust a guess.
+    context: {
+      mealPeriod: ctx.mealPeriod,
+      raining: ctx.raining,
+      forecast: ctx.forecast,
+      hour: ctx.hourSg,
+      locationLabel: label,
+      lat: Math.round(lat * 10000) / 10000,
+      lng: Math.round(lng * 10000) / 10000,
+    },
     note,
     swipeCount: profile.swipeCount,
     best: serialize(rec.best, bestExplanation),

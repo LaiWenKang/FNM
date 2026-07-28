@@ -57,8 +57,17 @@ export async function getWeather(lat: number, lng: number): Promise<{ raining: b
   }
 }
 
-export async function buildContext(lat: number, lng: number): Promise<Context> {
-  const hourSg = sgHour();
+export async function buildContext(
+  lat: number,
+  lng: number,
+  hourOverride?: number,
+): Promise<Context> {
+  // The client sends the hour it is actually planning for (its own clock, or a
+  // time the user picked). Server time is only the fallback.
+  const hourSg =
+    hourOverride !== undefined && Number.isFinite(hourOverride)
+      ? Math.max(0, Math.min(23, Math.floor(hourOverride)))
+      : sgHour();
   const weather = await getWeather(lat, lng);
   return { hourSg, mealPeriod: mealPeriod(hourSg), ...weather };
 }
