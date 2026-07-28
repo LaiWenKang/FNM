@@ -2,9 +2,16 @@
 
 import { AREAS, DEFAULT_AREA, labelForCoords } from "@/lib/areas";
 
-// The "plan": where and when the user intends to eat. Defaults to here + now,
-// but is always shown and always overridable — the app should never silently
-// guess the two inputs that decide the answer.
+// The "plan": where and when the user intends to eat — the two inputs that
+// decide the answer, always shown and always overridable.
+//
+// Defaults lean automatic so the app stays near-zero-input:
+//   • location follows GPS on every visit until the user deliberately picks an
+//     area (locationMode flips to "manual" and is then respected);
+//   • time is live ("Now" = the device clock at request time). A pinned time is
+//     a same-session intent, so it expires rather than haunting tomorrow.
+
+export type LocationMode = "auto" | "manual";
 
 export interface Plan {
   lat: number;
@@ -12,11 +19,17 @@ export interface Plan {
   label: string;
   /** null = use the device clock at request time. */
   hour: number | null;
-  /** true when lat/lng came from the device's GPS rather than a preset. */
-  fromGps: boolean;
+  /** "auto" = keep following GPS; "manual" = the user chose this place. */
+  locationMode: LocationMode;
+  /** When a fixed hour was pinned, so it can expire. */
+  hourSetAt: number | null;
 }
 
 const KEY = "fnm_plan";
+/** A pinned time is about *this* meal; after this it reverts to "Now". */
+const HOUR_PIN_TTL_MS = 6 * 60 * 60 * 1000;
+/** Below this, a new GPS fix isn't worth a refetch. */
+export const MOVED_KM = 0.25;
 
 export function defaultPlan(): Plan {
   return {
@@ -24,7 +37,8 @@ export function defaultPlan(): Plan {
     lng: DEFAULT_AREA.lng,
     label: DEFAULT_AREA.label,
     hour: null,
-    fromGps: false,
+    locationMode: "auto",
+    hourSetAt: null,
   };
 }
 
@@ -33,10 +47,19 @@ export function loadPlan(): Plan {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return defaultPlan();
-    return { ...defaultPlan(), ...JSON.parse(raw) };
+    return freshen({ ...defaultPlan(), ...JSON.parse(raw) });
   } catch {
     return defaultPlan();
   }
+}
+
+/** Expire a stale pinned time so a plan is never silently out of date. */
+function freshen(plan: Plan): Plan {
+  if (plan.hour === null) return plan;
+  const pinnedAt = plan.hourSetAt ?? 0;
+  const stale = Date.now() - pinnedAt > HOUR_PIN_TTL_MS;
+  const differentDay = new Date(pinnedAt).getDate() !== new Date().getDate();
+  return stale || differentDay ? { ...plan, hour: null, hourSetAt: null } : plan;
 }
 
 export function savePlan(plan: Plan): void {
@@ -47,13 +70,26 @@ export function savePlan(plan: Plan): void {
   }
 }
 
-export function planFromCoords(lat: number, lng: number, hour: number | null): Plan {
-  return { lat, lng, label: labelForCoords(lat, lng), hour, fromGps: true };
+/** A GPS fix: keeps following the device on later visits. */
+export function planFromCoords(lat: number, lng: number, base: Plan): Plan {
+  return { ...base, lat, lng, label: labelForCoords(lat, lng), locationMode: "auto" };
 }
 
-export function planFromArea(areaId: string, hour: number | null): Plan {
+/** An explicit area choice: pinned, so GPS stops overriding it. */
+export function planFromArea(areaId: string, base: Plan): Plan {
   const area = AREAS.find((a) => a.id === areaId) ?? DEFAULT_AREA;
-  return { lat: area.lat, lng: area.lng, label: area.label, hour, fromGps: false };
+  return { ...base, lat: area.lat, lng: area.lng, label: area.label, locationMode: "manual" };
+}
+
+export function planWithHour(base: Plan, hour: number | null): Plan {
+  return { ...base, hour, hourSetAt: hour === null ? null : Date.now() };
+}
+
+/** Rough great-circle distance in km — good enough for a "did we move?" test. */
+export function kmBetween(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const dLat = (bLat - aLat) * 111;
+  const dLng = (bLng - aLng) * 111 * Math.cos((aLat * Math.PI) / 180);
+  return Math.hypot(dLat, dLng);
 }
 
 /** The hour this plan resolves to right now (device clock when hour is null). */

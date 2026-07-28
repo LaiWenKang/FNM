@@ -3,20 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { AREAS } from "@/lib/areas";
 import {
+  MOVED_KM,
   Plan,
   effectiveHour,
   formatHour,
+  kmBetween,
   loadPlan,
   mealFor,
   planFromArea,
   planFromCoords,
+  planWithHour,
   savePlan,
 } from "@/lib/plan";
 import { ClockIcon, LocateIcon, PinIcon } from "@/components/icons";
 
-// The plan bar: shows the two inputs the recommendation is actually computed
-// from — where and when — and lets the user correct either. The app should
-// never silently guess these.
+// The plan bar: shows the two inputs the recommendation is computed from —
+// where and when — and lets the user correct either.
+//
+// Location follows GPS automatically until the user pins an area; time is live
+// unless they pin an hour. Nothing is ever silently guessed without being shown.
 
 const TIME_PRESETS: { label: string; hour: number | null }[] = [
   { label: "Now", hour: null },
@@ -27,7 +32,7 @@ const TIME_PRESETS: { label: string; hour: number | null }[] = [
 ];
 
 interface PlanBarProps {
-  /** Fired on mount with the stored plan, and on every user change. */
+  /** Fired on mount with the stored plan, and on every change worth refetching. */
   onChange?: (plan: Plan) => void;
 }
 
@@ -39,17 +44,35 @@ export default function PlanBar({ onChange }: PlanBarProps) {
   const notify = useRef(onChange);
   notify.current = onChange;
 
+  function apply(next: Plan, refetch = true) {
+    setPlan(next);
+    savePlan(next);
+    if (refetch) notify.current?.(next);
+  }
+
   useEffect(() => {
     const stored = loadPlan();
     setPlan(stored);
     notify.current?.(stored);
-  }, []);
 
-  function commit(next: Plan) {
-    setPlan(next);
-    savePlan(next);
-    notify.current?.(next);
-  }
+    // Auto mode: quietly refresh the fix on every visit so the plan reflects
+    // where the user actually is. A pinned area is left alone.
+    if (stored.locationMode !== "auto" || !navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const next = planFromCoords(pos.coords.latitude, pos.coords.longitude, stored);
+        const moved = kmBetween(stored.lat, stored.lng, next.lat, next.lng) > MOVED_KM;
+        // Always store the fresh fix; only refetch if it actually changes the answer.
+        setPlan(next);
+        savePlan(next);
+        if (moved) notify.current?.(next);
+      },
+      () => setLocating(false), // silent on load — the user didn't ask yet
+      { timeout: 4000, maximumAge: 120000 },
+    );
+  }, []);
 
   function useMyLocation() {
     if (!navigator.geolocation || !plan) {
@@ -61,7 +84,7 @@ export default function PlanBar({ onChange }: PlanBarProps) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
-        commit(planFromCoords(pos.coords.latitude, pos.coords.longitude, plan.hour));
+        apply(planFromCoords(pos.coords.latitude, pos.coords.longitude, plan));
       },
       (err) => {
         setLocating(false);
@@ -80,8 +103,8 @@ export default function PlanBar({ onChange }: PlanBarProps) {
   }
 
   const hour = effectiveHour(plan);
-  const timeText = plan.hour === null ? `Now · ${formatHour(hour)}` : formatHour(plan.hour);
   const timeValue = `${String(hour).padStart(2, "0")}:00`;
+  const auto = plan.locationMode === "auto";
 
   return (
     <div className={`plan-bar${open ? " open" : ""}`}>
@@ -91,14 +114,17 @@ export default function PlanBar({ onChange }: PlanBarProps) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        <span className="plan-slot">
+        {/* Always show a real place; locating is a quiet refinement, never a
+            placeholder that hides where the pick is coming from. */}
+        <span className={`plan-slot loc${locating ? " locating" : ""}`}>
           <PinIcon size={14} strokeWidth={1.9} />
           <span className="plan-value">{plan.label}</span>
         </span>
         <span className="plan-div" aria-hidden="true" />
-        <span className="plan-slot">
+        <span className="plan-slot time">
           <ClockIcon size={14} strokeWidth={1.9} />
-          <span className="plan-value">{timeText}</span>
+          {plan.hour === null && <span className="live-dot" aria-hidden="true" />}
+          <span className="plan-value">{formatHour(hour)}</span>
           <span className="plan-meal">{mealFor(hour)}</span>
         </span>
         <span className="plan-edit">{open ? "Done" : "Change"}</span>
@@ -109,12 +135,12 @@ export default function PlanBar({ onChange }: PlanBarProps) {
           <p className="eyebrow">Where</p>
           <button
             type="button"
-            className="chip locate-chip"
+            className={`chip locate-chip${auto ? " on" : ""}`}
             onClick={useMyLocation}
             disabled={locating}
           >
             <LocateIcon size={14} strokeWidth={1.9} />
-            {locating ? "Locating…" : "Use my location"}
+            {locating ? "Locating…" : auto ? "Following my location" : "Use my location"}
           </button>
           {geoError && <p className="plan-error">{geoError}</p>}
           <div className="mood-chips">
@@ -122,8 +148,8 @@ export default function PlanBar({ onChange }: PlanBarProps) {
               <button
                 key={a.id}
                 type="button"
-                className={`chip ${!plan.fromGps && plan.label === a.label ? "on" : ""}`}
-                onClick={() => commit(planFromArea(a.id, plan.hour))}
+                className={`chip ${!auto && plan.label === a.label ? "on" : ""}`}
+                onClick={() => apply(planFromArea(a.id, plan))}
               >
                 {a.label}
               </button>
@@ -137,7 +163,7 @@ export default function PlanBar({ onChange }: PlanBarProps) {
                 key={t.label}
                 type="button"
                 className={`chip ${plan.hour === t.hour ? "on" : ""}`}
-                onClick={() => commit({ ...plan, hour: t.hour })}
+                onClick={() => apply(planWithHour(plan, t.hour))}
               >
                 {t.label}
               </button>
@@ -151,10 +177,16 @@ export default function PlanBar({ onChange }: PlanBarProps) {
               step={3600}
               onChange={(e) => {
                 const h = parseInt(e.target.value.slice(0, 2), 10);
-                if (Number.isFinite(h)) commit({ ...plan, hour: h });
+                if (Number.isFinite(h)) apply(planWithHour(plan, h));
               }}
             />
           </label>
+          <p className="plan-hint">
+            {auto
+              ? "Following your location each visit. Pick an area to pin it instead."
+              : `Pinned to ${plan.label}. Tap “Use my location” to follow you again.`}
+            {plan.hour !== null && " Time resets to Now for your next meal."}
+          </p>
         </div>
       )}
     </div>

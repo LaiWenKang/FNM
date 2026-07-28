@@ -186,10 +186,7 @@ export default function Recommend() {
       {data && !loading && (
         <>
           <div className="hud-strip">
-            <span className="hud-chip">
-              <span className="dot" aria-hidden="true" />
-              {data.context.mealPeriod}
-            </span>
+            {/* Meal period lives in the plan bar above — don't say it twice. */}
             {data.context.raining && (
               <span className="hud-chip warn">
                 <CloudRainIcon size={13} strokeWidth={1.6} />

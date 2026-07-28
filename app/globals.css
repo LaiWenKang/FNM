@@ -1768,6 +1768,25 @@ main {
   min-width: 0;
   color: var(--ink-2);
 }
+/* Location takes the slack and truncates last; time and Change never shrink. */
+.plan-slot.loc {
+  flex: 1 1 auto;
+}
+.plan-slot.time {
+  flex: none;
+}
+.plan-slot.locating svg {
+  animation: pulse-soft 1.2s ease-in-out infinite;
+}
+.live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--data);
+  box-shadow: 0 0 6px var(--data-glow);
+  animation: pulse-soft 2s ease-in-out infinite;
+  flex: none;
+}
 .plan-slot svg {
   flex: none;
   color: var(--accent);
@@ -1798,7 +1817,7 @@ main {
   flex: none;
 }
 .plan-edit {
-  margin-left: auto;
+  margin-left: 2px;
   flex: none;
   font-family: var(--font-mono);
   font-size: 10px;
@@ -1879,4 +1898,31 @@ main {
 
 .account-card .big-btn {
   margin-top: 4px;
+}
+
+.plan-auto {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  padding: 1px 5px;
+}
+.plan-hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.plan-auto.locating {
+  color: var(--data);
+  border-color: var(--data-border);
+  animation: pulse-soft 1.2s ease-in-out infinite;
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }

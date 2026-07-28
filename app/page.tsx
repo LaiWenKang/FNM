@@ -31,9 +31,10 @@ export default function Home() {
           <TargetIcon size={13} strokeWidth={2} />
           Calibrate your taste — 60 sec
         </Link>
+        {/* Describes the catalog, not the user's plan — the plan bar owns that. */}
         <p className="home-foot" aria-hidden="true">
           <span className="dot" />
-          Raffles Place · {SEED_PLACES.length} spots indexed
+          Singapore CBD · {SEED_PLACES.length} spots indexed
         </p>
       </div>
     </main>
