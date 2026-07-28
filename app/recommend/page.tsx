@@ -42,10 +42,12 @@ export default function Recommend() {
     setLoading(true);
     setError(null);
     try {
+      const mood = new URLSearchParams(window.location.search).get("mood") ?? "";
       const params = new URLSearchParams({
         lat: String(origin.current.lat),
         lng: String(origin.current.lng),
         exclude: excluded.current.join(","),
+        mood,
       });
       const res = await fetch(`/api/recommend?${params}`);
       const json = (await res.json()) as RecommendResponse;

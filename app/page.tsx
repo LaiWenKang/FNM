@@ -1,4 +1,5 @@
 import Link from "next/link";
+import MoodCard from "@/components/MoodCard";
 
 export default function Home() {
   return (
@@ -13,11 +14,9 @@ export default function Home() {
           &ldquo;what should we eat?&rdquo;
         </h1>
         <p>One confident pick, two backups. Under 60 seconds.</p>
-        <Link className="big-btn" href="/recommend">
-          🍜 Eat now
-        </Link>
-        <Link className="big-btn secondary" href="/onboarding">
-          🎯 Teach it your taste (1 min)
+        <MoodCard />
+        <Link className="text-link" href="/onboarding">
+          First time? Teach it your taste (1 min) →
         </Link>
       </div>
     </main>

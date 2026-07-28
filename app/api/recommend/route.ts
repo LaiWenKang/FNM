@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildContext } from "@/lib/context";
 import { explain } from "@/lib/explain";
+import { applyMoods, isValidMood } from "@/lib/mood";
 import { getCandidatePlaces } from "@/lib/places";
 import { readProfile } from "@/lib/profile";
 import { recommend, ScoredPlace } from "@/lib/scoring";
@@ -29,8 +30,9 @@ export async function GET(req: NextRequest) {
   const lat = parseFloat(searchParams.get("lat") ?? "") || DEFAULT_ORIGIN.lat;
   const lng = parseFloat(searchParams.get("lng") ?? "") || DEFAULT_ORIGIN.lng;
   const exclude = (searchParams.get("exclude") ?? "").split(",").filter(Boolean);
+  const moods = (searchParams.get("mood") ?? "").split(",").filter(isValidMood);
 
-  const profile = readProfile(req);
+  const profile = applyMoods(readProfile(req), moods);
   const [ctx, places] = await Promise.all([
     buildContext(lat, lng),
     getCandidatePlaces(lat, lng, profile.maxKm),
