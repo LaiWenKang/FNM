@@ -12,10 +12,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "placeId is required" }, { status: 400 });
   }
 
-  const profile = readProfile(req);
+  const profile = await readProfile(req);
   profile.recent.push({ placeId, cuisine, at: Date.now() });
 
   const res = NextResponse.json({ ok: true });
-  writeProfile(res, profile);
+  await writeProfile(res, profile);
   return res;
 }

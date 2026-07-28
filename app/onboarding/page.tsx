@@ -1,14 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SWIPE_CARDS } from "@/lib/data/seed";
 import { DIMS, Dim, FlavorVector } from "@/lib/flavor";
 import BrandRow from "@/components/BrandRow";
-import { CheckIcon, XIcon } from "@/components/icons";
+import SwipeDeck from "@/components/SwipeDeck";
+import TasteRadar from "@/components/TasteRadar";
+import Togo from "@/components/Togo";
+import { ONBOARDING_BEATS, togoLine } from "@/lib/togoLines";
 
 // The cold-start swipe bootstrap: ~16 dish cards, yes/no, ~60 seconds.
 // Each answer nudges the flavor vector server-side (POST /api/swipe).
+//
+// THE GESTURE NOW EXISTS (components/SwipeDeck.tsx), and the vector the deck
+// draws is the REAL one: /api/swipe has always returned the updated vector in
+// its response and this screen has always thrown it away. Same request, same
+// contract — but now the profile visibly forms while you swipe, which is the
+// entire emotional payoff of onboarding and was previously a 5px bar moving 6%.
 
 const AXIS_LABELS: Record<Dim, string> = {
   heat: "HEAT",
@@ -34,6 +43,9 @@ export default function Onboarding() {
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [exit, setExit] = useState<"yes" | "no" | null>(null);
+  const [vector, setVector] = useState<FlavorVector | null>(null);
+  const [reaction, setReaction] = useState<"yes" | "no" | null>(null);
+  const reactTimer = useRef<number | null>(null);
 
   const card = SWIPE_CARDS[index];
   const done = index >= SWIPE_CARDS.length;
@@ -42,8 +54,13 @@ export default function Onboarding() {
     if (busy || done) return;
     setBusy(true);
     setExit(liked ? "yes" : "no");
+    // He reacts within 120ms and holds before the next card lands:
+    // yes → a 3px pull forward · no → one ear back and a short head shake.
+    setReaction(liked ? "yes" : "no");
+    if (reactTimer.current) window.clearTimeout(reactTimer.current);
+    reactTimer.current = window.setTimeout(() => setReaction(null), 620);
     try {
-      await Promise.all([
+      const [res] = await Promise.all([
         fetch("/api/swipe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -51,6 +68,8 @@ export default function Onboarding() {
         }),
         new Promise((resolve) => setTimeout(resolve, 300)),
       ]);
+      const json = (await res.json().catch(() => null)) as { vector?: FlavorVector } | null;
+      if (json?.vector) setVector(json.vector);
     } finally {
       setBusy(false);
       setExit(null);
@@ -66,49 +85,45 @@ export default function Onboarding() {
     return (
       <main>
         <div className="center compile">
-          <div className="compile-dots" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-          <p>Compiling your palate…</p>
+          {/* THE HOWL — twice in a user's life, which is exactly why it lands —
+              and the product's only exclamation mark. */}
+          <Togo mood="howl" variant="bust" size={128} gid="cal" className="compile-togo togo-face" />
+          {vector && <TasteRadar vector={vector} decorative gid="calr" size={168} className="compile-radar" />}
+          <p className="compile-say togo-say">{togoLine("calibrated")}</p>
+          <p className="compile-sub">Compiling your palate…</p>
         </div>
       </main>
     );
   }
 
   const axes = flavorAxes(card.flavor);
+  const beat = ONBOARDING_BEATS[index] ?? null;
 
   return (
-    <main>
+    <main className="onboard">
       <BrandRow label="Calibration" />
-      <div className="progress-head">
-        {String(index + 1).padStart(2, "0")} / {SWIPE_CARDS.length}
-      </div>
-      <div className="progress">
-        <div style={{ width: `${((index + 1) / SWIPE_CARDS.length) * 100}%` }} />
-      </div>
-      <div className="hero">
-        <div className="swipe-stack">
-          <div
-            key={card.id}
-            className={`swipe-card${exit === "yes" ? " exit-yes" : exit === "no" ? " exit-no" : ""}`}
-          >
-            <span className="emoji">{card.emoji}</span>
-            <span className="label">{card.label}</span>
-            {axes && <p className="swipe-axes">{axes}</p>}
-          </div>
-        </div>
-        <div className="swipe-actions">
-          <button className="no" onClick={() => answer(false)} disabled={busy} aria-label="Not for me">
-            <XIcon size={26} strokeWidth={2} />
-          </button>
-          <button className="yes" onClick={() => answer(true)} disabled={busy} aria-label="Yes please">
-            <CheckIcon size={28} strokeWidth={2.2} />
-          </button>
-        </div>
+
+      {/* ONE CHROME ROW. The question comes before the answer, and the counter
+          rides beside it instead of floating alone in the far corner. */}
+      <div className="swipe-head">
         <p className="swipe-prompt">Would you eat this?</p>
+        <span className="progress-head">
+          {String(index + 1).padStart(2, "0")} / {SWIPE_CARDS.length}
+        </span>
       </div>
+
+      <SwipeDeck
+        card={card}
+        index={index}
+        total={SWIPE_CARDS.length}
+        axes={axes}
+        busy={busy}
+        exit={exit}
+        vector={vector}
+        reaction={reaction}
+        beat={beat}
+        onAnswer={(liked) => void answer(liked)}
+      />
     </main>
   );
 }

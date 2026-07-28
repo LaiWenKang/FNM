@@ -1,3 +1,4 @@
+import type { DishGlyphKey } from "@/components/glyphs/dishes";
 import { FlavorVector, vec } from "@/lib/flavor";
 
 // Curated launch catalog: Singapore CBD-area places (hawker stalls, kopitiams,
@@ -178,6 +179,46 @@ export const SEED_PLACES: Place[] = [
       { id: "ah-curry-chicken", name: "Curry Chicken Noodles", flavor: vec({ heat: 0.6, soupy: 0.85, rich: 0.75 }), priceSgd: 6.5 },
     ],
   },
+  // BREAKFAST. The catalogue opened at 10-11 almost everywhere, so a 7am pick
+  // could only ever resolve to the 24h chain — the most designed screen in the
+  // product was selling a mid-scoring burger. These are the CBD's actual
+  // breakfast trade, and they are the reason the hero card now lands on a
+  // distinctive local stall in the locked band.
+  {
+    id: "market-st-ah-kow",
+    name: "Ah Kow Minced Meat Noodles (Market Street)",
+    cuisine: "teochew-noodles",
+    lat: 1.2843, lng: 103.8496, priceLevel: 1,
+    flavor: vec({ heat: 0.45, sweet: 0.45, soupy: 0.5, fried: 0.5, rich: 0.5, adventure: 0.45 }),
+    openHour: 7, closeHour: 15, sheltered: true, source: "curated",
+    dishes: [
+      { id: "ak-bak-chor-mee", name: "Bak Chor Mee (dry, extra vinegar)", flavor: vec({ heat: 0.45, sweet: 0.4, soupy: 0.35, fried: 0.4, rich: 0.55, adventure: 0.4 }), priceSgd: 6 },
+      { id: "ak-mee-pok-soup", name: "Mee Pok Soup", flavor: vec({ heat: 0.25, sweet: 0.35, soupy: 0.85, fried: 0.2, rich: 0.4, adventure: 0.3 }), priceSgd: 6 },
+    ],
+  },
+  {
+    id: "far-east-ya-kun",
+    name: "Ya Kun Kaya Toast (Far East Square)",
+    cuisine: "kopitiam",
+    lat: 1.2846, lng: 103.8482, priceLevel: 1,
+    flavor: vec({ heat: 0.05, sweet: 0.75, soupy: 0.25, fried: 0.35, rich: 0.45, adventure: 0.2 }),
+    openHour: 7, closeHour: 19, sheltered: true, source: "curated",
+    dishes: [
+      { id: "yk-kaya-toast", name: "Kaya Toast Set", flavor: vec({ heat: 0.02, sweet: 0.85, soupy: 0.2, fried: 0.3, rich: 0.5, adventure: 0.15 }), priceSgd: 6 },
+      { id: "yk-kopi", name: "Kopi-O Kosong", flavor: vec({ heat: 0.02, sweet: 0.3, soupy: 0.6, fried: 0.02, rich: 0.3, adventure: 0.2 }), priceSgd: 2 },
+    ],
+  },
+  {
+    id: "amoy-ah-ter",
+    name: "Ah Ter Teochew Fishball Noodles (Amoy Street)",
+    cuisine: "teochew",
+    lat: 1.2800, lng: 103.8467, priceLevel: 1,
+    flavor: vec({ heat: 0.25, sweet: 0.35, soupy: 0.7, fried: 0.3, rich: 0.35, adventure: 0.3 }),
+    openHour: 7, closeHour: 14, sheltered: true, source: "curated",
+    dishes: [
+      { id: "at-fishball-noodles", name: "Fishball Noodles", flavor: vec({ heat: 0.2, sweet: 0.35, soupy: 0.75, fried: 0.2, rich: 0.3, adventure: 0.25 }), priceSgd: 5 },
+    ],
+  },
   {
     id: "cbd-mcdonalds",
     name: "McDonald's (One Raffles Place, 24h)",
@@ -197,25 +238,26 @@ export const SEED_PLACES: Place[] = [
 export interface SwipeCard {
   id: string;
   label: string;
-  emoji: string;
+  /** A drawn dish glyph — the 96px emoji is gone. See components/glyphs. */
+  glyph: DishGlyphKey;
   flavor: FlavorVector;
 }
 
 export const SWIPE_CARDS: SwipeCard[] = [
-  { id: "c-laksa", label: "Laksa", emoji: "🍜🌶️", flavor: vec({ heat: 0.65, soupy: 0.9, rich: 0.75, sweet: 0.4 }) },
-  { id: "c-chicken-rice", label: "Chicken Rice", emoji: "🐔🍚", flavor: vec({ heat: 0.15, soupy: 0.2, rich: 0.5, adventure: 0.1 }) },
-  { id: "c-mala", label: "Mala Xiang Guo", emoji: "🥘🌶️", flavor: vec({ heat: 0.9, fried: 0.6, rich: 0.7, adventure: 0.7 }) },
-  { id: "c-salad", label: "Grain Bowl / Salad", emoji: "🥗", flavor: vec({ heat: 0.1, fried: 0.05, rich: 0.15, adventure: 0.3 }) },
-  { id: "c-fried-chicken", label: "Crispy Fried Chicken", emoji: "🍗", flavor: vec({ fried: 0.95, rich: 0.7, heat: 0.4, sweet: 0.4 }) },
-  { id: "c-sushi", label: "Sushi & Sashimi", emoji: "🍣", flavor: vec({ heat: 0.05, fried: 0.1, rich: 0.3, adventure: 0.5 }) },
-  { id: "c-tom-yum", label: "Tom Yum Soup", emoji: "🍲🦐", flavor: vec({ heat: 0.8, soupy: 0.9, sweet: 0.4, adventure: 0.5 }) },
-  { id: "c-burger", label: "Cheeseburger", emoji: "🍔", flavor: vec({ fried: 0.75, rich: 0.7, heat: 0.15, adventure: 0.05 }) },
-  { id: "c-fish-soup", label: "Sliced Fish Soup", emoji: "🐟🍲", flavor: vec({ soupy: 0.95, rich: 0.25, heat: 0.1, adventure: 0.3 }) },
-  { id: "c-rendang", label: "Beef Rendang", emoji: "🥩🍛", flavor: vec({ heat: 0.65, rich: 0.85, adventure: 0.45, sweet: 0.4 }) },
-  { id: "c-mango-habanero", label: "Sweet-Spicy Glazed Wings", emoji: "🍗🔥", flavor: vec({ heat: 0.8, sweet: 0.8, fried: 0.9, rich: 0.6 }) },
-  { id: "c-dim-sum", label: "Dim Sum", emoji: "🥟", flavor: vec({ heat: 0.15, fried: 0.4, rich: 0.5, adventure: 0.35 }) },
-  { id: "c-kbbq", label: "Korean BBQ", emoji: "🥩🔥", flavor: vec({ rich: 0.8, heat: 0.5, sweet: 0.5, adventure: 0.45 }) },
-  { id: "c-pad-thai", label: "Pad Thai (stir-fried noodles)", emoji: "🍝🥜", flavor: vec({ sweet: 0.7, heat: 0.35, fried: 0.5, adventure: 0.35 }) },
-  { id: "c-porridge", label: "Congee / Porridge", emoji: "🥣", flavor: vec({ soupy: 0.95, rich: 0.3, heat: 0.05, adventure: 0.2 }) },
-  { id: "c-omakase", label: "Chef's Choice Omakase", emoji: "🍣✨", flavor: vec({ adventure: 0.95, rich: 0.5, heat: 0.3 }) },
+  { id: "c-laksa", label: "Laksa", glyph: "laksa", flavor: vec({ heat: 0.65, soupy: 0.9, rich: 0.75, sweet: 0.4 }) },
+  { id: "c-chicken-rice", label: "Chicken Rice", glyph: "chicken-rice", flavor: vec({ heat: 0.15, soupy: 0.2, rich: 0.5, adventure: 0.1 }) },
+  { id: "c-mala", label: "Mala Xiang Guo", glyph: "mala", flavor: vec({ heat: 0.9, fried: 0.6, rich: 0.7, adventure: 0.7 }) },
+  { id: "c-salad", label: "Grain Bowl / Salad", glyph: "grain-bowl", flavor: vec({ heat: 0.1, fried: 0.05, rich: 0.15, adventure: 0.3 }) },
+  { id: "c-fried-chicken", label: "Crispy Fried Chicken", glyph: "fried-chicken", flavor: vec({ fried: 0.95, rich: 0.7, heat: 0.4, sweet: 0.4 }) },
+  { id: "c-sushi", label: "Sushi & Sashimi", glyph: "sushi", flavor: vec({ heat: 0.05, fried: 0.1, rich: 0.3, adventure: 0.5 }) },
+  { id: "c-tom-yum", label: "Tom Yum Soup", glyph: "tom-yum", flavor: vec({ heat: 0.8, soupy: 0.9, sweet: 0.4, adventure: 0.5 }) },
+  { id: "c-burger", label: "Cheeseburger", glyph: "burger", flavor: vec({ fried: 0.75, rich: 0.7, heat: 0.15, adventure: 0.05 }) },
+  { id: "c-fish-soup", label: "Sliced Fish Soup", glyph: "fish-soup", flavor: vec({ soupy: 0.95, rich: 0.25, heat: 0.1, adventure: 0.3 }) },
+  { id: "c-rendang", label: "Beef Rendang", glyph: "rendang", flavor: vec({ heat: 0.65, rich: 0.85, adventure: 0.45, sweet: 0.4 }) },
+  { id: "c-mango-habanero", label: "Sweet-Spicy Glazed Wings", glyph: "wings", flavor: vec({ heat: 0.8, sweet: 0.8, fried: 0.9, rich: 0.6 }) },
+  { id: "c-dim-sum", label: "Dim Sum", glyph: "dim-sum", flavor: vec({ heat: 0.15, fried: 0.4, rich: 0.5, adventure: 0.35 }) },
+  { id: "c-kbbq", label: "Korean BBQ", glyph: "kbbq", flavor: vec({ rich: 0.8, heat: 0.5, sweet: 0.5, adventure: 0.45 }) },
+  { id: "c-pad-thai", label: "Pad Thai (stir-fried noodles)", glyph: "bak-chor-mee", flavor: vec({ sweet: 0.7, heat: 0.35, fried: 0.5, adventure: 0.35 }) },
+  { id: "c-porridge", label: "Congee / Porridge", glyph: "porridge", flavor: vec({ soupy: 0.95, rich: 0.3, heat: 0.05, adventure: 0.2 }) },
+  { id: "c-omakase", label: "Chef's Choice Omakase", glyph: "chirashi", flavor: vec({ adventure: 0.95, rich: 0.5, heat: 0.3 }) },
 ];
