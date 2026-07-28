@@ -26,6 +26,16 @@ export interface Place {
   sheltered: boolean; // reachable/seated under shelter (matters when raining)
   dishes: Dish[];
   source: "curated" | "google";
+  /** Google crowd rating, 1–5. null when unrated or not a live result. */
+  rating?: number | null;
+  /** How many ratings back it. A 5.0 from 3 people is not a 4.6 from 900. */
+  ratingCount?: number;
+  /** False when a live place matched no informative Google type, so its
+      flavour vector is a neutral placeholder rather than an estimate. */
+  flavorKnown?: boolean;
+  /** False when openHour/closeHour are the 0–24 placeholder, so the UI must
+      not print a closing time it does not actually know. */
+  hoursKnown?: boolean;
 }
 
 export const SEED_PLACES: Place[] = [

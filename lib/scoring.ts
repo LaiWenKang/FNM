@@ -19,6 +19,9 @@ export interface ScoreBreakdown {
   weather: number;
   budget: number;
   novelty: number;
+  /** Crowd rating, weighted by how many people it took to get there. Zero for
+      curated places, which carry no rating — see qualityTerm. */
+  quality: number;
 }
 
 export interface ScoredPlace {
@@ -117,7 +120,9 @@ function breakDown(
   profile: Profile,
 ): { breakdown: ScoreBreakdown; matchScore: number } {
   const breakdown: ScoreBreakdown = {
-    palate: Math.round(flavorMatch * 62),
+    // 62 -> 54 to make room for quality without inflating the total, so the
+    // ring keeps the same range it had before the term existed.
+    palate: Math.round(flavorMatch * 54),
     distance: Math.round(clamp(18 - distanceKm * 15, -8, 18)),
     weather: Math.round(clamp(ctxDelta * 82, -15, 14)),
     budget: Math.round(clamp((profile.priceMax - place.priceLevel) * 2.4 + 1, -7, 8)),
@@ -125,10 +130,35 @@ function breakDown(
       clamp(recencyDelta * 100, -30, 0) +
         clamp(4 * (1 - Math.abs(place.flavor.adventure - profile.vector.adventure)), 0, 4),
     ),
+    quality: qualityTerm(place),
   };
   const sum =
-    breakdown.palate + breakdown.distance + breakdown.weather + breakdown.budget + breakdown.novelty;
+    breakdown.palate +
+    breakdown.distance +
+    breakdown.weather +
+    breakdown.budget +
+    breakdown.novelty +
+    breakdown.quality;
   return { breakdown, matchScore: clamp(sum, 1, 99) };
+}
+
+/**
+ * QUALITY — the one real-world signal in the whole pipeline, and it was being
+ * fetched and then thrown away. A 4.6 from 900 people is evidence; a 5.0 from
+ * three is noise, so the rating is pulled toward neutral by a confidence factor
+ * that only reaches full strength around 200 ratings.
+ *
+ * Curated places score 0 here rather than a default: they were hand-picked, so
+ * inventing a rating for them would put a number on screen that came from
+ * nowhere. Zero is honest and it costs them nothing relative to each other.
+ */
+function qualityTerm(place: Place): number {
+  const rating = place.rating;
+  if (typeof rating !== "number") return 0;
+  const n = place.ratingCount ?? 0;
+  const confidence = Math.min(1, n / 200);
+  // 4.0 is the pivot: above it earns, below it loses.
+  return Math.round(clamp((rating - 4.0) * 9 * confidence, -10, 10));
 }
 
 function pickBestDish(place: Place, taste: FlavorVector): Dish | null {
@@ -167,13 +197,16 @@ export function recommend(
     const flavorMatch = similarity(profile.vector, place.flavor);
     const cf = contextFit(place, ctx);
     const rp = recencyPenalty(place, profile, now);
-    const score = flavorMatch + cf.delta + rp.delta - distanceKm * 0.04;
+    const score = flavorMatch + cf.delta + rp.delta - distanceKm * 0.04 + qualityTerm(place) / 100;
 
     // ONE NUMBER. The why-sentence is derived from the SAME value the ring
     // draws, so the card can never show 92 and say 89% four lines apart.
     const { breakdown, matchScore } = breakDown(flavorMatch, distanceKm, cf.delta, rp.delta, place, profile);
 
     const reasons = [`matches your taste (${matchScore}% match)`, ...cf.reasons, ...rp.reasons];
+    if (typeof place.rating === "number" && (place.ratingCount ?? 0) >= 20) {
+      reasons.push(`rated ${place.rating.toFixed(1)} by ${place.ratingCount} people`);
+    }
     scored.push({
       place,
       score,

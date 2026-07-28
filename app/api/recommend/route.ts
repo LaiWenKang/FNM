@@ -41,6 +41,12 @@ function serialize(pick: ScoredPlace | null, explanation?: string) {
     openHour: pick.place.openHour,
     closeHour: pick.place.closeHour,
     sheltered: pick.place.sheltered,
+    source: pick.place.source,
+    rating: pick.place.rating ?? null,
+    ratingCount: pick.place.ratingCount ?? 0,
+    // The UI must be able to tell an estimate from a reading.
+    flavorKnown: pick.place.flavorKnown !== false,
+    hoursKnown: pick.place.hoursKnown !== false,
   };
 }
 
@@ -55,10 +61,11 @@ export async function GET(req: NextRequest) {
   const label = (searchParams.get("label") ?? "").slice(0, 60) || null;
 
   const profile = applyMoods(await readProfile(req), moods);
-  const [ctx, places] = await Promise.all([
-    buildContext(lat, lng, hour),
-    getCandidatePlaces(lat, lng, profile.maxKm),
-  ]);
+  // Hours have to be resolved before the candidate fetch, because Google's
+  // opening periods are matched against the hour the user is actually
+  // planning for — not against whatever time the server thinks it is.
+  const ctx = await buildContext(lat, lng, hour);
+  const places = await getCandidatePlaces(lat, lng, profile.maxKm, ctx.hourSg);
 
   // Never dead-end: if the strict filters leave nothing, relax them step by
   // step (wider radius, then any budget, then nearest matches anywhere) and

@@ -1,7 +1,7 @@
 // WHY, AS A GRAPHIC — the change that converts a telemetry COSTUME into a
 // visible ENGINE.
 //
-// Five signed contribution bars whose values are the terms lib/scoring.ts
+// Five or six signed contribution bars whose values are the terms lib/scoring.ts
 // already computes, and WHOSE SUM IS THE NUMBER IN THE RING. That is the whole
 // difference between a slot machine and an engine, and it is exactly what
 // "advanced / technical" means: not more monospace, but the arithmetic shown.
@@ -26,6 +26,9 @@ const ROWS: { key: keyof ScoreBreakdown; label: string }[] = [
   { key: "weather", label: "Weather" },
   { key: "budget", label: "Budget" },
   { key: "novelty", label: "Novelty" },
+  // Only rendered when it is non-zero — curated places carry no crowd rating,
+  // and a permanent 0 bar would read as "badly rated" rather than "not rated".
+  { key: "quality", label: "Rating" },
 ];
 
 /** Confidence, not decoration: the pose is a function of the number. */
@@ -56,7 +59,8 @@ export default function WhyGraphic({
   compare,
   gid = "why",
 }: WhyGraphicProps) {
-  const values = ROWS.map((r) => breakdown[r.key]);
+  const rows = ROWS.filter((r) => r.key !== "quality" || breakdown.quality !== 0);
+  const values = rows.map((r) => breakdown[r.key]);
   const denom = Math.max(20, ...values.map((v) => Math.abs(v)));
   const { mood, tilt } = moodForScore(score);
 
@@ -81,7 +85,7 @@ export default function WhyGraphic({
 
       <div className="why-body">
         <div className="why-bars">
-          {ROWS.map((row, i) => {
+          {rows.map((row, i) => {
             const v = breakdown[row.key];
             return (
               <div
