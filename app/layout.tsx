@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import TabBar from "@/components/TabBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,13 +9,19 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#d95d39",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#07070B" },
+    { media: "(prefers-color-scheme: light)", color: "#F3F1EE" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <TabBar />
+      </body>
     </html>
   );
 }
