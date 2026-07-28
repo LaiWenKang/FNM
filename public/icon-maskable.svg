@@ -20,40 +20,39 @@
       <stop offset="1" stop-color="#AE3EC9" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="coat" x1=".22" y1="0" x2=".8" y2="1">
-      <stop offset="0" stop-color="#5A6478"/>
-      <stop offset=".52" stop-color="#394152"/>
-      <stop offset="1" stop-color="#1B1F2B"/>
+      <stop offset="0" stop-color="#6B7690"/>
+      <stop offset=".52" stop-color="#454E63"/>
+      <stop offset="1" stop-color="#232838"/>
+    </linearGradient>
+    <linearGradient id="face" x1=".3" y1="0" x2=".7" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DDE5EE"/>
+    </linearGradient>
+    <linearGradient id="cap" x1=".18" y1="0" x2=".82" y2="1">
+      <stop offset="0" stop-color="#333C54"/>
+      <stop offset=".62" stop-color="#232A3C"/>
+      <stop offset="1" stop-color="#12161F"/>
     </linearGradient>
     <linearGradient id="blaze" x1=".5" y1="0" x2=".5" y2="1">
-      <stop offset="0" stop-color="#F7F4EC"/>
-      <stop offset=".62" stop-color="#F7F4EC"/>
-      <stop offset="1" stop-color="#D2DAE6"/>
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E4EAF2"/>
     </linearGradient>
-    <radialGradient id="iris" cx=".40" cy=".32" r=".78">
-      <stop offset="0" stop-color="#DFF7FF"/>
-      <stop offset=".38" stop-color="#8FE9FF"/>
-      <stop offset=".68" stop-color="#53D9FF"/>
-      <stop offset="1" stop-color="#1B6C97"/>
-    </radialGradient>
     <linearGradient id="earin" x1=".5" y1="1" x2=".5" y2="0">
-      <stop offset="0" stop-color="#FF7A45" stop-opacity=".22"/>
-      <stop offset="1" stop-color="#F7F4EC" stop-opacity=".55"/>
+      <stop offset="0" stop-color="#F2A6A6" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#F2A6A6"/>
     </linearGradient>
     <linearGradient id="rim" x1=".10" y1="0" x2=".92" y2="1">
-      <stop offset="0" stop-color="#FFB03A" stop-opacity=".95"/>
-      <stop offset=".36" stop-color="#FF7A45" stop-opacity=".34"/>
-      <stop offset=".60" stop-color="#FFFFFF" stop-opacity="0"/>
-      <stop offset="1" stop-color="#53D9FF" stop-opacity=".36"/>
+      <stop offset="0" stop-color="#FFB03A" stop-opacity=".55"/>
+      <stop offset=".30" stop-color="#FF7A45" stop-opacity=".18"/>
+      <stop offset=".55" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#53D9FF" stop-opacity=".3"/>
     </linearGradient>
     <linearGradient id="tug" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#FFB03A"/>
       <stop offset="1" stop-color="#FF4D2E"/>
     </linearGradient>
     <clipPath id="hd">
-      <path d="M60 33 C78 33 96 42 101 60 C105 74 100 84 88 89 C82 91.5 78 92 75 93 C76.5 99 73 105 66 107.5 C64 108.2 62 108.5 60 108.5 C58 108.5 56 108.2 54 107.5 C47 105 43.5 99 45 93 C42 92 38 91.5 32 89 C20 84 15 74 19 60 C24 42 42 33 60 33 Z"/>
-    </clipPath>
-    <clipPath id="ec">
-      <path d="M0 -8.8 C4.6 -8.8 8.2 -4.9 8.2 0 C8.2 4.9 4.6 8.8 0 8.8 C-4.6 8.8 -8.2 4.9 -8.2 0 C-8.2 -4.9 -4.6 -8.8 0 -8.8 Z"/>
+      <path d="M60 28 C81 28 98 45 98 66 C98 87 81 104 60 104 C39 104 22 87 22 66 C22 45 39 28 60 28 Z"/>
     </clipPath>
   </defs>
 
@@ -62,46 +61,41 @@
   <rect width="512" height="512" fill="url(#plum)"/>
 
   <g transform="translate(256 250) scale(2.94) translate(-60 -62)">
-    <g transform="rotate(11 34.5 50.2)">
-      <path d="M27 52 C22 39 24.5 24 29.2 14.5 C31.4 10 36.4 10.4 38.4 15 L53.5 43 C55.6 47.4 52.4 52.6 47.6 51.2 Z" fill="url(#coat)"/>
-      <path d="M32.4 46.6 C29.4 37.6 31.2 28 34 22 C35.3 19.2 38.2 19.5 39.4 22.2 L48.4 40 C49.6 42.7 47.7 45.8 44.9 45 Z" fill="url(#earin)"/>
+    <g transform="rotate(11 40 40)">
+      <path d="M30 44 C26 32 29 20 34 15 C38 11 43 13 45 19 L51 38 C52.6 42.6 49 47 44.6 45.4 Z" fill="url(#coat)"/>
+      <path d="M34.5 39 C32 31 33.5 23.5 36.5 20.5 C38.8 18.2 41.5 19.4 42.7 22.9 L46.3 34.3 C47.2 36.9 45.2 39.4 42.7 38.5 Z" fill="url(#earin)"/>
     </g>
     <g transform="scale(-1,1) translate(-120,0)">
-      <g transform="rotate(11 34.5 50.2)">
-        <path d="M27 52 C22 39 24.5 24 29.2 14.5 C31.4 10 36.4 10.4 38.4 15 L53.5 43 C55.6 47.4 52.4 52.6 47.6 51.2 Z" fill="url(#coat)"/>
-        <path d="M32.4 46.6 C29.4 37.6 31.2 28 34 22 C35.3 19.2 38.2 19.5 39.4 22.2 L48.4 40 C49.6 42.7 47.7 45.8 44.9 45 Z" fill="url(#earin)"/>
+      <g transform="rotate(11 40 40)">
+        <path d="M30 44 C26 32 29 20 34 15 C38 11 43 13 45 19 L51 38 C52.6 42.6 49 47 44.6 45.4 Z" fill="url(#coat)"/>
+        <path d="M34.5 39 C32 31 33.5 23.5 36.5 20.5 C38.8 18.2 41.5 19.4 42.7 22.9 L46.3 34.3 C47.2 36.9 45.2 39.4 42.7 38.5 Z" fill="url(#earin)"/>
       </g>
     </g>
 
-    <g transform="rotate(5 60 110)">
-      <path d="M60 33 C78 33 96 42 101 60 C105 74 100 84 88 89 C82 91.5 78 92 75 93 C76.5 99 73 105 66 107.5 C64 108.2 62 108.5 60 108.5 C58 108.5 56 108.2 54 107.5 C47 105 43.5 99 45 93 C42 92 38 91.5 32 89 C20 84 15 74 19 60 C24 42 42 33 60 33 Z" fill="url(#coat)"/>
-      <path d="M60 33 C78 33 96 42 101 60 C105 74 100 84 88 89 C82 91.5 78 92 75 93 C76.5 99 73 105 66 107.5 C64 108.2 62 108.5 60 108.5 C58 108.5 56 108.2 54 107.5 C47 105 43.5 99 45 93 C42 92 38 91.5 32 89 C20 84 15 74 19 60 C24 42 42 33 60 33 Z" fill="none" stroke="url(#rim)" stroke-width="2.9" stroke-linejoin="round"/>
-      <path clip-path="url(#hd)" fill="#141824" d="M8 20 L112 20 L112 71 C104 81.5 94 85.5 82 84 C72 82.8 65 79.4 60 75.8 C55 79.4 48 82.8 38 84 C26 85.5 16 81.5 8 71 Z"/>
-      <path fill="url(#blaze)" d="M60 36 L73.5 59.4 C70 60 67.6 61.8 66.6 65.2 C65.8 68 65.4 71 65.6 75 C66 80.5 73.4 84.5 74.8 92 C76.4 100.4 70 107.6 60 108 C50 107.6 43.6 100.4 45.2 92 C46.6 84.5 54 80.5 54.4 75 C54.6 71 54.2 68 53.4 65.2 C52.4 61.8 50 60 46.5 59.4 Z"/>
-
-      <g transform="translate(74.6 70.5)">
-        <path d="M0 -8.8 C4.6 -8.8 8.2 -4.9 8.2 0 C8.2 4.9 4.6 8.8 0 8.8 C-4.6 8.8 -8.2 4.9 -8.2 0 C-8.2 -4.9 -4.6 -8.8 0 -8.8 Z" fill="#F7F4EC"/>
-        <g clip-path="url(#ec)">
-          <circle r="7.7" fill="url(#iris)" stroke="#53D9FF" stroke-opacity=".55" stroke-width="1"/>
-          <circle r="3.5" fill="#08111A"/>
-          <circle cx="2.8" cy="-3.1" r="2.5" fill="#FFFFFF" opacity=".95"/>
-        </g>
-        <g clip-path="url(#ec)"><rect x="-9.4" y="-9.8" width="18.8" height="1.5" fill="#141824"/></g>
+    <g transform="rotate(3 60 100)">
+      <path d="M60 28 C81 28 98 45 98 66 C98 87 81 104 60 104 C39 104 22 87 22 66 C22 45 39 28 60 28 Z" fill="url(#face)"/>
+      <path d="M60 28 C81 28 98 45 98 66 C98 87 81 104 60 104 C39 104 22 87 22 66 C22 45 39 28 60 28 Z" fill="none" stroke="url(#rim)" stroke-width="1.6" opacity=".5"/>
+      <path clip-path="url(#hd)" fill="url(#cap)" d="M22.1 64 A38 38 0 0 1 97.9 64 C94 64 86 60 74 54 C68 50.4 64 48 60 48 C56 48 52 50.4 46 54 C34 60 26 64 22.1 64 Z"/>
+      <path fill="url(#blaze)" d="M60 30 L70.4 48 C66 47.4 63 48.6 60 51 C57 48.6 54 47.4 49.6 48 Z"/>
+      <g clip-path="url(#hd)" fill="#F28C8C" opacity=".4">
+        <ellipse cx="35" cy="76" rx="8.4" ry="5.2"/>
+        <ellipse cx="85" cy="76" rx="8.4" ry="5.2"/>
       </g>
-      <g transform="translate(120,0) scale(-1,1) translate(74.6 70.5)">
-        <path d="M0 -8.8 C4.6 -8.8 8.2 -4.9 8.2 0 C8.2 4.9 4.6 8.8 0 8.8 C-4.6 8.8 -8.2 4.9 -8.2 0 C-8.2 -4.9 -4.6 -8.8 0 -8.8 Z" fill="#F7F4EC"/>
-        <g clip-path="url(#ec)">
-          <circle r="7.7" fill="url(#iris)" stroke="#53D9FF" stroke-opacity=".55" stroke-width="1"/>
-          <circle r="3.5" fill="#08111A"/>
-          <circle cx="2.8" cy="-3.1" r="2.5" fill="#FFFFFF" opacity=".95"/>
-        </g>
-        <g clip-path="url(#ec)"><rect x="-9.4" y="-9.8" width="18.8" height="1.5" fill="#141824"/></g>
+      <g transform="translate(74 64)">
+        <path d="M0 -6.2 C3 -6.2 5.4 -3.4 5.4 0 C5.4 3.4 3 6.2 0 6.2 C-3 6.2 -5.4 3.4 -5.4 0 C-5.4 -3.4 -3 -6.2 0 -6.2 Z" fill="#10131C"/>
+        <circle cx="1.9" cy="-2.2" r="2" fill="#FFFFFF" opacity=".95"/>
+        <circle cx="-1.6" cy="2.2" r=".9" fill="#FFFFFF" opacity=".4"/>
       </g>
-
-      <path fill="#10131C" d="M60 88.4 C64.6 88.4 68.4 90.5 68.4 93.5 C68.4 96.9 64.2 99.8 60 99.8 C55.8 99.8 51.6 96.9 51.6 93.5 C51.6 90.5 55.4 88.4 60 88.4 Z"/>
-      <g fill="none" stroke="#10131C" stroke-width="2.4" stroke-linecap="round">
-        <path d="M60 99.4 Q56.2 104 52.2 101.4"/>
-        <path d="M60 99.4 Q63.8 104 67.8 101.4"/>
+      <g transform="translate(120,0) scale(-1,1) translate(74 64)">
+        <path d="M0 -6.2 C3 -6.2 5.4 -3.4 5.4 0 C5.4 3.4 3 6.2 0 6.2 C-3 6.2 -5.4 3.4 -5.4 0 C-5.4 -3.4 -3 -6.2 0 -6.2 Z" fill="#10131C"/>
+        <circle cx="1.9" cy="-2.2" r="2" fill="#FFFFFF" opacity=".95"/>
+        <circle cx="-1.6" cy="2.2" r=".9" fill="#FFFFFF" opacity=".4"/>
+      </g>
+      <path fill="#10131C" d="M60 76 C63.4 76 66 77.6 66 80 C66 82.7 62.8 85 60 85 C57.2 85 54 82.7 54 80 C54 77.6 56.6 76 60 76 Z"/>
+      <circle cx="57.2" cy="78.6" r="1.5" fill="#FFFFFF" opacity=".45"/>
+      <g fill="none" stroke="#10131C" stroke-width="2.1" stroke-linecap="round">
+        <path d="M60 85 Q55.8 90.6 51.2 87.6"/>
+        <path d="M60 85 Q64.2 90.6 68.8 87.6"/>
       </g>
     </g>
   </g>
