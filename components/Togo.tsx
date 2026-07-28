@@ -70,84 +70,82 @@ const VB: Record<TogoVariant, string> = {
 };
 const ASPECT: Record<TogoVariant, number> = { needle: 1, head: 1, bust: 170 / 120 };
 
-/* ═══ GEOMETRY REVISION 3 — THE BABY SCHEMA ═══════════════════════════════
-   Revision 2 passed the 20px silhouette test and failed the only test that
-   decides whether anyone wants him on their home screen: it was drawn as an
-   adult working animal on purpose. Its own margins admitted it — "small and low
-   reads adult", "the outer corner is lifted 8°... the whole difference between
-   an alert working animal and a puppy", "there is not one circle in it". Every
-   one of those calls is inverted below, because the mascot's job is to be
-   liked, and neoteny is the mechanism:
+/* ═══ GEOMETRY REVISION 4 — THE PALE FACE ═════════════════════════════════
+   Revisions 2 and 3 both drew a DARK face with a white blaze down it. That is
+   anatomically correct for a husky and it was the whole problem: a dark face
+   with pale eye-holes reads as a MASK — bandit, raccoon, something hiding —
+   no matter how round the skull is or how big the eyes get. Rev 3 fixed the
+   proportions and kept the value structure, so it stayed unfriendly.
 
-     PROPORTION   Cranium 82 wide against 75 tall — WIDER than tall, and round.
-                  Rev 2 was 76 × 79, tapering the whole way.
-     MUZZLE       Snub: 30 wide, 22 deep, rounded off. Rev 2 ran a long wedge
-                  to a chin at y 115.4; this ends at 108.5.
-     EYES         22 units across on an 82-wide head, at 49% of head height —
-                  BIG and HIGH. Rev 2: 18 × 12.6, at 57%, slanted up 8°.
-                  The slant is gone; a lifted outer corner is a glare.
-     NOSE         Bigger relative to the muzzle, and higher — an infant's
-                  features crowd the lower half of the face.
-     DROPPED      Whiskers and guard hairs. Both are realist texture, and both
-                  fought the flat-vector read at every size under 64px.
+   Every cute husky drawing inverts it: a PALE face with a dark cap sitting on
+   top like a hood. That single change does more than every proportion tweak in
+   rev 3 combined, and it is what makes the two things below finally work:
 
-   The husky is still unmistakably a husky: the tall close-set ears, the dark
-   cap, the white cheeks, the blaze up the forehead and the ice-blue eyes are
-   the species tells, and all five survive. ─────────────────────────────── */
+     BLUSH        Tried in rev 3 and cut, because on a dark coat a warm cheek
+                  patch has no pale ground to tint and read as a bruise. On a
+                  cream face it reads as a cheek, which is what it always was.
+     SOLID EYES   Two dark ovals with one catchlight each. Against a dark face
+                  they would vanish, which is why rev 2 and 3 needed a big cyan
+                  iris ringed in cream to punch through — and a bright ring on a
+                  dark ground is exactly what made them read as goggles.
 
-/* ── L1 EAR — still tall and close-set (that is the husky tell against a fox or
-   a shepherd, and the deep V between the pair is what the eye reads at 20px),
-   but the apex is now a ROUNDED CAP rather than a point. A sharp tip on a round
-   skull reads as a warning triangle. ─────────────────────────────────────── */
-const EAR =
-  "M27 52 C22 39 24.5 24 29.2 14.5 C31.4 10 36.4 10.4 38.4 15 L53.5 43 C55.6 47.4 52.4 52.6 47.6 51.2 Z";
-/* the same shape inset — light through thin skin, and the only warm pixel
-   above the jaw */
-const EAR_INNER =
-  "M32.4 46.6 C29.4 37.6 31.2 28 34 22 C35.3 19.2 38.2 19.5 39.4 22.2 L48.4 40 C49.6 42.7 47.7 45.8 44.9 45 Z";
+   ONE LAW SURVIVES ALL FOUR REVISIONS: the blaze apex is 60°, TasteRadar's own
+   spoke step, so the mascot and the instruments are provably one drawing.
 
-/* ── L2 HEAD — a round cranium with a snub muzzle dropped out of it. Crown at
-   y 33, widest 82 at y 62, cheeks bulging OUT rather than tapering in, then a
-   short step into a 30-wide muzzle lobe and a chin at y 108.5. The cheek arcs
-   are the circles rev 2 was written to exclude; they are the whole point. ─ */
+   The husky tells all survive: tall close-set ears, dark cap, pale face, the
+   blaze splitting the cap, pink inner ears. ────────────────────────────── */
+
+/* ── L1 EAR — a rounded triangle, tall and close-set. Tall is the husky tell
+   against a fox; close-set is the tell against a shepherd; and the V notch
+   between the pair is the loudest canine cue at 20px. ──────────────────── */
+const EAR = "M30 44 C26 32 29 20 34 15 C38 11 43 13 45 19 L51 38 C52.6 42.6 49 47 44.6 45.4 Z";
+/* the same shape inset — pink, and the only warm note above the cheeks */
+const EAR_INNER = "M34.5 39 C32 31 33.5 23.5 36.5 20.5 C38.8 18.2 41.5 19.4 42.7 22.9 L46.3 34.3 C47.2 36.9 45.2 39.4 42.7 38.5 Z";
+
+/* ── L2 HEAD — ONE CIRCLE, r 38 about (60,66). Rev 3 hung a separate snub
+   muzzle lobe off a round cranium; on a pale face that lobe has no value change
+   to define it, so it stopped being a muzzle and became a bump in the outline.
+   The nose and mouth carry the muzzle on their own now. ─────────────────── */
 const HEAD =
-  "M60 33 C78 33 96 42 101 60 C105 74 100 84 88 89 C82 91.5 78 92 75 93 C76.5 99 73 105 66 107.5 C64 108.2 62 108.5 60 108.5 C58 108.5 56 108.2 54 107.5 C47 105 43.5 99 45 93 C42 92 38 91.5 32 89 C20 84 15 74 19 60 C24 42 42 33 60 33 Z";
+  "M60 28 C81 28 98 45 98 66 C98 87 81 104 60 104 C39 104 22 87 22 66 C22 45 39 28 60 28 Z";
 
-/* ── L4 MASK — one continuous band with a V under the bridge, clipped to the
-   head so its edges are the head's edges. NEVER two separate eye patches: two
-   blotches read as a bandit, one band reads as a mask. It brackets the eyes at
-   their widest and then RELEASES: taken any lower it covered three quarters of
-   the head and the whole animal collapsed into one black blob with a white
-   wedge in it. The three tones — dark cap, slate cheek, cream muzzle — are what
-   make him read as a husky rather than as a panda. ──────────────────────── */
-const MASK =
-  "M8 20 L112 20 L112 71 C104 81.5 94 85.5 82 84 C72 82.8 65 79.4 60 75.8 C55 79.4 48 82.8 38 84 C26 85.5 16 81.5 8 71 Z";
+/* ── L4 CAP — the dark hood, and the ONLY dark mass on the face. It follows the
+   head's own arc across the top, then falls to the cheeks either side of a
+   central dip. IT RELEASES ABOVE THE EYES — the first cut of this revision let
+   the lower edge fall to y 68 and it cut across the top of both eyes, which
+   turned every neutral mood into a scowl. The clearance is 4 units and it is
+   the difference between friendly and furious. It still comes right down at
+   the TEMPLES, because a cap that only crosses the crown reads as a fringe
+   rather than as a hood. ──────────────────────────────────────────────── */
+const CAP =
+  "M22.1 64 A38 38 0 0 1 97.9 64 C94 64 86 60 74 54 C68 50.4 64 48 60 48 C56 48 52 50.4 46 54 C34 60 26 64 22.1 64 Z";
 
-/* ── L5 BLAZE — the needle, on the face. Apex (60,36); the flanks still obey
-   x = 60 ± 0.5774·(y−36), so the apex is exactly 60° — TasteRadar's own spoke
-   step, and the one law carried over from rev 2 untouched. The barbs at y 59.4
-   are the pale brow spots, the pinch at y 65–80 is the bridge between the eyes,
-   and the flare below y 84 IS the muzzle. One shape doing three anatomical jobs
-   and reading as an arrow the whole time. ───────────────────────────────── */
-const BLAZE =
-  "M60 36 L73.5 59.4 C70 60 67.6 61.8 66.6 65.2 C65.8 68 65.4 71 65.6 75 C66 80.5 73.4 84.5 74.8 92 C76.4 100.4 70 107.6 60 108 C50 107.6 43.6 100.4 45.2 92 C46.6 84.5 54 80.5 54.4 75 C54.6 71 54.2 68 53.4 65.2 C52.4 61.8 50 60 46.5 59.4 Z";
+/* ── L5 BLAZE — the needle, splitting the cap. Apex (60,30); the flanks obey
+   x = 60 ± 0.5774·(y−30), so the apex is EXACTLY 60°, the one law carried
+   unbroken since revision 2. It seats into the cap's own notch, so cap and
+   blaze read as ONE pale shape rather than a white triangle stuck on a hood.
+   It stops at the brow: on a pale face there is nothing below the brow for it
+   to contrast against, and a wider one just split his head in two. ─────── */
+const BLAZE = "M60 30 L70.4 48 C66 47.4 63 48.6 60 51 C57 48.6 54 47.4 49.6 48 Z";
 
-/* ── L6 EYE — 16.4 × 17.6 on an 82-wide head. ROUNDNESS is what reads cute,
-   not raw area: rev 2's 18 × 12.6 was wide and squinting, and a first pass at
-   21 × 22.8 put 63% of the face width inside two eyeballs and went straight
-   past cute into uncanny. Taller than wide, placed LEVEL — rev 2 rotated the
-   pair -8° so the outer corners lifted, which is the difference between a look
-   and a glare. ──────────────────────────────────────────────────────────── */
-const EYE =
-  "M0 -8.8 C4.6 -8.8 8.2 -4.9 8.2 0 C8.2 4.9 4.6 8.8 0 8.8 C-4.6 8.8 -8.2 4.9 -8.2 0 C-8.2 -4.9 -4.6 -8.8 0 -8.8 Z";
-const EYE_X = 74.6;
-const EYE_Y = 70.5;
+/* ── L6 EYE — a solid dark oval, 10.8 × 12.4, with ONE catchlight. Rev 3 spent
+   four layers per eye (cream, iris, pupil, two speculars) to punch a bright eye
+   through a dark face. On cream, dark IS the contrast, so an eye is one shape
+   and a dot — and that is also why it survives to 20px without degrading. ── */
+const EYE = "M0 -6.2 C3 -6.2 5.4 -3.4 5.4 0 C5.4 3.4 3 6.2 0 6.2 C-3 6.2 -5.4 3.4 -5.4 0 C-5.4 -3.4 -3 -6.2 0 -6.2 Z";
+const EYE_X = 74;
+const EYE_Y = 64;
 
-/* ── L7 NOSE — husky black, a rounded heart wider than tall, sitting HIGH on the
-   snub muzzle. IT TAKES NO EMBER: a warm nose puts saturated pixels at the exact
-   optical centre of the face and turns a guide into a plush toy. ─────────── */
+/* ── L7 BLUSH — one soft ellipse per cheek. The lever that failed on a dark
+   coat and works immediately on a cream one. ──────────────────────────── */
+const BLUSH: [number, number] = [35, 76];
+
+/* ── L8 NOSE — a small rounded heart, dead centre. On a pale face it does not
+   need to be large to read; it needs to be the DARKEST thing below the cap,
+   and it is. IT TAKES NO EMBER: a warm nose at the optical centre of the face
+   turns a guide into a plush toy. ──────────────────────────────────────── */
 const NOSE =
-  "M60 88.4 C64.6 88.4 68.4 90.5 68.4 93.5 C68.4 96.9 64.2 99.8 60 99.8 C55.8 99.8 51.6 96.9 51.6 93.5 C51.6 90.5 55.4 88.4 60 88.4 Z";
+  "M60 76 C63.4 76 66 77.6 66 80 C66 82.7 62.8 85 60 85 C57.2 85 54 82.7 54 80 C54 77.6 56.6 76 60 76 Z";
 
 /* ══ BUST — viewBox 0 0 120 170, head group translated y−2. The body ends in a
    MASKED DISSOLVE rather than at the frame edge, so there is no hard horizontal
@@ -209,50 +207,43 @@ function hash(s: string): number {
  * glare and was costing him every ounce of warmth he had.
  */
 function Eye({ gid, side }: { gid: string; side: "l" | "r" }) {
-  const p = `translate(${EYE_X} ${EYE_Y})`;
-  const place = side === "r" ? p : `translate(120,0) scale(-1,1) ${p}`;
+  const place = side === "r" ? `translate(${EYE_X} ${EYE_Y})` : `translate(120,0) scale(-1,1) translate(${EYE_X} ${EYE_Y})`;
   return (
     <g transform={place}>
       <g className="togo-eye">
         <g className="togo-eye-open">
-          <path d={EYE} fill="var(--togo-blaze-1)" />
-          <g clipPath={`url(#${gid}-eyeclip)`}>
-            <g className="togo-iris">
-              {/* the 1px stroke is a fake bloom that costs zero filter time */}
-              <circle r="7.7" fill={`url(#${gid}-iris)`} stroke="rgba(83,217,255,.55)" strokeWidth=".9" />
-              <circle r="3.5" fill="#08111A" />
-              {/* two ASYMMETRIC speculars — the cheapest single trick separating
-                  premium vector from free-icon work, and scaled WITH the iris:
-                  a big eye with a small catchlight reads as glass, not as life.
-                  THE IRIS FILLS 94% OF THE EYE. Leave more cream than that
-                  and it reads as a thick sclera ring — a cartoon eye wants a
-                  RIM, not a white of the eye. */}
-              <circle cx="2.8" cy="-3.1" r="2.5" fill="#fff" opacity=".95" />
-              <circle className="togo-spec-2" cx="-2.4" cy="2.8" r="1.2" fill="#fff" opacity=".42" />
-            </g>
+          <path d={EYE} fill="var(--togo-line)" />
+          {/* THE CATCHLIGHT CARRIES THE GAZE. With a solid eye there is no iris
+              to slide inside a sclera, so the highlight is what moves — the
+              oldest trick in cartoon animation, and it keeps every mood's
+              --iris-x working untouched. */}
+          <g className="togo-iris">
+            <circle cx="1.9" cy="-2.2" r="2" fill="#fff" opacity=".95" />
+            <circle className="togo-spec-2" cx="-1.6" cy="2.2" r="0.9" fill="#fff" opacity=".4" />
           </g>
         </g>
-        {/* HOWL only — the celebration is spent exactly once */}
+        {/* HOWL only — the celebration is spent exactly once. Dark on cream now,
+            where rev 3 needed it cream on dark. */}
         <path
           className="togo-eye-happy"
-          d="M-6.6 1.9 Q0 -5.6 6.6 1.9"
-          stroke="var(--togo-blaze-1)"
-          strokeWidth="3.4"
+          d="M-5.4 1.6 Q0 -4.4 5.4 1.6"
+          stroke="var(--togo-line)"
+          strokeWidth="2.6"
           fill="none"
           strokeLinecap="round"
           opacity="0"
         />
-        {/* ONE property drives blink and every half-lidded mood. Clipped to the
-            eye because the un-clipped rect reaches into the blaze, and THE
-            BLAZE IS RIGID: it must be pixel-identical in every mood. */}
+        {/* ONE property drives blink and every half-lidded mood. THE LID IS FACE
+            COLOURED, not cap coloured: the eye sits on cream now, so a dark lid
+            would blink the wrong way round. */}
         <g clipPath={`url(#${gid}-eyeclip)`}>
           <rect
             className="togo-lid"
-            x="-9.4"
-            y="-9.8"
-            width="18.8"
-            height="19"
-            fill="var(--togo-mask)"
+            x="-6.6"
+            y="-7"
+            width="13.2"
+            height="14"
+            fill="var(--togo-face-1)"
             transform="scale(1,0)"
             style={side === "r" ? ({ "--blink-d": "25ms" } as CSSProperties) : undefined}
           />
@@ -304,6 +295,10 @@ export default function Togo({
           <stop offset=".52" stopColor="var(--togo-coat-2)" />
           <stop offset="1" stopColor="var(--togo-coat-3)" />
         </linearGradient>
+        <linearGradient id={`${gid}-face`} x1=".3" y1="0" x2=".7" y2="1">
+          <stop offset="0" stopColor="var(--togo-face-1)" />
+          <stop offset="1" stopColor="var(--togo-face-2)" />
+        </linearGradient>
         <linearGradient id={`${gid}-cap`} x1=".18" y1="0" x2=".82" y2="1">
           <stop offset="0" stopColor="var(--togo-mask-1)" />
           <stop offset=".62" stopColor="var(--togo-mask)" />
@@ -334,8 +329,8 @@ export default function Togo({
           <stop offset="1" stopColor="var(--togo-rim-4)" />
         </linearGradient>
         <linearGradient id={`${gid}-ear`} x1=".5" y1="1" x2=".5" y2="0">
-          <stop offset="0" stopColor="var(--togo-ear-in)" />
-          <stop offset="1" stopColor="rgba(247,244,236,.55)" />
+          <stop offset="0" stopColor="var(--togo-ear-in)" stopOpacity=".72" />
+          <stop offset="1" stopColor="var(--togo-ear-in)" />
         </linearGradient>
         <radialGradient id={`${gid}-glow`}>
           <stop offset="0" stopColor="var(--togo-glow)" />
@@ -380,7 +375,7 @@ export default function Togo({
               filter, so nothing re-rasterises per frame on a phone already
               paying for backdrop-filter. */}
           <g transform={shift}>
-            <ellipse className="togo-glow" cx="60" cy="84" rx="50" ry="40" fill={`url(#${gid}-glow)`} />
+            <ellipse className="togo-glow" cx="60" cy="70" rx="48" ry="42" fill={`url(#${gid}-glow)`} />
           </g>
 
           <g className="togo-body">
@@ -433,8 +428,10 @@ export default function Togo({
                     <path d={EAR_INNER} fill={`url(#${gid}-ear)`} />
                   </g>
                 </g>
-                {/* L2 */}
-                <path d={HEAD} fill={`url(#${gid}-coat)`} />
+                {/* L2 — the head takes the FACE gradient. Rev 3 filled it with
+                    the coat and then covered 3/4 of it with the mask; here the
+                    cream IS the head and the cap is a hood laid over the top. */}
+                <path d={HEAD} fill={`url(#${gid}-face)`} />
                 {/* L3 RIM LIGHT — the move that separates premium vector from
                     clipart. Same light source as --bg-glow-1, so he sits in the
                     same 3D space as the glass cards instead of on top of them. */}
@@ -443,50 +440,55 @@ export default function Togo({
                   d={HEAD}
                   fill="none"
                   stroke={`url(#${gid}-rim)`}
-                  strokeWidth="2.4"
+                  strokeWidth="1.6"
                   strokeLinejoin="round"
+                  opacity="0.5"
                 />
-                {/* L4 */}
-                {/* Lit, not painted: a flat fill here made the whole cranium one
-                    dead black plate and cost the head its roundness. */}
-                <path d={MASK} fill={`url(#${gid}-cap)`} clipPath={`url(#${gid}-clip)`} />
+                {/* L4 THE CAP. Lit, not painted — a flat fill cost the head its
+                    roundness. Clipped to the head so its edges are the head's. */}
+                <path d={CAP} fill={`url(#${gid}-cap)`} clipPath={`url(#${gid}-clip)`} />
                 {/* L5 */}
                 <path className="togo-blaze" d={BLAZE} fill={`url(#${gid}-blaze)`} />
                 <g clipPath={`url(#${gid}-blazeclip)`}>
-                  {/* cool bounce — ties the cream to --data without a new colour */}
-                  <rect x="42" y="90" width="36" height="24" fill="rgba(83,217,255,.14)" />
                   {/* READING: the scan runs UP the needle — the direction it
                       points. This is the frame where the character and the
-                      engine fuse. */}
-                  <rect className="togo-scan" x="52" y="0" width="16" height="26" fill="var(--data)" opacity="0" />
+                      engine fuse, and it is the only cyan left on the face. */}
+                  <rect className="togo-scan" x="48" y="0" width="24" height="16" fill="var(--data)" opacity="0" />
+                </g>
+                {/* L5b BLUSH — clipped to the head so it can never bleed past
+                    the cheek. It failed on rev 3's dark coat and works on sight
+                    here, which is the whole argument for the pale face. */}
+                <g className="togo-blush" clipPath={`url(#${gid}-clip)`} fill="var(--togo-blush)">
+                  <ellipse cx={BLUSH[0]} cy={BLUSH[1]} rx="8.4" ry="5.2" />
+                  <ellipse cx={120 - BLUSH[0]} cy={BLUSH[1]} rx="8.4" ry="5.2" />
                 </g>
                 {/* L6 */}
                 <Eye gid={gid} side="l" />
                 <Eye gid={gid} side="r" />
                 {/* L7 */}
                 <path d={NOSE} fill="var(--togo-line)" />
-                <circle cx="56.6" cy="91" r="1.9" fill="#fff" opacity=".5" />
+                <circle cx="57.2" cy="78.6" r="1.5" fill="#fff" opacity=".45" />
                 {/* L8 MOUTH — two paths so the halves move independently. Both
                     now turn UP at the far end: rev 2's halves ran level out of
                     the corner, which is a muzzle line rather than a smile. */}
                 <g fill="none" stroke="var(--togo-line)" strokeWidth="2.1" strokeLinecap="round">
-                  <path className="togo-mouth togo-mouth-l" d="M60 99.4 Q56.2 104 52.2 101.4" />
-                  <path className="togo-mouth togo-mouth-r" d="M60 99.4 Q63.8 104 67.8 101.4" />
+                  <path className="togo-mouth togo-mouth-l" d="M60 85 Q55.8 90.6 51.2 87.6" />
+                  <path className="togo-mouth togo-mouth-r" d="M60 85 Q64.2 90.6 68.8 87.6" />
                   {/* drawn 1px off level — that is the entire "unimpressed" read */}
-                  <path className="togo-mouth togo-mouth-flat" d="M53.4 102.2 L66.6 101.4" opacity="0" />
+                  <path className="togo-mouth togo-mouth-flat" d="M52.6 88.2 L67.4 87.4" opacity="0" />
                 </g>
 
                 {/* HOWL ONLY. The tongue exists nowhere else in this file. */}
                 <g className="togo-howl">
                   <path
                     className="togo-howl-only togo-howl-mouth"
-                    d="M52.6 100.2 C55.6 98.6 64.4 98.6 67.4 100.2 C67.4 107.6 64 111.4 60 111.4 C56 111.4 52.6 107.6 52.6 100.2 Z"
+                    d="M53.4 85.6 C56.2 84 63.8 84 66.6 85.6 C66.6 92.6 63.6 96.2 60 96.2 C56.4 96.2 53.4 92.6 53.4 85.6 Z"
                     fill="#2A1620"
                     opacity="0"
                   />
                   <path
                     className="togo-howl-only togo-tongue"
-                    d="M56 105.6 C57.4 104 62.6 104 64 105.6 C64 109.4 62 110.8 60 110.8 C58 110.8 56 109.4 56 105.6 Z"
+                    d="M56.6 90.6 C57.8 89.2 62.2 89.2 63.4 90.6 C63.4 94.2 61.8 95.4 60 95.4 C58.2 95.4 56.6 94.2 56.6 90.6 Z"
                     fill="#E8798D"
                     opacity="0"
                   />
@@ -506,7 +508,7 @@ export default function Togo({
                     key={i}
                     className="togo-sonar"
                     cx="60"
-                    cy="103"
+                    cy="88"
                     r="6"
                     opacity="0"
                     style={{ "--i": i } as CSSProperties}

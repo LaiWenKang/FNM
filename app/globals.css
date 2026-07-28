@@ -214,11 +214,16 @@ a {
   --togo-mask: #232a3c; /* the dark face mask / cap — mid stop */
   --togo-mask-1: #333c54; /* lit shoulder of the cap, top-left */
   --togo-mask-2: #12161f; /* its shadow side, bottom-right */
+  /* THE FACE. Cream, and the largest area of the drawing — the cap is a hood
+     laid over it, never the other way round. */
+  --togo-face-1: #ffffff;
+  --togo-face-2: #dde5ee;
+  --togo-blush: rgba(242, 140, 140, 0.4); /* works on cream; on a dark coat it read as a bruise */
   --togo-blaze-1: #fbf9f3; /* cream-white — this is FUR, not the mark */
   --togo-blaze-2: #dae1eb; /* COOL shadow on the cream — arctic animal, cool halftones */
   --togo-iris: #8fe9ff;
   --togo-line: #10131c; /* nose + mouth, near-black */
-  --togo-ear-in: rgba(255, 150, 120, 0.42); /* backlit ear canal — the ONLY warm note above the jaw */
+  --togo-ear-in: #f2a6a6; /* pink inner ear — the only warm note above the cheeks */
   --togo-harness: #ff7a45; /* = --accent; named apart so a Hide-Togo build can null it */
   --togo-glow: rgba(255, 106, 42, 0.34);
   --togo-blaze-edge: transparent; /* light theme only — see the light block */
@@ -338,6 +343,9 @@ a {
     --togo-mask: #39415a;
     --togo-mask-1: #4d5674;
     --togo-mask-2: #262c3d;
+    --togo-face-1: #ffffff;
+    --togo-face-2: #d3dce7;
+    --togo-blush: rgba(226, 122, 122, 0.42);
     --togo-blaze-1: #ffffff;
     --togo-blaze-2: #ccd6e2;
     --togo-line: #1b2029;
