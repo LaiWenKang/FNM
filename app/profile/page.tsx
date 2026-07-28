@@ -4,14 +4,37 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import BrandRow from "@/components/BrandRow";
-import { PersonIcon, ShieldIcon, TagIcon, WalkIcon } from "@/components/icons";
+import Togo from "@/components/Togo";
+import {
+  CheckIcon,
+  EyeOffIcon,
+  PersonIcon,
+  ShieldIcon,
+  SlidersIcon,
+  TagIcon,
+  WalkIcon,
+} from "@/components/icons";
+import { togoLine } from "@/lib/togoLines";
 
 // The You tab: account, search settings, and data controls.
+//
+// Four identical glass rectangles used to sit here with nothing distinguishing
+// RANGE from BUDGET from DATA except the icon, and "Erase my data" was the most
+// visually prominent control on the screen — a full-width 56px bordered danger
+// button, giving profile deletion more weight than setting your budget. On iOS a
+// destructive setting is a text row at the bottom of a grouped list. It is one
+// now, with Togo beside it stating the consequence honestly and once.
+
+const PRICE_LABELS = ["", "$", "$$", "$$$", "$$$$"];
+const PRICE_SUBS = ["", "hawker", "casual", "restaurant", "anything"];
+
+const TOGO_PREF = "fnm_togo_hidden";
 
 interface Account {
   signedIn: boolean;
   name: string | null;
   email: string | null;
+  image?: string | null;
   storage: "cloud" | "device";
   googleConfigured: boolean;
 }
@@ -21,21 +44,40 @@ interface Settings {
   priceMax: number;
   swipeCount: number;
   recentCount: number;
+  tasteDescription?: string;
   account?: Account;
 }
-
-const PRICE_LABELS = ["", "$ hawker", "$$ casual", "$$$ restaurant", "$$$$ anything"];
 
 export default function ProfilePage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saved, setSaved] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
       .then(setSettings)
       .catch(() => {});
+    try {
+      setHidden(window.localStorage.getItem(TOGO_PREF) === "1");
+    } catch {
+      /* storage blocked — he simply stays visible */
+    }
   }, []);
+
+  /** Offering the exit is what makes him read as confident rather than imposed.
+      Hiding removes every face and every line; the bare NEEDLE marks stay,
+      because they are brand, not voice. */
+  function toggleTogo() {
+    const next = !hidden;
+    setHidden(next);
+    try {
+      window.localStorage.setItem(TOGO_PREF, next ? "1" : "0");
+    } catch {
+      /* nothing to persist to — the class below still applies this session */
+    }
+    document.documentElement.dataset.togo = next ? "off" : "on";
+  }
 
   async function update(patch: Partial<Settings>) {
     if (!settings) return;
@@ -61,41 +103,75 @@ export default function ProfilePage() {
   }
 
   return (
-    <main>
+    <main className="profile">
       <BrandRow label="You" />
       {!settings ? (
         <div className="center">Loading…</div>
       ) : (
         <>
-          <div className="setting-card account-card" style={{ animationDelay: "0ms", marginTop: 16 }}>
-            <p className="module-head">
-              <PersonIcon size={20} />
-              Account
-            </p>
-            {settings.account?.signedIn ? (
-              <>
-                <p className="setting-label">{settings.account.name ?? "Signed in"}</p>
-                <p className="setting-note">{settings.account.email}</p>
-                <a className="big-btn secondary" href="/api/auth/signout">
-                  Sign out
-                </a>
-              </>
-            ) : (
-              <>
-                <p className="setting-note">
-                  You&apos;re browsing as a guest — your palate lives on this device only. Sign in
-                  to sync it everywhere.
+          <div className="account-card mat mat-thick" style={{ ["--card-i" as string]: 0 }}>
+            <div className="account-row">
+              <span className="avatar">
+                {settings.account?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={settings.account.image} alt="" width={44} height={44} />
+                ) : (
+                  <Togo mood="harnessed" size={44} gid="acct" className="avatar-togo togo-face" />
+                )}
+                <PersonIcon className="avatar-fallback" size={22} />
+              </span>
+              <div className="account-id">
+                <p className="account-name">{settings.account?.name ?? "Guest"}</p>
+                <p className="account-sub">
+                  {settings.account?.signedIn
+                    ? settings.account.email
+                    : "Palate stored on this device"}
                 </p>
-                <Link className="big-btn" href="/signin">
-                  Sign in
-                </Link>
-              </>
+              </div>
+            </div>
+            {settings.account?.signedIn ? (
+              <a className="big-btn secondary" href="/api/auth/signout">
+                Sign out
+              </a>
+            ) : (
+              <Link className="big-btn" href="/signin">
+                Sign in
+              </Link>
             )}
           </div>
 
-          <div className="setting-card" style={{ animationDelay: "60ms" }}>
+          {/* THE STATS MODULE — ~300px of nothing used to sit under these cards. */}
+          <p className="section-eyebrow">Your record</p>
+          <div className="stats-grid">
+            <div className="stat mat mat-regular">
+              <span className="stat-k">Meals decided</span>
+              <span
+                className="stat-v count"
+                style={{ ["--score" as string]: settings.recentCount } as CSSProperties}
+                aria-hidden="true"
+              />
+              <span className="sr-only">{settings.recentCount}</span>
+            </div>
+            <div className="stat mat mat-regular">
+              <span className="stat-k">Swipes logged</span>
+              <span
+                className="stat-v count"
+                style={{ ["--score" as string]: settings.swipeCount } as CSSProperties}
+                aria-hidden="true"
+              />
+              <span className="sr-only">{settings.swipeCount}</span>
+            </div>
+            <div className="stat mat mat-regular wide">
+              <span className="stat-k">Palate</span>
+              <span className="stat-v small">{settings.tasteDescription ?? "balanced"}</span>
+            </div>
+          </div>
+
+          <p className="section-eyebrow">Search</p>
+
+          <div className="setting-card mat mat-regular" style={{ ["--card-i" as string]: 1 }}>
             <p className="module-head">
-              <WalkIcon size={20} />
+              <WalkIcon size={16} />
               Range
             </p>
             <p className="setting-label">How far will you go?</p>
@@ -105,6 +181,7 @@ export default function ProfilePage() {
               max={5}
               step={0.5}
               value={settings.maxKm}
+              aria-label="Maximum distance in kilometres"
               style={{ "--val": settings.maxKm } as CSSProperties}
               onChange={(e) => void update({ maxKm: parseFloat(e.target.value) })}
             />
@@ -114,30 +191,65 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          <div className="setting-card" style={{ animationDelay: "120ms" }}>
+          <div className="setting-card mat mat-regular" style={{ ["--card-i" as string]: 2 }}>
             <p className="module-head">
-              <TagIcon size={20} />
+              <TagIcon size={16} />
               Budget
             </p>
             <p className="setting-label">Usual budget ceiling</p>
-            <div className="mood-chips">
+            {/* A MUTUALLY-EXCLUSIVE FOUR-WAY CHOICE IS A SEGMENTED CONTROL, never
+                a wrapping pill cloud whose selected item lands at the start of
+                line two. */}
+            <div
+              className="segmented"
+              role="radiogroup"
+              aria-label="Budget ceiling"
+              style={{ ["--seg-i" as string]: settings.priceMax - 1 } as CSSProperties}
+            >
+              <span className="seg-capsule" aria-hidden="true" />
               {[1, 2, 3, 4].map((p) => (
                 <button
                   key={p}
                   type="button"
-                  className={`chip ${settings.priceMax === p ? "on" : ""}`}
+                  role="radio"
+                  aria-checked={settings.priceMax === p}
+                  className={`seg ${settings.priceMax === p ? "on" : ""}`}
                   onClick={() => void update({ priceMax: p })}
                 >
-                  {PRICE_LABELS[p]}
+                  <span className="seg-mark">{PRICE_LABELS[p]}</span>
+                  <span className="seg-sub">{PRICE_SUBS[p]}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="setting-card" style={{ animationDelay: "180ms" }}>
+          <p className="section-eyebrow">Guide</p>
+
+          <div className="setting-card mat mat-regular" style={{ ["--card-i" as string]: 3 }}>
             <p className="module-head">
-              <ShieldIcon size={20} />
-              Data
+              <SlidersIcon size={16} />
+              Presentation
+            </p>
+            <button type="button" className="switch-row" onClick={toggleTogo} aria-pressed={hidden}>
+              <span className="switch-icon">
+                <EyeOffIcon size={16} strokeWidth={1.8} />
+              </span>
+              <span className="switch-copy">
+                <span className="switch-label">Hide Togo</span>
+                <span className="switch-note">Every function stays. The bearing marks stay too.</span>
+              </span>
+              <span className={`switch${hidden ? " on" : ""}`} aria-hidden="true">
+                <span className="switch-knob" />
+              </span>
+            </button>
+          </div>
+
+          <p className="section-eyebrow">Data</p>
+
+          <div className="setting-card mat mat-regular" style={{ ["--card-i" as string]: 4 }}>
+            <p className="module-head">
+              <ShieldIcon size={16} />
+              Storage
             </p>
             <p className="setting-note">
               Your taste profile (<span className="data-num">{settings.swipeCount}</span> swipes,{" "}
@@ -147,13 +259,29 @@ export default function ProfilePage() {
                 : "lives in this device's browser only — nothing leaves your phone."}{" "}
               We never store contacts, payments, or a location history.
             </p>
-            <button className="big-btn secondary danger" type="button" onClick={() => void reset()}>
-              Erase my data
-            </button>
           </div>
+
+          {/* DEMOTED to a text row, which is where a destructive setting belongs,
+              with honest consequence framing beside it. Never guilt-tripping —
+              no tears, no pleading; that is both a dark pattern and cheap. */}
+          <div className="danger-row">
+            {/* A fixed 44px leading column with both lines in the right column,
+                so the block has ONE left edge instead of a ragged one. */}
+            <span className="danger-mark">
+              <Togo mood="banked" size={36} gid="erase" className="danger-togo togo-face" />
+            </span>
+            <div className="danger-copy">
+              <p className="danger-say togo-say">{togoLine("erase")}</p>
+              <button className="danger-link" type="button" onClick={() => void reset()}>
+                Erase my data
+              </button>
+            </div>
+          </div>
+
           {saved && (
             <div className="toast" role="status">
-              Saved ✓
+              <CheckIcon size={13} strokeWidth={2.4} />
+              Saved
             </div>
           )}
         </>

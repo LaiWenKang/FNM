@@ -19,12 +19,10 @@ const CONTEXT_REWRITES: Array<[RegExp, string]> = [
 ];
 
 function templateExplanation(pick: ScoredPlace, profile: Profile): string {
-  const fitPct = pick.reasons
-    .map((r) => r.match(/\((\d+)% flavor fit\)/)?.[1])
-    .find(Boolean);
+  // Read the match off the pick itself — the same integer the ring draws.
   const taste = describeTaste(profile.vector);
-  const lead = fitPct
-    ? `${fitPct}% flavor match for your ${taste} palate`
+  const lead = pick.matchScore
+    ? `${pick.matchScore}% match for your ${taste} palate`
     : `A close flavor match for your ${taste} palate`;
 
   const extras: string[] = [];
@@ -53,13 +51,14 @@ export async function explain(pick: ScoredPlace, profile: Profile, ctx: Context)
       model: MODEL,
       max_tokens: 300,
       system:
-        "You write one short, warm, concrete sentence explaining why a restaurant pick suits this user right now. No preamble, no emoji, under 25 words. Mention the dish if given.",
+        "You write one short, warm, concrete sentence explaining why a restaurant pick suits this user right now. No preamble, no emoji, under 25 words. Mention the dish if given. If you cite a match figure, use matchScore exactly — never invent or round a different number.",
       messages: [
         {
           role: "user",
           content: JSON.stringify({
             place: pick.place.name,
             dish: pick.bestDish?.name ?? null,
+            matchScore: pick.matchScore,
             walkMinutes: pick.walkMinutes,
             priceSgd: pick.bestDish?.priceSgd ?? null,
             userTaste: describeTaste(profile.vector),

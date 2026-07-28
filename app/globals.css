@@ -1,6 +1,17 @@
 /* ============================================================
    EMBER ENGINE — FNM liquid-glass + telemetry design system
    Dark is the primary theme. Ember = appetite, cyan = data.
+
+   Four systems carry the weight here, and none of them is colour:
+     MATERIAL   four thicknesses plus chrome, because the eye reads depth from
+                material contrast and everything used to be one substance;
+     EDGE       four cues per edge plus a CONTACT shadow, because a 1px border
+                is not an edge and a single mid-blur shadow prints a card onto
+                the page instead of lifting it off;
+     SCALE      eight spacing steps, eight type steps, concentric radii, in
+                place of twenty-two ad-hoc values off any grid;
+     MOTION     six durations, four eases, one entrance, one path-draw, and a
+                choreography for the decision moment.
    ============================================================ */
 
 * {
@@ -27,6 +38,18 @@ a {
 :focus-visible {
   outline: 2px solid var(--data);
   outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ===== Tokens ===== */
@@ -64,60 +87,194 @@ a {
   --data-soft: rgba(83, 217, 255, 0.1);
   --data-border: rgba(83, 217, 255, 0.22);
 
-  /* Glass surfaces */
-  --glass: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035) 60%);
-  --glass-strong: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06) 60%);
+  /* ── MATERIAL, four tiers plus chrome ──────────────────────────────────
+     Assignment is deliberate and never ad hoc:
+       hero pick        .mat-thick
+       alternatives · mood card · settings   .mat-regular
+       plan bar         .mat-thin
+       tab bar          .mat-chrome                                        */
+  --mat-thin-blur: 12px;
+  --mat-thin-sat: 140%;
+  --mat-thin-tint: rgba(255, 255, 255, 0.045);
+  --mat-reg-blur: 24px;
+  --mat-reg-sat: 170%;
+  --mat-reg-tint: rgba(255, 255, 255, 0.075);
+  --mat-thick-blur: 40px;
+  --mat-thick-sat: 190%;
+  --mat-thick-tint: rgba(255, 255, 255, 0.115);
+  --mat-chrome-blur: 60px;
+  --mat-chrome-sat: 205%;
+  --mat-chrome-tint: rgba(255, 255, 255, 0.16);
   --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-highlight: rgba(255, 255, 255, 0.28);
-  --glass-blur: 24px;
-  --glass-sat: 180%;
   --card: rgba(255, 255, 255, 0.06);
-  --border: var(--glass-border);
   --hairline: rgba(255, 255, 255, 0.08);
 
-  /* Depth */
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.38);
-  --shadow-float: 0 16px 48px rgba(0, 0, 0, 0.55);
+  /* ── EDGE PHYSICS — four cues, not one. The dark bottom rim and the 1–2px
+     contact darkness are what sell the lift; without them a card is printed
+     on the background rather than sitting above it. */
+  --edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3), /* bright top rim */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.34), /* dark bottom rim */
+    inset 1px 0 0 rgba(255, 255, 255, 0.06), /* left refraction */
+    inset -1px 0 0 rgba(0, 0, 0, 0.14); /* right density falloff */
+  --depth: 0 1px 2px rgba(0, 0, 0, 0.55), 0 20px 44px -14px rgba(0, 0, 0, 0.62);
+  --depth-hi:
+    0 1px 2px rgba(0, 0, 0, 0.6), 0 28px 60px -16px rgba(0, 0, 0, 0.7),
+    0 0 60px -18px var(--accent-glow);
   --shadow-accent: 0 8px 28px var(--accent-glow);
-  --inset-top: inset 0 1px 0 var(--glass-highlight);
+  /* real glass fringes colour at its edge */
+  --fringe: linear-gradient(
+    160deg,
+    rgba(255, 176, 58, 0.1),
+    transparent 30%,
+    transparent 70%,
+    rgba(83, 217, 255, 0.08)
+  );
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
 
   /* Semantic */
   --good: #4ade80;
   --good-tint: #a7f3c4;
   --good-soft: rgba(74, 222, 128, 0.14);
-  --brave: rgba(174, 62, 201, 0.18);
-  --brave-tint: #e2b8f0;
+  /* THE ALTERNATIVE AXIS. Green-400 and a saturated lavender were the only two
+     hues in the product belonging to no palette here — they read as borrowed
+     from a component library. The two alternatives are a DEGREE OF NERVE, and
+     the app already owns a scale for exactly that: the score ramp, cool → hot.
+     SAFE takes the cool end, BRAVE the plum that the background aurora is
+     already lit with. Green survives only where it means success, not safety. */
+  --safe: rgba(83, 217, 255, 0.15);
+  --safe-tint: #9fe6ff;
+  --brave: rgba(174, 62, 201, 0.2);
+  --brave-tint: #d9a9ea;
   --danger: #ff5d5d;
   --danger-border: rgba(255, 93, 93, 0.35);
   --rain: #6ac8ff;
+
+  /* ── SCORE RAMP. A 61 must not look as hot as a 92; arc length alone is
+     unreadable at 44px and carries no information at all at a glance. */
+  --score-hot: #ff7a45;
+  --score-warm: #ffb03a;
+  --score-cool: #53d9ff;
+
+  /* ── SKY, by meal period. The app looks different at 8am and at 11pm. */
+  --sky-1: #1c3350;
+  --sky-2: #2f6e86;
+  --sky-3: #e0a257;
+
+  /* Glyph family */
+  --glyph-accent: var(--accent);
 
   /* Type */
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
 
-  /* Shape + motion */
-  --r-lg: 28px;
-  --r-md: 20px;
-  --r-btn: 18px;
+  /* ── SPACE — eight steps. Twenty-two ad-hoc values including 5, 7, 9, 11 and
+     13 make rhythm impossible; this is the difference between "designed" and
+     "assembled". */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 28px;
+  --s7: 40px;
+  --s8: 56px;
+
+  /* ── RADIUS, concentric. THE LAW: --r-inner = --r-outer − padding. A button
+     with rounder corners than the card containing it is the visual equivalent
+     of a grammatical error. */
+  --r-xl: 34px;
+  --r-lg: 26px;
+  --r-md: 18px;
+  --r-sm: 12px;
+  --r-btn: 14px;
   --r-pill: 999px;
-  --spring: cubic-bezier(0.34, 1.45, 0.4, 1);
+
+  /* ── MOTION */
+  --dur-0: 90ms; /* press */
+  --dur-1: 140ms; /* micro */
+  --dur-2: 220ms; /* state change */
+  --dur-3: 360ms; /* entrance */
+  --dur-4: 640ms; /* odometer, ring sweep, contribution bars, NEEDLE SETTLE */
+  --dur-5: 900ms; /* path draw */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-1: 180ms;
-  --dur-2: 360ms;
+  --spring: cubic-bezier(0.34, 1.45, 0.4, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
   --tabbar-clearance: calc(120px + env(safe-area-inset-bottom));
+
+  /* Togo — the lead dog in harness.
+     Slate coat (same value family as the glass surfaces, so he is the darkest
+     object on screen while the CTA is the brightest and they can never be
+     confused), cyan eyes, black nose, ember only in the harness. */
+  --togo-coat-1: #5a6478; /* top stop, lifted deliberately: ~4.3:1 against --bg */
+  --togo-coat-2: #394152;
+  --togo-coat-3: #1b1f2b;
+  --togo-mask: #141824; /* the dark face mask / cap */
+  --togo-blaze-1: #f7f4ec; /* cream-white — this is FUR, not the mark */
+  --togo-blaze-2: #d2dae6; /* COOL shadow on the cream — arctic animal, cool halftones */
+  --togo-ruff: #4a5468;
+  --togo-iris: #8fe9ff;
+  --togo-line: #10131c; /* nose + mouth, near-black */
+  --togo-whisker: rgba(235, 235, 245, 0.28);
+  --togo-ear-in: rgba(255, 122, 69, 0.22); /* backlit ear canal — the ONLY warm note above the jaw */
+  --togo-harness: #ff7a45; /* = --accent; named apart so a Hide-Togo build can null it */
+  --togo-glow: rgba(255, 106, 42, 0.34);
+  --togo-blaze-edge: transparent; /* light theme only — see the light block */
+  --togo-mark-ink: #1b2029; /* the mark inverted for light surfaces */
+  --togo-rim-1: rgba(255, 176, 58, 0.95);
+  --togo-rim-2: rgba(255, 122, 69, 0.34);
+  --togo-rim-3: rgba(255, 255, 255, 0);
+  --togo-rim-4: rgba(83, 217, 255, 0.36);
+
+  /* THE TUGLINE, as tokens, so it can carry a light-mode stop that survives a
+     near-white ground. On dark it is the ember gradient; on light it darkens
+     rather than pales, because a pale peach thread on paper is not a line. */
+  --sheet-base: #14141b;
+  --tonight-wash: rgba(83, 217, 255, 0.045);
+  --ghost-grid: rgba(235, 235, 245, 0.3);
+  --frost-foot: rgba(10, 10, 16, 0.42);
+  --switch-off: rgba(255, 255, 255, 0.1);
+  --needle-ice: #edf3f7;
+  --deck-under: #12141b;
+  --deck-under-edge: rgba(255, 255, 255, 0.06);
+  --tug-1: #ffb03a;
+  --tug-2: #ff4d2e;
+  --tug-glow: rgba(255, 106, 42, 0.4);
+
+  /* MONO LABELS carry the telemetry voice; on paper they need real weight.
+     A single token so every uppercase mono caption moves together. */
+  --mono-label: var(--ink-3);
+  /* THE MINIMAP. Its grid and route were near-invisible on the light ground,
+     which reduced the module to an empty white box. */
+  --map-grid: rgba(235, 235, 245, 0.1);
+  --map-grid-hi: rgba(235, 235, 245, 0.16);
+  --map-route: var(--accent);
+  /* CYAN FOR TEXT. #53D9FF is a display colour on near-black and fails on
+     near-white, so text-weight cyan is a separate token from the mark colour. */
+  --data-text: var(--data);
+
+  /* Dish cross-sections */
+  --sec-vessel-1: rgba(255, 255, 255, 0.16);
+  --sec-vessel-2: rgba(255, 255, 255, 0.05);
 }
 
+/* ── LIGHT IS A REAL THEME, not the same design with values flipped.
+   #f3f1ee under rgba(255,255,255,.72) cards is three tiers of white separated
+   by a hairline: zero depth. Warm paper, a three-part shadow, brand colour in
+   the band and never in the body, and --ink-2 raised above AA. */
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f3f1ee;
+    --bg: #ede9e3;
     --bg-elevated: #ffffff;
-    --bg-glow-1: rgba(255, 140, 66, 0.3);
-    --bg-glow-2: rgba(196, 120, 227, 0.18);
-    --bg-glow-3: rgba(64, 190, 196, 0.16);
-    --scene-vignette: rgba(255, 255, 255, 0.35);
+    --bg-glow-1: rgba(255, 140, 66, 0.26);
+    --bg-glow-2: rgba(196, 120, 227, 0.14);
+    --bg-glow-3: rgba(64, 190, 196, 0.14);
+    --scene-vignette: rgba(255, 255, 255, 0.28);
     --ink: rgba(20, 16, 14, 0.96);
-    --ink-2: rgba(60, 60, 67, 0.64);
-    --ink-3: rgba(60, 60, 67, 0.34);
+    --ink-2: rgba(48, 44, 42, 0.78);
+    --ink-3: rgba(60, 60, 67, 0.42);
     --accent: #e8541f;
     --accent-hi: #ff9330;
     --accent-lo: #e43b12;
@@ -130,19 +287,85 @@ a {
     --data-glow: rgba(11, 147, 201, 0.22);
     --data-soft: rgba(11, 147, 201, 0.08);
     --data-border: rgba(11, 147, 201, 0.25);
-    --glass: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.52) 60%);
-    --glass-strong: linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.62) 60%);
+
+    --mat-thin-tint: rgba(255, 255, 255, 0.6);
+    --mat-reg-tint: rgba(255, 255, 255, 0.72);
+    --mat-thick-tint: rgba(255, 255, 255, 0.84);
+    --mat-chrome-tint: rgba(255, 255, 255, 0.8);
     --glass-border: rgba(20, 16, 14, 0.1);
-    --glass-highlight: rgba(255, 255, 255, 0.95);
     --card: rgba(255, 255, 255, 0.72);
     --hairline: rgba(20, 16, 14, 0.07);
-    --shadow-card: 0 8px 32px rgba(60, 32, 12, 0.12);
-    --shadow-float: 0 16px 48px rgba(60, 32, 12, 0.18);
+
+    --edge:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(60, 32, 12, 0.08),
+      inset 1px 0 0 rgba(255, 255, 255, 0.5), inset -1px 0 0 rgba(60, 32, 12, 0.05);
+    --depth: 0 1px 2px rgba(60, 32, 12, 0.1), 0 14px 30px -14px rgba(60, 32, 12, 0.22);
+    --depth-hi:
+      0 1px 2px rgba(60, 32, 12, 0.12), 0 20px 40px -16px rgba(60, 32, 12, 0.28),
+      0 0 50px -20px var(--accent-glow);
+    --shadow-accent: 0 8px 24px rgba(232, 84, 31, 0.28);
+    --fringe: linear-gradient(
+      160deg,
+      rgba(255, 176, 58, 0.14),
+      transparent 30%,
+      transparent 70%,
+      rgba(11, 147, 201, 0.08)
+    );
+
+    --score-hot: #e8541f;
+    --score-warm: #d98812;
+    --score-cool: #0b93c9;
+
+    --good: #1a9c52;
     --good-tint: #157a42;
-    --brave-tint: #8a3aa6;
+    --good-soft: rgba(26, 156, 82, 0.12);
+    --safe: rgba(11, 147, 201, 0.13);
+    --safe-tint: #0b6f97;
+    --brave: rgba(138, 58, 166, 0.13);
+    --brave-tint: #7a3193;
     --danger: #e03131;
     --danger-border: rgba(224, 49, 49, 0.35);
     --rain: #1e8fd5;
+
+    --sec-vessel-1: rgba(60, 32, 12, 0.16);
+    --sec-vessel-2: rgba(60, 32, 12, 0.05);
+
+    /* Togo in light: a silhouette with modelling, rather than a lit object.
+       --togo-iris does NOT change: the cyan eyes are the constant across themes. */
+    --togo-coat-1: #6e788c;
+    --togo-coat-2: #4a5468;
+    --togo-coat-3: #2b3140;
+    --togo-mask: #272d3c;
+    --togo-blaze-1: #ffffff;
+    --togo-blaze-2: #c4cedc;
+    --togo-ruff: #5c687c;
+    --togo-line: #1b2029;
+    --togo-whisker: rgba(60, 60, 67, 0.32);
+    --togo-glow: rgba(232, 84, 31, 0.2);
+    --togo-blaze-edge: rgba(28, 38, 56, 0.3);
+    --togo-rim-1: rgba(232, 84, 31, 0.55);
+    --togo-rim-2: rgba(232, 84, 31, 0.18);
+    --togo-rim-3: rgba(28, 38, 56, 0);
+    --togo-rim-4: rgba(28, 38, 56, 0.28);
+
+    /* LIGHT MODE IS NOT THE SECOND-CLASS CITIZEN. Every element below was
+       sub-AA on the near-white ground and is now measured against 4.5:1. */
+    --sheet-base: #f6f3ef;
+    --tonight-wash: rgba(11, 147, 201, 0.05);
+    --ghost-grid: rgba(48, 44, 42, 0.34);
+    --frost-foot: rgba(255, 255, 255, 0.5);
+    --switch-off: rgba(20, 16, 14, 0.12);
+    --needle-ice: var(--togo-mark-ink);
+    --deck-under: #ded8d0;
+    --deck-under-edge: rgba(20, 16, 14, 0.08);
+    --tug-1: #e8541f;
+    --tug-2: #b8330c;
+    --tug-glow: rgba(232, 84, 31, 0.22);
+    --mono-label: rgba(48, 44, 42, 0.72); /* ~5.4:1 on #EDE9E3 */
+    --map-grid: rgba(60, 42, 28, 0.2);
+    --map-grid-hi: rgba(60, 42, 28, 0.34);
+    --map-route: #d8410f;
+    --data-text: #0a6d94; /* ~5.1:1 on #EDE9E3; #53D9FF is ~1.6:1 */
   }
 }
 
@@ -155,7 +378,7 @@ a {
   }
 }
 
-/* ===== Scene: ember aurora + noise film ===== */
+/* ===== Scene ===== */
 
 body {
   font-family: var(--font-ui);
@@ -167,6 +390,10 @@ body {
   overflow-x: hidden;
 }
 
+/* AMBIENT LIGHT IS ANCHORED TO OBJECTS, not painted across the viewport. The
+   26s aurora was perceptually static and kept a full-screen compositing layer
+   alive forever for zero visual return; it now settles once, on mount, and
+   stops. */
 body::before {
   content: "";
   position: fixed;
@@ -177,30 +404,30 @@ body::before {
     radial-gradient(38% 30% at 82% 8%, var(--bg-glow-2), transparent 70%),
     radial-gradient(50% 40% at 70% 92%, var(--bg-glow-3), transparent 70%);
   filter: blur(48px);
-  animation: aurora 26s ease-in-out infinite alternate;
+  animation: aurora-settle 1600ms var(--ease-out) both;
 }
 
-@keyframes aurora {
-  0% {
-    transform: translate(0, 0) scale(1);
+@keyframes aurora-settle {
+  from {
+    opacity: 0;
+    transform: translateY(2%) scale(1.06);
   }
-  50% {
-    transform: translate(3%, -2%) scale(1.06);
-  }
-  100% {
-    transform: translate(-3%, 2%) scale(1.02);
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
+/* GRAIN MOVED OFF THE BACKGROUND AND ONTO THE GLASS (see .mat::after): the
+   background used to have tooth while every card was perfectly smooth plastic,
+   which is exactly backwards. What is left here is only the vignette. */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(120% 90% at 50% 12%, transparent 40%, var(--scene-vignette)),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  background: radial-gradient(120% 90% at 50% 12%, transparent 40%, var(--scene-vignette));
 }
 
 main {
@@ -208,7 +435,7 @@ main {
   isolation: isolate;
   max-width: 430px;
   margin: 0 auto;
-  padding: max(20px, env(safe-area-inset-top)) 20px var(--tabbar-clearance);
+  padding: max(var(--s5), env(safe-area-inset-top)) var(--s5) var(--tabbar-clearance);
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -236,30 +463,33 @@ main {
   color: var(--ink-3);
 }
 
-/* ===== Hero / type ===== */
+/* ===== Type scale — eight steps, weight and tracking declared per step ===== */
 
-.hero {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-  text-align: center;
-  position: relative;
+.eyebrow,
+.mono-caps {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--data);
+  text-align: left;
 }
 
-.hero h1 {
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.024em;
-  line-height: 1.15;
+.section-eyebrow {
+  margin: var(--s6) 0 var(--s3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mono-label);
 }
 
-.hero .sub,
-.hero p {
-  color: var(--ink-2);
-  font-size: 15px;
-  line-height: 1.5;
+.data-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--data);
 }
 
 .grad-text {
@@ -269,65 +499,56 @@ main {
   color: transparent;
 }
 
-.headline-wrap {
+/* ===== Hero — anchored to the top. .hero used to take flex:1 and centre
+   itself in the remaining space, which is why four of five screens ended in
+   250–420px of nothing and read "unfinished" before any styling judgement. */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
   position: relative;
+  margin-top: var(--s6);
 }
 
-.headline-wrap .hero-radar {
+.hero h1 {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.026em;
+  line-height: 1.14;
+}
+
+.hero .sub,
+.hero p {
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* 34px type runs edge to edge in a 430px column, so the closing ?" optically
+   kisses the bezel at the body's 20px gutter. The hero needs 28. */
+.home-hero,
+.signin h1 {
+  padding-right: var(--s6);
+}
+
+.home-hero {
+  padding-bottom: var(--s2);
+}
+
+/* Properly inset and fully contained — the old watermark sat at top:-52px /
+   right:-34px, bled off the edge, was clipped by body{overflow-x:hidden} and
+   rendered as a partial polygon fragment with no relationship to anything. */
+.hero-watermark {
   position: absolute;
-  top: -52px;
-  right: -34px;
-  width: 170px;
+  top: -6px;
+  right: -4px;
+  width: 150px;
   max-width: none;
-  opacity: 0.25;
+  height: auto;
+  opacity: 0.08;
   pointer-events: none;
   z-index: -1;
-  animation: spin 60s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.data-num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--data);
-}
-
-/* Quiet telemetry footer — anchors the bottom of the home screen */
-.home-foot {
-  margin-top: 10px;
-  padding-top: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.home-foot .dot {
-  width: 5px;
-  height: 5px;
-}
-
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--data);
-  text-align: left;
 }
 
 .center {
@@ -344,114 +565,167 @@ main {
   color: var(--ink-3);
 }
 
-/* ===== Core glass recipe — visionOS material ===== */
+/* ============================================================
+   MATERIAL — the four-tier family. Applied as a class to existing markup
+   rather than as a wrapper component, so no card gains a DOM level.
+   ============================================================ */
 
-.glass,
-.pick-card,
-.mood-card,
-.setting-card,
-.swipe-card {
+.mat {
   position: relative;
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  --mat-tint: var(--mat-reg-tint);
+  --mat-blur: var(--mat-reg-blur);
+  --mat-sat: var(--mat-reg-sat);
+  /* THE SPECULAR MIGRATES WITH POSITION. Three stacked cards carrying an
+     identical highlight in an identical corner is the preconscious tell of
+     "CSS gradient" — the same tell as a tiled texture. */
+  --ly: calc(-12% - var(--card-i, 0) * 7%);
+  background-color: var(--mat-tint);
+  background-image: radial-gradient(
+    140% 70% at var(--lx, 20%) var(--ly),
+    rgba(255, 255, 255, 0.16),
+    transparent 58%
+  );
+  -webkit-backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat));
+  backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat));
   border: 1px solid var(--glass-border);
   border-radius: var(--r-lg);
-  box-shadow: var(--inset-top), var(--shadow-card);
+  box-shadow: var(--edge), var(--depth);
   overflow: hidden;
 }
 
-/* Specular light source top-left */
-.glass::before,
-.pick-card::before,
-.mood-card::before,
-.setting-card::before,
-.swipe-card::before {
+/* GRAIN ON THE GLASS. Cheapest, highest-return realism upgrade available, and
+   it used to be applied to the one layer that did not need it. */
+.mat::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(120% 60% at 20% -10%, rgba(255, 255, 255, 0.14), transparent 55%);
+  background-image: var(--grain);
+  opacity: 0.032;
+  mix-blend-mode: overlay;
 }
 
+.mat-thin {
+  --mat-tint: var(--mat-thin-tint);
+  --mat-blur: var(--mat-thin-blur);
+  --mat-sat: var(--mat-thin-sat);
+  box-shadow: var(--edge), 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px -12px rgba(0, 0, 0, 0.5);
+}
+
+.mat-regular {
+  --mat-tint: var(--mat-reg-tint);
+  --mat-blur: var(--mat-reg-blur);
+  --mat-sat: var(--mat-reg-sat);
+}
+
+.mat-thick {
+  --mat-tint: var(--mat-thick-tint);
+  --mat-blur: var(--mat-thick-blur);
+  --mat-sat: var(--mat-thick-sat);
+  border-radius: var(--r-xl);
+  box-shadow: var(--edge), var(--depth-hi);
+  background-image: var(--fringe),
+    radial-gradient(140% 70% at var(--lx, 20%) var(--ly), rgba(255, 255, 255, 0.16), transparent 58%);
+}
+
+.mat-chrome {
+  --mat-tint: var(--mat-chrome-tint);
+  --mat-blur: var(--mat-chrome-blur);
+  --mat-sat: var(--mat-chrome-sat);
+}
+
+/* Where the backdrop cannot be sampled, fall back to a solid surface rather
+   than to a transparent one. */
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .glass,
-  .pick-card,
-  .mood-card,
-  .setting-card,
-  .swipe-card,
-  .tab-bar {
-    background: var(--bg-elevated);
+  .mat {
+    background-color: var(--bg-elevated);
   }
 }
 
-/* Hero glass — gradient neon ring + one-time shimmer */
-.pick-card.best {
-  border: 1px solid transparent;
-  background-image:
-    var(--glass-strong),
-    linear-gradient(
-      160deg,
-      rgba(255, 176, 58, 0.85),
-      rgba(255, 77, 46, 0.35) 40%,
-      rgba(83, 217, 255, 0.3) 70%,
-      rgba(255, 255, 255, 0.1) 100%
-    );
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  box-shadow: var(--inset-top), var(--shadow-float), 0 0 60px -18px var(--accent-glow);
+/* Legacy alias so any surface not yet migrated still reads as a surface. */
+.glass {
+  position: relative;
+  background-color: var(--mat-reg-tint);
+  -webkit-backdrop-filter: blur(var(--mat-reg-blur)) saturate(var(--mat-reg-sat));
+  backdrop-filter: blur(var(--mat-reg-blur)) saturate(var(--mat-reg-sat));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--edge), var(--depth);
+  overflow: hidden;
 }
 
-.pick-card.best::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.14) 48%, transparent 62%);
-  transform: translateX(-120%);
-  animation: sweep 1.2s var(--ease-out) 0.35s 1 forwards;
-}
+/* ===== Entrances — one language, staggered by index, never all at once ===== */
 
-@keyframes sweep {
-  to {
-    transform: translateX(120%);
-  }
-}
-
-/* ===== Shared entrance — condense from fog ===== */
-
-@keyframes rise-in {
+@keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.985);
-    filter: blur(6px);
+    transform: translateY(12px) scale(0.985);
+  }
+}
+
+.rise,
+.pick-card,
+.mood-card,
+.setting-card,
+.account-card,
+.taste-panel,
+.signin-card,
+.tonight,
+.guide {
+  animation: rise var(--dur-3) var(--ease-out) both;
+  animation-delay: calc(min(var(--card-i, 0), 6) * 70ms);
+}
+
+/* ===== ODOMETER — CSS-only, no rAF. The cheapest "computing" signal there is.
+   --n is ALSO declared statically, so where @property is unsupported the
+   number is simply correct instead of stuck at zero. ===== */
+
+@property --n {
+  syntax: "<integer>";
+  initial-value: 0;
+  inherits: false;
+}
+
+.count {
+  --n: var(--score, 0);
+  counter-reset: s var(--n);
+  font-variant-numeric: tabular-nums;
+  animation: count var(--dur-4) var(--ease-out) 80ms forwards;
+}
+
+.count::after {
+  content: counter(s);
+}
+
+@keyframes count {
+  from {
+    --n: 0;
   }
   to {
-    opacity: 1;
-    transform: none;
-    filter: blur(0);
+    --n: var(--score, 0);
   }
 }
 
-.pick-card {
-  animation: rise-in 520ms var(--ease-out) backwards;
+/* ===== PATH DRAWING — one technique, reused everywhere ===== */
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
-.mood-card {
-  animation: rise-in 520ms var(--ease-out) 60ms backwards;
-}
-
-/* ===== Buttons ===== */
+/* ===== Buttons — presses differentiated by MASS, which is the detail that
+   reads expensive: heavy things barely move, tiny things pop. ===== */
 
 .big-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--s2);
   width: 100%;
-  min-height: 56px;
-  padding: 15px 20px;
+  min-height: 54px;
+  padding: 15px var(--s5);
   border: none;
   border-radius: var(--r-btn);
   background: var(--accent-grad);
@@ -462,13 +736,15 @@ main {
   cursor: pointer;
   text-align: center;
   text-decoration: none;
-  box-shadow: var(--inset-top), var(--shadow-accent);
-  transition: transform var(--dur-1) var(--spring), box-shadow var(--dur-1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--shadow-accent);
+  transition:
+    transform var(--dur-0) var(--ease-out),
+    box-shadow var(--dur-0);
 }
 
 .big-btn:active {
-  transform: scale(0.96);
-  box-shadow: var(--inset-top), 0 4px 14px var(--accent-glow);
+  transform: scale(0.975);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.28), 0 4px 14px var(--accent-glow);
 }
 
 .big-btn.secondary {
@@ -481,8 +757,8 @@ main {
 }
 
 .big-btn.secondary:active {
-  transform: scale(0.96);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: scale(0.975);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.22);
 }
 
 .big-btn.mono-btn {
@@ -493,22 +769,10 @@ main {
   text-transform: uppercase;
 }
 
-.big-btn.danger {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--danger);
-  border: 1px solid var(--danger-border);
-  box-shadow: none;
-}
-
-.big-btn.danger:active {
-  background: rgba(255, 93, 93, 0.12);
-  box-shadow: none;
-}
-
 .count-pill {
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.2);
   border-radius: var(--r-pill);
-  padding: 2px 8px;
+  padding: 2px var(--s2);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -516,15 +780,33 @@ main {
   letter-spacing: 0;
 }
 
-/* ===== Chips — Control Center glass tiles ===== */
+/* ===== Chips ===== */
 
 .mood-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--s2);
+}
+
+.mood-card .mood-chips {
+  position: relative;
+  z-index: 1;
+}
+
+.mood-chips.grid-2 .chip[data-wide="1"] {
+  grid-column: 1 / -1;
+}
+
+.mood-chips.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
   background: rgba(255, 255, 255, 0.07);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
   backdrop-filter: blur(12px) saturate(160%);
@@ -537,11 +819,17 @@ main {
   font-weight: 600;
   cursor: pointer;
   transition:
-    transform var(--dur-1) var(--spring),
-    background var(--dur-1),
-    box-shadow var(--dur-1),
-    border-color var(--dur-1),
-    color var(--dur-1);
+    transform var(--dur-0) var(--ease-out),
+    background var(--dur-2),
+    box-shadow var(--dur-2),
+    border-color var(--dur-2),
+    color var(--dur-2);
+}
+
+.chip .glyph {
+  color: var(--ink-2);
+  flex: none;
+  transition: color var(--dur-2);
 }
 
 .chip.on {
@@ -551,8 +839,123 @@ main {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 20px -4px var(--accent-glow);
 }
 
+.chip.on .glyph {
+  color: var(--accent-tint);
+}
+
 .chip:active {
   transform: scale(0.94);
+}
+
+.glyph-chip {
+  padding: 9px 14px 9px 11px;
+}
+
+/* ===== SEGMENTED CONTROL — a mutually exclusive four-way choice is never a
+   wrapping pill cloud whose selected item lands at the start of line two. ===== */
+
+.segmented {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--seg-n, 4), 1fr);
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hairline);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.seg-capsule {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--seg-n, 4));
+  border-radius: calc(var(--r-md) - 3px);
+  background: var(--accent-grad);
+  box-shadow: 0 2px 10px -2px var(--accent-glow);
+  transform: translateX(calc(var(--seg-i, 0) * 100%));
+  transition: transform var(--dur-2) var(--spring);
+}
+
+.seg {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 2px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--ink-2);
+  transition: color var(--dur-2);
+}
+
+.seg-mark {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.seg-sub {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+
+.seg.on {
+  color: var(--on-accent);
+}
+
+/* The WHEN row: a five-way mutually-exclusive choice, so it is the same control
+   as the budget ceiling — never a wrapping pill cloud that orphans "Supper". */
+.seg-btn {
+  position: relative;
+  z-index: 1;
+  padding: 9px 2px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: color var(--dur-2);
+}
+
+.seg-btn.on {
+  color: var(--on-accent);
+}
+
+.seg-btn:active {
+  transform: scale(0.94);
+}
+
+.when-seg {
+  margin-bottom: var(--s2);
+}
+
+/* WHERE: a fixed two-column grid with the live control as a full-width leading
+   row. Equal cells, no rag, nothing orphaned. */
+.where-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2);
+}
+
+.where-grid .chip {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.where-grid .locate-chip {
+  grid-column: 1 / -1;
 }
 
 /* ===== HUD telemetry capsules ===== */
@@ -561,8 +964,8 @@ main {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
-  margin: 14px 0 20px;
+  gap: var(--s2);
+  margin: var(--s3) 0 var(--s4);
 }
 
 .hud-chip {
@@ -579,7 +982,7 @@ main {
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--data);
+  color: var(--data-text);
   padding: 6px 12px;
   text-decoration: none;
 }
@@ -593,11 +996,11 @@ main {
 .hud-link {
   align-self: center;
   cursor: pointer;
-  transition: transform var(--dur-1) var(--spring), background var(--dur-1);
+  transition: transform var(--dur-0) var(--ease-out), background var(--dur-2);
 }
 
 .hud-link:active {
-  transform: scale(0.95);
+  transform: scale(0.94);
 }
 
 .dot {
@@ -618,7 +1021,32 @@ main {
   }
 }
 
-/* ===== Floating island tab bar ===== */
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ===== GLYPHS — the two-tone family that replaced every emoji ===== */
+
+.glyph {
+  display: block;
+  flex: none;
+}
+
+.glyph-accent {
+  fill: var(--glyph-accent, var(--accent));
+}
+
+/* ============================================================
+   TAB BAR — real chrome. The 180deg dark-at-the-bottom gradient made it read
+   as a solid pill rather than as a frosted surface, and the glowing orange
+   rect behind the active tab is a gaming trope, not iOS.
+   ============================================================ */
 
 .tab-bar {
   position: fixed;
@@ -630,12 +1058,30 @@ main {
   padding: 6px;
   display: flex;
   z-index: 50;
-  background: linear-gradient(180deg, rgba(28, 28, 34, 0.62), rgba(16, 16, 20, 0.72));
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
-  backdrop-filter: blur(32px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 12px 40px rgba(0, 0, 0, 0.55);
   border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 16px 40px -12px rgba(0, 0, 0, 0.6);
+}
+
+.tab-capsule {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 12px) / 3);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: translateX(calc(var(--tab-i, 0) * 100%));
+  transition: transform var(--dur-3) var(--spring);
+}
+
+.tab-bar[data-off="1"] .tab-capsule {
+  opacity: 0;
 }
 
 .tab {
@@ -648,7 +1094,7 @@ main {
   gap: 3px;
   text-decoration: none;
   color: var(--ink-2);
-  transition: color var(--dur-1);
+  transition: color var(--dur-2);
 }
 
 .tab-icon {
@@ -657,60 +1103,633 @@ main {
   justify-content: center;
   position: relative;
   z-index: 1;
+  height: 24px;
 }
 
 .tab-icon svg {
-  transition: transform var(--dur-1) var(--spring);
+  transition: transform var(--dur-2) var(--spring), fill var(--dur-2), fill-opacity var(--dur-2);
 }
 
 .tab-label {
   position: relative;
   z-index: 1;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .tab.active {
   color: var(--accent);
 }
 
-.tab.active::before {
-  content: "";
+/* stroke → fill morph on selection, never a hard swap */
+.tab.active .tab-icon > svg:not(.togo):not(.togo-mark) {
+  fill: currentColor;
+  fill-opacity: 0.2;
+  transform: translateY(-1px) scale(1.06);
+}
+
+.tab-togo-fallback {
+  display: none;
+}
+
+:root[data-togo="off"] .tab-togo-fallback {
+  display: block;
+}
+
+/* THE MONOGRAM AS A SYSTEM AFFORDANCE, rather than a generic dot. */
+.tab-badge {
   position: absolute;
-  inset: 4px 6px;
+  top: -2px;
+  right: -8px;
+  display: flex;
+  filter: drop-shadow(0 0 5px var(--data-glow));
+}
+
+/* ============================================================
+   PLAN BAR — structurally subordinate to the content cards: thin material,
+   44px, pill radius, inset past them, 13px type.
+   ============================================================ */
+
+.plan-bar {
+  margin: var(--s3) var(--s2) var(--s1);
   border-radius: var(--r-pill);
-  background: var(--accent-soft);
-  box-shadow: 0 0 24px -4px var(--accent-glow);
 }
 
-.tab.active .tab-icon svg {
-  transform: translateY(-1px) scale(1.08);
+.plan-bar::after {
+  border-radius: var(--r-pill);
 }
 
-/* ===== Mood card (home) ===== */
+.plan-bar-skeleton {
+  height: 44px;
+  opacity: 0.5;
+  background: var(--mat-thin-tint);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-pill);
+}
 
-.mood-card {
-  padding: 20px;
+.plan-summary {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--s3) 0 6px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.plan-togo {
+  display: flex;
+  flex: none;
+}
+
+.plan-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink-2);
+}
+
+/* Location takes the slack and truncates last; time and Change never shrink. */
+.plan-slot.loc {
+  flex: 1 1 auto;
+}
+/* The time block never shrinks below its own content, but it also never claims
+   more than it needs — the location label takes every remaining pixel. */
+.plan-slot.time {
+  flex: 0 0 auto;
+  gap: 5px;
+}
+.live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--data);
+  box-shadow: 0 0 6px var(--data-glow);
+  animation: pulse-soft 2s ease-in-out infinite;
+  flex: none;
+}
+.plan-slot svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.plan-slot.locating .plan-value {
+  color: var(--ink-2);
+  transition: color var(--dur-2);
+}
+.plan-value {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plan-meal {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--data-text);
+  border: 1px solid var(--data-border);
+  background: var(--data-soft);
+  border-radius: var(--r-pill);
+  padding: 2px 5px;
+  flex: none;
+}
+.plan-div {
+  width: 1px;
+  height: 16px;
+  background: var(--hairline);
+  flex: none;
+}
+.plan-edit {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.plan-error {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--danger);
+}
+.plan-hint {
+  margin-top: var(--s2);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.locate-chip {
+  align-self: flex-start;
+  color: var(--data);
+  border-color: var(--data-border);
+  background: var(--data-soft);
+}
+.locate-chip:disabled {
+  opacity: 0.6;
+}
+
+/* a mono stepper, not an OS-styled type="time" widget dropped into a
+   monospace telemetry system */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+}
+
+.stepper-btn {
+  width: 40px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--dur-0) var(--ease-out);
+}
+
+.stepper-btn:active {
+  transform: scale(0.88);
+}
+
+.stepper-val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.stepper-unit {
+  color: var(--ink-3);
+}
+
+/* ===== SHEET ===== */
+
+/* A modal sheet covers the chrome. `main` carries isolation:isolate so its
+   children can never out-stack the tab bar from inside it — the tab bar steps
+   back instead, which is also the correct behaviour. */
+body:has(.sheet-layer) .tab-bar {
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
+  pointer-events: none;
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+
+.sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(4, 4, 8, 0.5);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  animation: fade-in var(--dur-2) var(--ease-out) both;
+  cursor: pointer;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.sheet {
+  position: relative;
+  width: min(430px, 100%);
+  max-height: 86dvh;
+  overflow-y: auto;
+  padding: 0 var(--s5) calc(var(--s6) + env(safe-area-inset-bottom));
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  /* AN OPAQUE BACKING UNDER THE BLUR. The sheet is chrome sitting on top of the
+     scene, not a window onto it; at --mat-thick-tint alone the ember aurora
+     bled through as a light leak and dropped the contrast of the chips. */
+  background-color: var(--sheet-base);
+  background-image: linear-gradient(var(--mat-thick-tint), var(--mat-thick-tint));
+  -webkit-backdrop-filter: blur(var(--mat-thick-blur)) saturate(var(--mat-thick-sat));
+  backdrop-filter: blur(var(--mat-thick-blur)) saturate(var(--mat-thick-sat));
+  border: 1px solid var(--glass-border);
+  border-bottom: 0;
+  box-shadow: var(--edge), 0 -20px 60px -18px rgba(0, 0, 0, 0.7);
+  animation: sheet-up var(--dur-3) var(--ease-emphasized) both;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.sheet[data-dragging="1"] {
+  transition: none;
+}
+
+.sheet-grip {
+  display: flex;
+  justify-content: center;
+  padding: var(--s3) 0 var(--s2);
+  cursor: grab;
+  touch-action: none;
+}
+
+.sheet-grabber {
+  width: 40px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: var(--ink-3);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--s4);
+}
+
+.sheet-head h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sheet-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+.sheet-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--s3);
+}
+
+.sheet-body .eyebrow {
+  margin-top: var(--s2);
+}
+
+/* ============================================================
+   HOME — mood card, the guide, the tonight strip
+   ============================================================ */
+
+/* Concentric law: outer 34 − pad 20 = inner 14, which is exactly what the
+   buttons inside these cards use. Corners rounder than the card containing
+   them is the visual equivalent of a grammatical error. */
+.mood-card,
+.setting-card,
+.account-card,
+.taste-panel,
+.preview,
+.signin-card,
+.skeleton-card {
+  border-radius: var(--r-xl);
+}
+
+.mood-card {
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
   text-align: left;
+  margin-top: var(--s4);
+}
+
+.mood-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
 }
 
 .mood-title {
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  margin-top: var(--s1);
 }
 
-/* ===== Onboarding — swipe deck ===== */
+/* HE BRACES AGAINST THE CARD — half-clipped by its boundary, so he reads as
+   physically braced against it rather than pasted onto it. */
+.mood-togo {
+  position: relative;
+  margin: -22px -12px -10px 0;
+  flex: none;
+  z-index: 2;
+}
 
-.progress-head {
+/* the tugline runs from his harness down and across to the CTA: his one warm
+   element is an ARROW TO the button, never a rival for it */
+/* Anchored to his harness at the top and to the CTA at the bottom, running down
+   the card's right-hand PADDING so it crosses no tap target on the way. */
+.mood-tug {
+  position: absolute;
+  /* clear of the card's 24px corner arc, so the line runs down the gutter
+     instead of appearing to be welded to the border */
+  top: 62px;
+  right: 8px;
+  width: 26px;
+  /* an over-constrained top+bottom on a replaced element resolves to the SVG's
+     INTRINSIC height, which is how the line came to stop halfway down the card.
+     The 110 keeps the lower terminus on the hitch after the top moved down. */
+  height: calc(100% - 110px);
+  pointer-events: none;
+  z-index: 2;
+  overflow: visible;
+}
+
+.mood-tug path {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw var(--dur-5) var(--ease-out) 240ms both;
+}
+
+/* a soft ember bloom under the line, so it reads as a line under load rather
+   than as a stray stroke — and so it survives the near-white ground */
+.mood-tug-glow {
+  stroke: url(#mc-tug-glow);
+  stroke-width: 6;
+  stroke-linecap: round;
+  filter: blur(3px);
+}
+
+/* IT TERMINATES ON THE BUTTON, at a hitch that rhymes with his harness ring. */
+.mood-hitch {
+  position: absolute;
+  right: 24px;
+  bottom: 40px;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--accent-hi);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  transform: rotate(45deg);
+  z-index: 2;
+  pointer-events: none;
+  animation: rise var(--dur-3) var(--ease-out) 900ms both;
+}
+
+.mood-say,
+.guide-say,
+.alt-say,
+.err-say,
+.deck-say,
+.empty-say,
+.reading-say,
+.signin-say,
+.danger-say,
+.compile-say {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.mood-card .big-btn {
+  position: relative;
+  z-index: 1;
+}
+
+/* THE GUIDE — a single-row glass strip, not a portrait.
+   The earlier version was a 130px bust bleeding off the left edge with the
+   pill stacked underneath it. On a 390x844 screen that whole block landed
+   BELOW the fold: his head rendered behind the floating tab bar and the
+   calibrate pill — the single most important first-run action — was
+   off-screen. Height, not charm, was the bug. One row, 44px of him, his line
+   and the pill all inside ~64px, and it clears the fold with room to spare. */
+.guide {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s4);
+  margin-top: var(--s5);
+  padding: var(--s4) var(--s4) var(--s4) var(--s4);
+  border-radius: var(--r-lg);
+  --card-i: 2;
+}
+
+.guide-togo {
+  grid-column: 1;
+  /* he sits ON the strip's left edge rather than being cropped by it */
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+
+.guide-copy {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.guide-say {
+  /* 15px over two lines would push the strip past 80px; one tight line at 14
+     keeps the whole prompt inside a single row. */
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.guide-pill {
+  grid-column: 3;
+  white-space: nowrap;
+}
+
+.home-recal {
+  align-self: flex-start;
+}
+
+.home-recal {
+  margin-top: var(--s5);
+}
+
+/* THE TONIGHT STRIP — real content in the dead lower third.
+   It used to sit on its own tonal ground that met the page in a hard horizontal
+   line right at the strip's top edge: two mismatched background layers butting
+   together rather than a gradient. It now has a full-bleed surface of its own
+   that fades in from transparent, so there is no edge to see. */
+.tonight {
+  position: relative;
+  margin-top: var(--s7);
+  padding-top: var(--s5);
+  --card-i: 3;
+}
+
+.tonight::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(var(--s5) * -1) calc(var(--s7) * -1);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--tonight-wash) 22%,
+    var(--tonight-wash) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.tonight > * {
+  position: relative;
+}
+
+.tonight-head {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--data-text);
+  margin-bottom: var(--s3);
+}
+
+.tonight-grid,
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--hairline);
+}
+
+.stats-grid .stat {
+  background-color: var(--mat-reg-tint);
+}
+
+.stat.wide {
+  grid-column: 1 / -1;
+}
+
+.stat-k {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mono-label);
+}
+
+.stat-v {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--data);
+  line-height: 1.1;
+}
+
+.stat-v.small {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-transform: capitalize;
+}
+
+.tonight-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--s3);
+  font-size: 11.5px;
+  color: var(--mono-label);
+}
+
+/* ============================================================
+   ONBOARDING — the deck, the gesture, the rig
+   ============================================================ */
+
+.swipe-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: var(--s4) 0 var(--s3);
+}
+
+.onboard .progress-head {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -719,57 +1738,89 @@ main {
   color: var(--data);
 }
 
-.progress {
-  height: 5px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: var(--r-pill);
-  margin: 8px 0 18px;
+.swipe-prompt {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mono-label);
 }
 
-.progress div {
-  height: 100%;
-  background: var(--accent-grad);
-  border-radius: var(--r-pill);
-  box-shadow: 0 0 12px var(--accent-glow);
-  transition: width 300ms var(--spring);
+.deck {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-.swipe-stack {
+.deck-stack {
   position: relative;
   isolation: isolate;
+  flex: 1;
+  display: flex;
+  min-height: 320px;
+  max-height: 48vh;
 }
 
-.swipe-stack::before,
-.swipe-stack::after {
+/* DECK PHYSICS. scale() is centred, so the old under-cards peeked out on all
+   four sides — visibly poking above and beside the top card — and their border
+   was BRIGHTER than the top card's, so they read as being in front. */
+.deck-stack::before,
+.deck-stack::after {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: 32px;
-  background: var(--glass);
-  background-color: rgba(24, 26, 34, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: var(--inset-top), 0 6px 20px rgba(0, 0, 0, 0.3);
+  border-radius: var(--r-xl);
+  background: var(--deck-under);
+  border: 1px solid var(--deck-under-edge);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
   pointer-events: none;
+  filter: saturate(0.5);
 }
 
-.swipe-stack::before {
-  transform: scale(0.94) translateY(12px);
-  opacity: 0.8;
+/* Inset from the sides and EXTENDED below, so the stack peeks downward only —
+   the same read scale() was after, expressed in a way that cannot vanish when
+   the card is tall. Both are darker and desaturated against the top card, which
+   is the fix for under-cards that used to read as being in front. */
+.deck-stack::before {
+  inset: 22px 13px -13px;
   z-index: -1;
 }
 
-.swipe-stack::after {
-  transform: scale(0.88) translateY(24px);
-  opacity: 0.45;
+.deck-stack::after {
+  inset: 44px 27px -27px;
   z-index: -2;
+  opacity: 0.72;
 }
 
 .swipe-card {
-  background: var(--glass-strong);
-  border-radius: 32px;
-  padding: 44px 24px 36px;
+  position: relative;
+  background-color: var(--mat-thick-tint);
+  background-image: var(--fringe),
+    radial-gradient(140% 70% at 20% -12%, rgba(255, 255, 255, 0.16), transparent 58%);
+  -webkit-backdrop-filter: blur(var(--mat-thick-blur)) saturate(var(--mat-thick-sat));
+  backdrop-filter: blur(var(--mat-thick-blur)) saturate(var(--mat-thick-sat));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--edge), var(--depth-hi);
+  padding: var(--s5) var(--s5) var(--s6);
   text-align: center;
-  animation: card-in 360ms var(--ease-out) backwards;
+  overflow: hidden;
+  touch-action: pan-y;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  cursor: grab;
+  animation: card-in var(--dur-3) var(--ease-out) backwards;
+}
+
+.swipe-card.dragging {
+  cursor: grabbing;
+  transition: none;
+  will-change: transform;
 }
 
 @keyframes card-in {
@@ -779,28 +1830,12 @@ main {
   }
 }
 
-/* Radial accent halo behind the dish emoji */
-.swipe-card::after {
-  content: "";
-  position: absolute;
-  top: 4%;
-  left: 50%;
-  width: 230px;
-  height: 230px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(closest-side, var(--accent-soft), transparent);
-  pointer-events: none;
-}
-
-.swipe-card .emoji {
-  position: relative;
-  z-index: 1;
-  font-size: 96px;
-  line-height: 1.15;
+.swipe-art {
   display: block;
-  margin-bottom: 16px;
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4));
+  color: var(--ink);
+  margin: 0 auto var(--s3);
+  width: min(210px, 58%);
+  flex: none;
 }
 
 .swipe-card .label {
@@ -809,19 +1844,45 @@ main {
   display: block;
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
 }
 
 .swipe-axes {
   position: relative;
   z-index: 1;
-  margin-top: 10px;
+  margin-top: var(--s2);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-3);
+}
+
+.stamp {
+  position: absolute;
+  top: var(--s5);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  border: 2.5px solid currentColor;
+  pointer-events: none;
+}
+
+.stamp.like {
+  left: var(--s5);
+  color: var(--good);
+  transform: rotate(-12deg);
+}
+
+.stamp.nope {
+  right: var(--s5);
+  color: var(--danger);
+  transform: rotate(12deg);
 }
 
 .swipe-card.exit-yes {
@@ -846,11 +1907,40 @@ main {
   }
 }
 
+/* THE PROFILE FORMING, LIVE, ON EVERY SWIPE — the entire emotional payoff of
+   onboarding, and previously absent until after the first answer. */
+.deck-radar {
+  position: absolute;
+  left: 22px;
+  top: 22px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--s2) var(--s2) 5px;
+  border-radius: var(--r-md);
+  background-color: var(--mat-reg-tint);
+  -webkit-backdrop-filter: blur(var(--mat-reg-blur)) saturate(var(--mat-reg-sat));
+  backdrop-filter: blur(var(--mat-reg-blur)) saturate(var(--mat-reg-sat));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--edge), var(--depth);
+}
+
+.deck-radar-cap {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--data-text);
+}
+
 .swipe-actions {
   display: flex;
   justify-content: center;
-  gap: 28px;
-  margin-top: 26px;
+  gap: var(--s6);
+  margin-top: var(--s6);
 }
 
 .swipe-actions button {
@@ -862,11 +1952,11 @@ main {
   justify-content: center;
   cursor: pointer;
   border: none;
-  transition: transform var(--dur-1) var(--spring), opacity var(--dur-1);
+  transition: transform var(--dur-0) var(--ease-out), opacity var(--dur-2);
 }
 
 .swipe-actions button:active {
-  transform: scale(0.9);
+  transform: scale(0.88);
 }
 
 .swipe-actions button:disabled {
@@ -885,69 +1975,290 @@ main {
 .swipe-actions .yes {
   background: var(--accent-grad);
   color: #fff;
-  box-shadow: var(--inset-top), var(--shadow-accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--shadow-accent);
 }
 
-.swipe-prompt {
-  text-align: center;
-  margin-top: 18px;
+/* THE RIG — the stack is visibly hitched to him. */
+.deck-rig {
+  position: relative;
+  height: 96px;
+  margin-top: auto;
+  flex: none;
+}
+
+/* the line runs from his harness UP PAST THE BUTTONS to the stack, so the deck
+   is visibly hitched to him rather than merely sitting above him */
+/* Pinned between the bottom edge of the card stack and his harness ring: 96px
+   of rig + 54px of gap + 64px of buttons + 28px of margin - 8px of overhang. */
+.deck-tug {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  width: 100%;
+  height: 234px;
+  pointer-events: none;
+  z-index: -1;
+  overflow: visible;
+}
+
+.deck-tug-hitch {
+  fill: var(--accent-hi);
+  filter: drop-shadow(0 0 5px var(--accent-glow));
+}
+
+.deck-tug-track {
+  stroke: var(--mono-label);
+  stroke-opacity: 0.45;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.deck-tug-fill {
+  stroke: var(--accent);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: calc(100 - var(--done, 0));
+  transition: stroke-dashoffset var(--dur-3) var(--ease-out);
+  filter: drop-shadow(0 0 6px var(--accent-glow));
+}
+
+.deck-togo {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+
+.deck-say {
+  position: absolute;
+  left: 100px;
+  bottom: var(--s5);
+  right: 0;
+  font-size: 14px;
+}
+
+/* the compile / howl moment */
+.compile {
+  flex-direction: column;
+  gap: var(--s3);
+  position: relative;
+}
+
+.compile-togo {
+  margin: 0 auto;
+}
+
+.compile-radar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -46%);
+  opacity: 0.16;
+  z-index: -1;
+}
+
+.compile-say {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-transform: none;
+}
+
+.compile-sub {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
 
-/* Done state — compiling dots */
-.compile {
-  flex-direction: column;
-  gap: 16px;
-}
-
-.compile-dots {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-.compile-dots span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: pulse-dot 1s infinite alternate;
-}
-
-.compile-dots span:nth-child(2) {
-  animation-delay: 120ms;
-}
-
-.compile-dots span:nth-child(3) {
-  animation-delay: 240ms;
-}
-
-@keyframes pulse-dot {
-  from {
-    opacity: 0.25;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-}
-
-/* ===== Recommend — the money screen ===== */
+/* ============================================================
+   RECOMMEND — the money screen
+   ============================================================ */
 
 .pick-card {
-  padding: 18px;
-  margin-bottom: 14px;
+  position: relative;
+  margin-bottom: var(--s3);
 }
 
 .pick-card.best {
-  padding: 22px;
+  padding: 0;
+  margin-bottom: var(--s5);
 }
+
+/* THE MUD IS GONE. background-clip: padding-box, border-box showed the border
+   layer THROUGH the semi-transparent padding layer, smearing the card interior
+   orange → olive-teal → blue-grey (peach → mint → lavender in light). This is
+   a real gradient rim by mask composition, over a neutral glass body, with all
+   brand colour relocated into the contained header band. */
+.pick-card.best::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    var(--accent-hi),
+    var(--accent) 34%,
+    var(--accent-lo) 62%,
+    rgba(255, 255, 255, 0.16)
+  );
+  background-size: 200% 200%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 4;
+  /* the light travels the BORDER, once, on mount. A white gloss sweep across
+     the card face is the 2009 shiny-button cliché. */
+  animation: rim-travel 1400ms var(--ease-out) 300ms 1 both;
+}
+
+@keyframes rim-travel {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+.pick-body {
+  position: relative;
+  z-index: 2;
+  padding: var(--s5);
+  padding-top: var(--s3);
+}
+
+/* ── SKYBAND ───────────────────────────────────────────────────────────── */
+
+.skyband {
+  position: relative;
+  height: 116px;
+  /* above .pick-body, so the 64px dish glyph hanging off the band's lower mask
+     edge lands ON the card interior. That overlap IS the depth cue. */
+  z-index: 3;
+}
+
+.sky-fill {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(168deg, var(--sky-1), var(--sky-2) 54%, var(--sky-3));
+  -webkit-mask-image: linear-gradient(#000 62%, transparent);
+  mask-image: linear-gradient(#000 62%, transparent);
+}
+
+.skyband[data-period="breakfast"] {
+  --sky-1: #2a3358;
+  --sky-2: #7a4a5e;
+  --sky-3: #c8794a;
+}
+.skyband[data-period="lunch"] {
+  --sky-1: #1c3350;
+  --sky-2: #2f6e86;
+  --sky-3: #e0a257;
+}
+.skyband[data-period="dinner"] {
+  --sky-1: #2a1330;
+  --sky-2: #8a3418;
+  --sky-3: #ff7a45;
+}
+.skyband[data-period="supper"] {
+  --sky-1: #0b1024;
+  --sky-2: #1e2350;
+  --sky-3: #4a3a7a;
+}
+
+.sky-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sky-city rect {
+  fill: rgba(0, 0, 0, 0.32);
+}
+
+.sky-rain line {
+  stroke: var(--rain);
+  stroke-width: 1.2;
+  opacity: 0.34;
+  animation: rain-fall 900ms linear infinite;
+  animation-delay: calc(var(--i) * -70ms);
+}
+
+@keyframes rain-fall {
+  to {
+    transform: translate(-38px, 130px);
+  }
+}
+
+.sky-chip {
+  position: absolute;
+  top: var(--s3);
+  left: var(--s4);
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(8, 6, 12, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-pill);
+  padding: 4px 9px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.sky-chip.urgent {
+  color: #ffd6ba;
+  border-color: rgba(255, 122, 69, 0.6);
+  background: rgba(120, 40, 10, 0.5);
+}
+
+.sky-badge {
+  position: absolute;
+  top: var(--s3);
+  right: var(--s4);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #dff3ff;
+  background: rgba(8, 30, 48, 0.5);
+  border: 1px solid rgba(106, 200, 255, 0.5);
+  border-radius: var(--r-pill);
+  padding: 4px 9px;
+}
+
+/* breaks the band's lower mask edge on purpose — that overlap is the depth */
+.sky-dish {
+  position: absolute;
+  right: var(--s4);
+  bottom: -20px;
+  z-index: 3;
+  /* The sky band is dark in BOTH themes, so the glyph on it is too — inheriting
+     --ink turned it into a black blob on the light build. */
+  color: rgba(255, 255, 255, 0.95);
+  --glyph-accent: #ff8a4a;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+}
+
+/* ── TITLE ROW — a flex row, which is what deleted the padding-right:60px
+   magic number that was wrong for both ring sizes anyway. ──────────────── */
 
 .pick-card .tag {
   display: inline-flex;
@@ -962,37 +2273,15 @@ main {
   padding: 5px 11px;
 }
 
-.tag .diamond {
-  font-size: 8px;
-  letter-spacing: 0;
-}
-
 .tag-best {
   background: var(--accent-soft);
   color: var(--accent-tint);
-}
-
-/* On the hero card the tag sits over the brightest aurora corner — give it a
-   darker translucent base so accent-tint text keeps contrast there. */
-.pick-card.best .tag-best {
-  background:
-    linear-gradient(var(--accent-soft), var(--accent-soft)),
-    linear-gradient(rgba(12, 7, 4, 0.5), rgba(12, 7, 4, 0.5));
-  color: #ffd6ba;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.tag-best .diamond {
-  color: var(--accent);
-}
-
 .tag-safe {
-  background: var(--good-soft);
-  color: var(--good-tint);
-}
-
-.tag-safe .diamond {
-  color: var(--good);
+  background: var(--safe);
+  color: var(--safe-tint);
 }
 
 .tag-brave {
@@ -1000,30 +2289,173 @@ main {
   color: var(--brave-tint);
 }
 
+.pick-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-top: var(--s3);
+}
+
+.pick-title {
+  min-width: 0;
+  flex: 1;
+}
+
 .pick-card h2 {
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
-  margin: 12px 0 2px;
-  padding-right: 60px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.pick-card .dish {
+/* raw seed data was leaking into a heading; it belongs in a metadata chip */
+.area-chip {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mono-label);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  padding: 2px 7px;
+}
+
+/* ── SCORE — 44px mono tabular. It was 13px: smaller than "2 MIN WALK" at
+   17/700, which is the weighting exactly inverted. ────────────────────── */
+
+.score-readout {
+  position: relative;
+  flex: none;
+  width: var(--sz, 72px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  --score-c: var(--score-warm);
+  --score-c-hi: var(--accent-hi);
+}
+
+.score-readout[data-tone="hot"] {
+  --score-c: var(--score-hot);
+  --score-c-hi: var(--accent-hi);
+}
+.score-readout[data-tone="warm"] {
+  --score-c: var(--score-warm);
+  --score-c-hi: #ffd08a;
+}
+.score-readout[data-tone="cool"] {
+  --score-c: var(--score-cool);
+  --score-c-hi: #a6ecff;
+}
+
+.score-track,
+.iso-track,
+.ring-track {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.score-arc,
+.ring-fill {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: arc-draw var(--dur-4) var(--ease-out) 80ms forwards;
+  filter: drop-shadow(0 0 8px var(--accent-glow));
+}
+
+/* An SVG viewport clips by default, so the arc's drop-shadow halo terminated
+   in a hard-edged rectangle around every score ring. Let the glow bleed. */
+.ring,
+.score-readout svg {
+  overflow: visible;
+}
+
+@keyframes arc-draw {
+  to {
+    stroke-dashoffset: calc(100 - var(--score, 0));
+  }
+}
+
+.score-num {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--sz, 72px);
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 38px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+
+/* A three-digit score is one value — 100 — and it must not ride the stroke. */
+.score-readout[data-digits="3"] .score-num {
+  font-size: 30px;
+  letter-spacing: -0.05em;
+}
+
+.score-unit {
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mono-label);
+}
+
+.ring {
+  flex: none;
+  --score-c: var(--score-warm);
+  --score-c-hi: var(--accent-hi);
+}
+.ring[data-tone="hot"] {
+  --score-c: var(--score-hot);
+}
+.ring[data-tone="cool"] {
+  --score-c: var(--score-cool);
+}
+
+.ring-num {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  fill: var(--ink);
+}
+
+/* ── DISH + META ──────────────────────────────────────────────────────── */
+
+.dish-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s4);
   font-size: 15px;
   font-weight: 600;
-  margin-top: 4px;
 }
 
-.pick-card .dish svg {
-  color: var(--accent);
-  flex-shrink: 0;
+.dish-row .glyph {
+  color: var(--ink);
 }
 
-.pick-card .price {
+.dish-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.price {
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
@@ -1031,30 +2463,29 @@ main {
   color: var(--data);
 }
 
-.pick-card .meta {
+.meta {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.pick-card .meta svg {
-  color: var(--accent);
-  align-self: center;
-  flex-shrink: 0;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
 }
 
 .meta-min {
   font-family: var(--font-mono);
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--ink);
 }
 
+.meta-needle {
+  opacity: 0.75;
+}
+
 .meta-price {
+  margin-left: auto;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
@@ -1070,26 +2501,65 @@ main {
   opacity: 0.35;
 }
 
-/* WHY — the algorithm speaking */
+.isochrone {
+  flex: none;
+}
+
+.iso-arc {
+  stroke: var(--accent);
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: iso-draw var(--dur-4) var(--ease-out) 140ms forwards;
+}
+
+@keyframes iso-draw {
+  to {
+    stroke-dashoffset: calc(100 - var(--sweep, 0));
+  }
+}
+
+.iso-hub {
+  fill: var(--ink-3);
+}
+
+/* ── WHY, AS A GRAPHIC ────────────────────────────────────────────────── */
+
 .why-block {
   border-top: 1px solid var(--hairline);
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+}
+
+.why-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
 }
 
 .why-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
-  margin-bottom: 7px;
+}
+
+.why-sum {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--data-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .pick-card .why {
   position: relative;
-  padding-left: 12px;
+  margin-top: var(--s2);
+  padding-left: var(--s3);
   font-size: 15px;
   font-weight: 500;
   line-height: 1.5;
@@ -1100,23 +2570,258 @@ main {
   content: "";
   position: absolute;
   left: 0;
-  top: 2px;
-  bottom: 2px;
+  top: 3px;
+  bottom: 3px;
   width: 2px;
   border-radius: 2px;
   background: var(--accent-grad);
 }
 
+.why-body {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s4);
+}
+
+.why-bars {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.why-row {
+  display: grid;
+  grid-template-columns: 62px 1fr 30px;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.why-row-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mono-label);
+}
+
+/* A ZERO TERM. An empty track in a row of filled ones reads as broken, not as
+   an honest nil, so it keeps a minimum tick and the row dims to say so. */
+.why-row[data-zero="1"] {
+  opacity: 0.62;
+}
+
+.why-row[data-zero="1"] .why-fill {
+  animation: none;
+  transform: none;
+  width: 3px;
+  background: var(--ink-3);
+}
+
+.why-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.why-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--accent-grad);
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: bar-in var(--dur-4) var(--ease-out) calc(200ms + var(--i, 0) * 60ms) forwards;
+}
+
+@keyframes bar-in {
+  to {
+    transform: scaleX(var(--v, 0));
+  }
+}
+
+.why-row[data-sign="neg"] .why-fill {
+  background: linear-gradient(90deg, var(--data), rgba(83, 217, 255, 0.5));
+}
+
+.why-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--accent-tint);
+}
+
+.why-row[data-sign="neg"] .why-val {
+  color: var(--data);
+}
+
+.why-radar {
+  flex: none;
+  width: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.why-radar-key {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.why-radar-key i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.why-radar-key .k-you {
+  background: var(--accent);
+}
+
+.why-radar-key .k-dish {
+  background: var(--data);
+  margin-left: 4px;
+}
+
+/* HIS SIGNATURE. A recommendation with a face attached is a recommendation
+   someone is accountable for. */
+.togo-attrib {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.togo-attrib-name {
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.togo-attrib-sep {
+  color: var(--accent);
+}
+
+.togo-attrib-line {
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+/* ── MINIMAP ──────────────────────────────────────────────────────────── */
+
+.minimap {
+  position: relative;
+  margin-top: var(--s4);
+  height: 130px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--hairline);
+}
+
+.minimap svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.map-blocks rect {
+  fill: var(--map-grid-hi);
+}
+
+.map-grid line {
+  stroke: var(--map-grid);
+}
+
+.map-route {
+  stroke: var(--map-route);
+  stroke-width: 2.4;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw var(--dur-5) var(--ease-out) 320ms forwards;
+  filter: drop-shadow(0 0 6px var(--accent-glow));
+}
+
+.map-origin circle {
+  fill: var(--data);
+}
+
+.map-origin-pulse {
+  fill: var(--data);
+  opacity: 0.35;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: map-ping 2s var(--ease-out) infinite;
+}
+
+@keyframes map-ping {
+  from {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.map-dest path {
+  fill: var(--accent);
+}
+
+.map-dest-eye {
+  fill: var(--bg);
+}
+
+.map-scale {
+  position: absolute;
+  right: var(--s2);
+  bottom: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--data);
+  background: rgba(8, 8, 14, 0.5);
+  border: 1px solid var(--data-border);
+  border-radius: var(--r-pill);
+  padding: 3px 8px;
+}
+
+/* ── ACTION ROW — buttons at the concentric inner radius. Their corners used
+   to be ROUNDER than the card containing them. ─────────────────────────── */
+
 .row {
   display: flex;
-  gap: 12px;
-  margin-top: 16px;
+  gap: var(--s3);
+  margin-top: var(--s5);
 }
 
 .row .big-btn {
   min-height: 50px;
   font-size: 15px;
   padding: 12px 14px;
+  border-radius: var(--r-btn);
 }
 
 .row .go {
@@ -1127,85 +2832,230 @@ main {
   flex: 1;
 }
 
-/* Score ring */
-.pick-card .ring {
+/* ── ALTERNATIVES — a horizontal snap row. A vertical stack of descending
+   importance IS a list, and a list says "you decide". ──────────────────── */
+
+.alt-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: var(--s5) 0 var(--s3);
+}
+
+/* A 2-dot page indicator. The thumb rides the rail's own scroll position where
+   scroll-driven animation exists, and simply sits on dot 1 where it does not —
+   which is where the rail is at rest anyway. */
+.alt-dots {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alt-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  opacity: 0.55;
+}
+
+.alt-dot-thumb {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  left: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--data-text);
+  box-shadow: 0 0 8px -1px var(--data-glow);
 }
 
-.ring-track {
-  stroke: rgba(255, 255, 255, 0.1);
+.alt-rail {
+  display: flex;
+  gap: var(--s3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--s5);
+  scrollbar-width: none;
+  margin: 0 calc(var(--s5) * -1);
+  padding: 4px var(--s5) var(--s3);
+  view-timeline-name: --alt-rail;
+  view-timeline-axis: inline;
+  scroll-timeline-name: --alt-scroll;
+  scroll-timeline-axis: inline;
 }
 
-.ring-fill {
-  transition: stroke-dashoffset 900ms var(--ease-out);
-  filter: drop-shadow(0 0 8px var(--accent-glow));
+@supports (animation-timeline: scroll()) {
+  .alt-dot-thumb {
+    animation: alt-dot-slide linear both;
+    animation-timeline: --alt-scroll;
+  }
+  @keyframes alt-dot-slide {
+    to {
+      transform: translateX(12px);
+    }
+  }
 }
 
-.ring-num {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 700;
-  fill: var(--ink);
+.alt-rail::-webkit-scrollbar {
+  display: none;
 }
 
-/* Loading — skeleton + rotating status lines */
-.load-state {
-  margin-top: 8px;
-}
-
-.skeleton-card {
-  height: 280px;
-  padding: 22px;
+/* THE PEEK. ~24-32px of the next card is always visible at the right edge, so
+   the row can never be mistaken for a single card — which is exactly what it
+   was before, since the only signal was a 10px label at the far right. */
+.pick-card.alt {
+  flex: 0 0 calc(100% - 46px);
+  max-width: 320px;
+  scroll-snap-align: start;
+  padding: var(--s4);
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  animation: skeleton-breathe 1.4s ease-in-out infinite alternate;
+  gap: var(--s2);
 }
 
-@keyframes skeleton-breathe {
-  from {
-    opacity: 0.5;
-  }
-  to {
-    opacity: 0.9;
-  }
+.alt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
 }
 
-.skeleton-line {
-  height: 14px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+/* THE UNSIGNED SIGNATURE — his endorsement becomes a currency by being
+   visibly withheld. Absence, made visible. */
+.unsigned {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mono-label);
 }
 
-.skeleton-line.pill {
-  width: 110px;
-  height: 24px;
-  border-radius: var(--r-pill);
+.alt-togo {
+  flex: none;
 }
 
-.skeleton-line.title {
-  width: 70%;
-  height: 22px;
-  margin-top: 6px;
+.alt-title h3 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.skeleton-line.half {
-  width: 45%;
+.alt-mid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--s1) 0;
 }
 
-.skeleton-line.btn {
-  height: 50px;
-  border-radius: var(--r-btn);
+/* The vessel has to read as a vessel, or the semantic accent is just a
+   coloured blob: full ink for the bowl, the tint for what is in it. */
+.alt-safer .alt-mid .glyph,
+.alt-brave .alt-mid .glyph {
+  color: var(--ink);
+}
+
+.alt-dish {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.alt-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.alt-meta svg {
+  color: var(--ink-3);
+}
+
+.alt-meta .meta-price {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.alt-say {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  min-height: 17px;
+}
+
+.pick-card.alt .big-btn {
   margin-top: auto;
+  min-height: 44px;
+  font-size: 14px;
+  border-radius: 10px; /* outer 26 − pad 16 */
+}
+
+/* ── LOADING — the signature moment. The mascot IS the loading state. ──── */
+
+.load-state {
+  margin-top: var(--s4);
+}
+
+.reading {
+  position: relative;
+  height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reading-ghost {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -52%);
+  opacity: 0.4;
+  animation: ghost-turn 22s linear infinite;
+}
+
+@keyframes ghost-turn {
+  to {
+    transform: translate(-50%, -52%) rotate(360deg);
+  }
+}
+
+.reading-togo {
+  position: relative;
+  z-index: 1;
+}
+
+.reading-say {
+  text-align: center;
+  margin-top: var(--s3);
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .status-lines {
   display: grid;
   place-items: center;
   height: 18px;
-  margin-top: 18px;
+  margin-top: var(--s2);
 }
 
 .status-lines span {
@@ -1215,17 +3065,19 @@ main {
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--data);
   opacity: 0;
-  animation: status-cycle 4.5s var(--ease-out) infinite;
+  animation: status-cycle 5.2s var(--ease-out) infinite;
 }
 
 .status-lines span:nth-child(2) {
-  animation-delay: 1.5s;
+  animation-delay: 1.3s;
 }
-
 .status-lines span:nth-child(3) {
-  animation-delay: 3s;
+  animation-delay: 2.6s;
+}
+.status-lines span:nth-child(4) {
+  animation-delay: 3.9s;
 }
 
 @keyframes status-cycle {
@@ -1233,14 +3085,14 @@ main {
     opacity: 0;
     transform: translateY(4px);
   }
-  7% {
+  6% {
     opacity: 1;
     transform: none;
   }
-  28% {
+  22% {
     opacity: 1;
   }
-  35% {
+  28% {
     opacity: 0;
     transform: translateY(-4px);
   }
@@ -1249,7 +3101,124 @@ main {
   }
 }
 
-/* Decided — the ceremony */
+/* A MASKED SWEEP, matching the real card's shape. A fade reads "broken"; a
+   sweep reads "working" — and the skeleton no longer reflows on resolve. */
+.skeleton-card {
+  margin-top: var(--s5);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.skeleton-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.07) 40%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  background-position: 200% 0;
+  animation: sweep 1500ms linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-band {
+  height: 96px;
+  margin: calc(var(--s5) * -1) calc(var(--s5) * -1) 0;
+  background: linear-gradient(168deg, var(--sky-1), var(--sky-2) 54%, var(--sky-3));
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(#000 62%, transparent);
+  mask-image: linear-gradient(#000 62%, transparent);
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+.skeleton-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, 0.08);
+  flex: none;
+}
+
+.skeleton-line {
+  height: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.skeleton-line.title {
+  flex: 1;
+  height: 22px;
+}
+
+.skeleton-line.half {
+  width: 45%;
+}
+
+.skeleton-map {
+  height: 130px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.skeleton-line.btn {
+  height: 50px;
+  border-radius: var(--r-btn);
+}
+
+/* ── ERROR — four designed states, each with a pose, a cause and an action ── */
+
+.err-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--s3);
+  margin-top: var(--s7);
+}
+
+.err-togo {
+  margin-bottom: var(--s2);
+}
+
+.err-say {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.err-cause {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 30ch;
+}
+
+.err-state .big-btn {
+  margin-top: var(--s2);
+}
+
+/* ── DECIDED — the receipt ─────────────────────────────────────────────── */
+
 .decide-burst {
   position: fixed;
   inset: 0;
@@ -1258,80 +3227,171 @@ main {
   background: radial-gradient(60% 45% at 50% 30%, var(--accent-soft), transparent 70%);
 }
 
-.decided-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 36px 24px 30px;
-  text-align: center;
-  margin-bottom: 0;
+.decided .big-btn.secondary {
+  margin-top: var(--s4);
 }
 
-.decided-check {
+.receipt {
   position: relative;
-  width: 64px;
-  height: 64px;
-  margin-bottom: 4px;
+  margin-top: var(--s6);
+  padding: var(--s6) var(--s5) var(--s5);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background-color: var(--mat-thick-tint);
+  -webkit-backdrop-filter: blur(var(--mat-thick-blur)) saturate(var(--mat-thick-sat));
+  backdrop-filter: blur(var(--mat-thick-blur)) saturate(var(--mat-thick-sat));
+  border: 1px solid var(--glass-border);
+  border-top: 0;
+  box-shadow: var(--edge), var(--depth-hi);
+  animation: rise var(--dur-3) var(--ease-emphasized) both;
 }
 
-.decided-check::after {
-  content: "";
+/* a physical object, torn off */
+.receipt-perf {
   position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  border: 2px solid var(--accent-glow);
-  opacity: 0;
-  animation: halo-pop 900ms var(--ease-out) 250ms 1 forwards;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: var(--mat-thick-tint);
+  -webkit-mask-image: radial-gradient(circle 6px at 50% 0, transparent 98%, #000);
+  mask-image: radial-gradient(circle 6px at 50% 0, transparent 98%, #000);
+  -webkit-mask-size: 18px 14px;
+  mask-size: 18px 14px;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
 }
 
-@keyframes halo-pop {
-  0% {
-    opacity: 0.9;
-    transform: scale(0.7);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.55);
-  }
+.receipt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-bottom: var(--s3);
+  border-bottom: 1px dashed var(--hairline);
 }
 
-.decided-card h2.decided-name {
+.receipt-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.receipt-glyph {
+  color: var(--ink);
+}
+
+.receipt-name {
+  margin-top: var(--s4);
   font-size: 28px;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  padding-right: 0;
-  margin: 0;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
   background: var(--accent-grad);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.decided-dish {
+.receipt-dish {
+  margin-top: var(--s1);
   font-size: 15px;
   font-weight: 600;
   color: var(--ink);
 }
 
-.decided-stamp {
-  margin-top: 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--good);
+.receipt-rows {
+  margin-top: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-/* ===== Taste — palate signature ===== */
+.receipt-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-row dt {
+  color: var(--ink-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  flex: none;
+}
+
+.receipt-row::after {
+  content: "";
+  flex: 1;
+  order: 1;
+  border-bottom: 1px dotted var(--hairline);
+  transform: translateY(-3px);
+}
+
+.receipt-row dd {
+  order: 2;
+  color: var(--ink);
+  text-align: right;
+  font-weight: 600;
+}
+
+.receipt-tear {
+  position: relative;
+  height: 122px;
+  margin: var(--s6) calc(var(--s5) * -1) 0;
+  border-top: 1px dashed var(--hairline);
+}
+
+/* his tugline goes SLACK because the run is over */
+.receipt-stamp {
+  position: absolute;
+  right: var(--s5);
+  top: -10px;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.5));
+}
+
+.receipt-timing {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.receipt-timing-k {
+  color: var(--ink-3);
+}
+
+.receipt-timing-v {
+  text-transform: none;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--data);
+}
+
+/* ============================================================
+   TASTE
+   ============================================================ */
 
 .palate-strip {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin: 14px 0 16px;
+  gap: var(--s2);
+  margin: var(--s3) 0 var(--s4);
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
@@ -1342,8 +3402,7 @@ main {
 }
 
 .taste-panel {
-  padding: 20px;
-  animation: rise-in 520ms var(--ease-out) backwards;
+  padding: var(--s5);
 }
 
 .radar-wrap {
@@ -1353,16 +3412,21 @@ main {
 }
 
 .radar-svg {
+  animation: radar-pop var(--dur-5) var(--spring) both;
+  transform-origin: center;
+}
+
+/* Only the unsized instances go fluid — a `size` prop emits width/height
+   attributes and must win, so this is scoped rather than global. */
+.radar-wrap .radar-svg {
   width: 100%;
   max-width: 300px;
   height: auto;
-  animation: radar-pop 700ms var(--spring);
-  transform-origin: center;
 }
 
 @keyframes radar-pop {
   from {
-    transform: scale(0.5);
+    transform: scale(0.6);
     opacity: 0;
   }
 }
@@ -1372,12 +3436,16 @@ main {
 }
 
 .radar-ghost .radar-grid {
-  stroke: rgba(255, 255, 255, 0.14);
-  stroke-dasharray: 4 6;
+  stroke: var(--ghost-grid);
+  stroke-width: 1.4;
+  stroke-dasharray: 5 7;
 }
 
 .radar-ghost .radar-grid-inner {
-  stroke: rgba(255, 122, 69, 0.45);
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-dasharray: none;
+  opacity: 0.7;
 }
 
 .radar-axis {
@@ -1398,15 +3466,27 @@ main {
   stroke-linejoin: round;
 }
 
-/* Empty-palate illustration — tightened rhythm + slow brand spin */
-.empty-palate {
-  gap: 14px;
+.radar-compare {
+  animation: fade-in var(--dur-3) var(--ease-out) 420ms both;
 }
 
-.ghost-radar {
-  width: 225px;
-  margin: -10px auto -6px;
-  animation: spin 60s linear infinite;
+/* his six whiskers, running out along the six spokes. Cream rather than the
+   28%-white whisker token, because these are drawn OVER the ember polygon and
+   the token was tuned for a dark coat. */
+.radar-sense {
+  stroke: var(--togo-blaze-1);
+  stroke-opacity: 0.6;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw var(--dur-5) var(--ease-out) calc(200ms + var(--i, 0) * 60ms) forwards;
+}
+
+.hub-stack {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.hub-stack .togo-mark {
+  opacity: 0.92;
 }
 
 .taste-desc {
@@ -1414,35 +3494,50 @@ main {
   font-size: 15px;
   line-height: 1.5;
   color: var(--ink-2);
-  margin: 10px 0 16px;
+  margin: var(--s3) 0 var(--s4);
 }
 
 .taste-divider {
   border-top: 1px solid var(--hairline);
-  margin-bottom: 16px;
+  margin-bottom: var(--s4);
 }
 
 .taste-bars {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--s4);
 }
 
 .taste-bar-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  font-size: 15px;
-  font-weight: 600;
+  align-items: center;
   margin-bottom: 5px;
+}
+
+/* one 20px glyph, one 13/600 label, one 15px mono value. It used to be a 15px
+   emoji + a 15px label + a 13px cyan percentage: three type sizes, three
+   colour roles and a raster glyph in a single 20px row. */
+.taste-bar-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.taste-bar-name .glyph {
+  color: var(--ink-2);
 }
 
 .taste-pct {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--data);
+  color: var(--data-text);
 }
 
 .bar {
@@ -1456,7 +3551,7 @@ main {
   background: var(--accent-grad);
   border-radius: var(--r-pill);
   box-shadow: 0 0 10px -2px var(--accent-glow);
-  transition: width 800ms var(--ease-out);
+  transition: width var(--dur-5) var(--ease-out);
 }
 
 .taste-bar-ends {
@@ -1471,27 +3566,211 @@ main {
   color: var(--ink-3);
 }
 
-/* ===== Profile — instrument settings ===== */
-
-.setting-card {
-  padding: 18px;
-  margin-bottom: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  animation: rise-in 520ms var(--ease-out) backwards;
+.taste-recal {
+  margin-top: var(--s5);
 }
 
+/* ── EMPTY PALATE — same two shapes as the filled state, opposite emotional
+   reading, zero extra art. And it SHOWS THE REWARD. ───────────────────── */
+
+.empty-palate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  margin-top: var(--s6);
+  text-align: center;
+}
+
+.empty-palate h1 {
+  margin-bottom: calc(var(--s5) * -1);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.026em;
+}
+
+.empty-stage {
+  display: flex;
+  justify-content: center;
+  margin-top: calc(var(--s5) * -1);
+}
+
+.ghost-radar {
+  width: 268px;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* ~32px between the hexagon group and his line, so the screen reads as one
+   composition rather than as a headline, an object and a caption. */
+.empty-say {
+  font-size: 17px;
+  color: var(--ink-2);
+  margin-top: calc(var(--s6) * -1);
+}
+
+.empty-palate .preview {
+  margin-top: var(--s5);
+}
+
+.preview {
+  position: relative;
+  padding: var(--s4);
+  text-align: left;
+  --card-i: 2;
+}
+
+.preview .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+}
+
+/* THE POLYGON IS FULL-STRENGTH EMBER; the withholding is a LAYER on top of it.
+   Desaturating and dimming the drawing itself just made it look unfinished. */
+.preview-glass {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-top: var(--s2);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.preview-frost {
+  position: absolute;
+  inset: 0;
+  -webkit-backdrop-filter: blur(2.5px) saturate(115%);
+  backdrop-filter: blur(2.5px) saturate(115%);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.05) 42%,
+    var(--frost-foot)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.preview-lock {
+  position: absolute;
+  left: 50%;
+  bottom: var(--s3);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  background: var(--data-soft);
+  border: 1px solid var(--data-border);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--data-text);
+}
+
+.preview-note {
+  margin-top: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+/* ============================================================
+   PROFILE
+   ============================================================ */
+
+.account-card {
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  margin-top: var(--s4);
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.avatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-togo {
+  margin-top: 3px;
+}
+
+.avatar-fallback {
+  display: none;
+  color: var(--ink-2);
+}
+
+:root[data-togo="off"] .avatar-fallback {
+  display: block;
+}
+
+.account-id {
+  min-width: 0;
+  flex: 1;
+}
+
+.account-name {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.account-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setting-card {
+  padding: var(--s4);
+  margin-bottom: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+/* a 20px accent icon labelled by 10px mono text made the icon twice the height
+   of the thing labelling it */
 .module-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .module-head svg {
@@ -1575,6 +3854,138 @@ main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
+/* switch row — the Hide Togo exit */
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.switch-icon {
+  color: var(--ink-2);
+  display: flex;
+}
+
+.switch-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switch-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.switch-note {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+/* ON/OFF IS COLOUR-CODED AS WELL AS POSITIONAL. A knob sitting past the middle
+   of a neutral track reads as ON no matter which end it is technically at, so
+   the track carries the ember gradient when the switch is engaged and a plainly
+   recessed neutral when it is not, and the travel is long enough to see. */
+.switch {
+  position: relative;
+  flex: none;
+  width: 54px;
+  height: 32px;
+  border-radius: var(--r-pill);
+  background: var(--switch-off);
+  border: 1px solid var(--hairline);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.32);
+  padding: 3px;
+  transition: background var(--dur-2), box-shadow var(--dur-2);
+}
+
+.switch-knob {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform var(--dur-2) var(--spring);
+}
+
+.switch.on {
+  background: var(--accent-grad);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2), 0 0 14px -4px var(--accent-glow);
+}
+
+.switch.on .switch-knob {
+  transform: translateX(22px);
+}
+
+/* DEMOTED. A destructive setting is a text row at the bottom of a grouped
+   list, not the most prominent control on the tab. */
+.danger-row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: start;
+  gap: var(--s2);
+  margin-top: var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
+}
+
+/* A fixed 44px leading column, aligned to the FIRST line's baseline, so both
+   text lines share one left edge instead of the head straddling two indents. */
+.danger-mark {
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
+}
+
+.danger-copy {
+  min-width: 0;
+}
+
+.danger-say {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* A destructive control still needs a real target: full-row, 44px. */
+.danger-link {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 2px;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--danger);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+
+.danger-link:active {
+  background: rgba(224, 49, 49, 0.1);
+}
+
+:root[data-togo="off"] .danger-row {
+  grid-template-columns: 1fr;
+}
+
+:root[data-togo="off"] .danger-copy {
+  grid-column: 1;
+}
+
 /* Saved toast */
 .toast {
   position: fixed;
@@ -1584,20 +3995,23 @@ main {
   margin: 0 auto;
   width: fit-content;
   z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 9px 18px;
   border-radius: var(--r-pill);
-  background: linear-gradient(180deg, rgba(28, 28, 34, 0.62), rgba(16, 16, 20, 0.72));
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
-  backdrop-filter: blur(32px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 12px 40px rgba(0, 0, 0, 0.55);
+  background-color: var(--mat-chrome-tint);
+  -webkit-backdrop-filter: blur(var(--mat-chrome-blur)) saturate(var(--mat-chrome-sat));
+  backdrop-filter: blur(var(--mat-chrome-blur)) saturate(var(--mat-chrome-sat));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: var(--edge), 0 12px 40px rgba(0, 0, 0, 0.55);
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--good);
-  animation: rise-in 300ms var(--ease-out), toast-fade 600ms var(--ease-out) 1.8s forwards;
+  animation: rise var(--dur-2) var(--ease-out), toast-fade var(--dur-5) var(--ease-out) 1.8s forwards;
 }
 
 @keyframes toast-fade {
@@ -1607,20 +4021,221 @@ main {
   }
 }
 
-/* ===== Light theme — component overrides ===== */
+/* ============================================================
+   SIGN-IN — the aurora anchored BEHIND the card, not smeared across the page
+   ============================================================ */
+
+.signin-card {
+  position: relative;
+  margin-top: var(--s6);
+  padding: var(--s6) var(--s5) var(--s5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  text-align: center;
+}
+
+.signin-aura {
+  position: absolute;
+  inset: -30% -20% auto;
+  height: 70%;
+  z-index: -1;
+  background: radial-gradient(50% 60% at 50% 40%, var(--accent-glow), transparent 70%);
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+.signin-togo {
+  margin-bottom: calc(var(--s2) * -1);
+}
+
+/* ONE HEADLINE. He is the supporting voice under it, not a second one above
+   it — 17/700 white immediately over a 28px h1 was two headlines stacked. */
+.signin-say {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-2);
+  max-width: 30ch;
+}
+
+.signin-card h1 {
+  margin-top: var(--s2);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  line-height: 1.16;
+}
+
+.signin-card .sub {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.signin-card form {
+  width: 100%;
+  margin-top: var(--s2);
+}
+
+.signin-guest {
+  margin-top: var(--s1);
+}
+
+.signin-small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mono-label);
+}
+
+/* A single quiet sentence, not a paragraph of environment variables set as
+   marketing copy in the middle of the conversion card. */
+.signin-unconfigured {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+/* THE ENGINEERING NOTICE, in the engineering voice, outside the card. */
+.deploy-note {
+  margin-top: var(--s3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--mono-label);
+}
+
+.deploy-note .data-num {
+  font-size: 10px;
+  color: var(--data-text);
+}
+
+.google-btn {
+  background: #fff;
+  color: #1f1f1f;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.google-btn:active {
+  background: #f1f1f1;
+}
+
+/* the card was floating over ~400px of void; the footer closes it */
+.signin-privacy {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-align: left;
+}
+
+.signin-privacy svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ============================================================
+   DISH CROSS-SECTIONS
+   ============================================================ */
+
+.dish-section {
+  display: block;
+  overflow: visible;
+}
+
+.sec-rim,
+.sec-lip {
+  stroke: var(--ink);
+  opacity: 0.55;
+}
+
+.sec-lip-hi {
+  stroke: rgba(255, 255, 255, 0.35);
+}
+
+.sec-fill.sec-warm {
+  fill: var(--accent);
+  fill-opacity: 0.85;
+}
+
+.sec-fill.sec-cool {
+  fill: var(--data);
+  fill-opacity: 0.4;
+}
+
+.sec-fill.sec-ink {
+  fill: var(--ink);
+  fill-opacity: 0.22;
+}
+
+.sec-steam path {
+  stroke: var(--ink-3);
+  stroke-dasharray: 26 74;
+  animation: steam-drift 3.4s linear infinite;
+  animation-delay: calc(var(--i, 0) * -900ms);
+}
+
+@keyframes steam-drift {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+/* ============================================================
+   HIDE TOGO — every face and every line goes. The bare NEEDLE marks stay,
+   because they are brand, not voice: favicon, EAT badge, unsigned signature
+   and the /taste hub needle all survive the toggle.
+   ============================================================ */
+
+:root[data-togo="off"] .togo-face,
+:root[data-togo="off"] .togo-head,
+:root[data-togo="off"] .togo-bust,
+:root[data-togo="off"] .togo-say {
+  display: none !important;
+}
+
+/* Users who reject mascots keep every function, so anything he was carrying
+   hands off rather than vanishing: the guide keeps its calibrate pill, and the
+   loading screen keeps a searching bearing where his head was. */
+/* specificity has to beat `.togo-mark { display: inline-block }`, which is
+   declared later in the Togo engine block */
+.reading .reading-needle {
+  display: none;
+}
+
+:root[data-togo="off"] .reading .reading-needle {
+  display: block;
+  margin: 0 auto;
+}
+
+:root[data-togo="off"] .guide {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+:root[data-togo="off"] .deck-say,
+:root[data-togo="off"] .deck-rig {
+  height: auto;
+}
+
+/* ============================================================
+   LIGHT THEME — component overrides
+   ============================================================ */
 
 @media (prefers-color-scheme: light) {
-  .tab-bar,
-  .toast {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(244, 242, 238, 0.7));
-    border-color: rgba(20, 16, 14, 0.1);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 40px rgba(60, 32, 12, 0.18);
-  }
-
   .chip {
-    background: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.66);
     border-color: var(--glass-border);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 
   .chip.on {
@@ -1630,17 +4245,13 @@ main {
   }
 
   .big-btn.secondary {
-    background: rgba(0, 0, 0, 0.035);
-    border-color: rgba(0, 0, 0, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  }
-
-  .big-btn.danger {
     background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(60, 32, 12, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 
   .swipe-actions .no {
-    background: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.7);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 
@@ -1648,25 +4259,50 @@ main {
     color: #fff;
   }
 
-  .progress,
-  .bar {
-    background: rgba(20, 16, 14, 0.1);
+  .tab-bar {
+    border-color: rgba(60, 32, 12, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(60, 32, 12, 0.06),
+      0 1px 2px rgba(60, 32, 12, 0.1),
+      0 16px 40px -14px rgba(60, 32, 12, 0.24);
   }
 
-  .skeleton-line {
-    background: rgba(20, 16, 14, 0.08);
+  .tab-capsule {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 8px rgba(60, 32, 12, 0.14);
   }
 
+  .segmented,
+  .stepper,
+  .switch {
+    background: rgba(60, 32, 12, 0.06);
+  }
+
+  .bar,
+  .why-track,
+  .skeleton-line,
+  .skeleton-map,
+  .stat {
+    background: rgba(60, 32, 12, 0.08);
+  }
+
+  .skeleton-ring {
+    border-color: rgba(60, 32, 12, 0.1);
+  }
+
+  .score-track,
+  .iso-track,
   .ring-track {
-    stroke: rgba(20, 16, 14, 0.1);
+    stroke: rgba(60, 32, 12, 0.12);
   }
 
   .radar-grid {
-    stroke: rgba(20, 16, 14, 0.1);
+    stroke: rgba(20, 16, 14, 0.12);
   }
 
   .radar-ghost .radar-grid {
-    stroke: rgba(20, 16, 14, 0.16);
+    stroke: rgba(20, 16, 14, 0.18);
   }
 
   .radar-ghost .radar-grid-inner {
@@ -1674,23 +4310,48 @@ main {
   }
 
   .radar-value {
-    stroke: rgba(255, 255, 255, 0.75);
+    stroke: rgba(255, 255, 255, 0.85);
   }
 
-  .swipe-stack::before,
-  .swipe-stack::after {
-    background-color: rgba(255, 255, 255, 0.55);
-    border-color: rgba(20, 16, 14, 0.12);
+  /* the brand colour lives in the band, never in the body */
+  .sky-city rect {
+    fill: rgba(0, 0, 0, 0.22);
   }
 
-  .pick-card.best .tag-best {
-    background: var(--accent-soft);
-    color: var(--accent-tint);
-    box-shadow: none;
+  .deck-stack::before,
+  .deck-stack::after {
+    background: rgba(226, 220, 212, 0.9);
+    border-color: rgba(60, 32, 12, 0.1);
+  }
+
+  .minimap {
+    background: rgba(60, 32, 12, 0.05);
+  }
+
+  .map-scale {
+    background: rgba(255, 255, 255, 0.75);
+  }
+
+  .map-dest-eye {
+    fill: #fff;
   }
 
   .count-pill {
     background: rgba(0, 0, 0, 0.16);
+  }
+
+  .sheet-scrim {
+    background: rgba(60, 32, 12, 0.28);
+  }
+
+  .skeleton-card::before {
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.6) 40%,
+      transparent 60%
+    );
+    background-size: 200% 100%;
   }
 
   .setting-card input[type="range"]::-webkit-slider-runnable-track {
@@ -1705,18 +4366,70 @@ main {
   .setting-card input[type="range"]::-moz-range-track {
     background: rgba(20, 16, 14, 0.12);
   }
+
 }
 
-/* ===== Reduced motion — beyond the global clamp ===== */
+@supports (animation-timeline: view()) {
+  .alt-rail .pick-card.alt {
+    animation: alt-enter linear both;
+    animation-timeline: view(inline);
+    animation-range: entry 0% entry 92%;
+  }
+
+  @keyframes alt-enter {
+    from {
+      transform: scale(0.94);
+      opacity: 0.62;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION — beyond the global clamp. Every animated state must stay
+   legible as a single still frame; that is the correctness test for the whole
+   system, and it is why nothing below simply disappears.
+   ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
   body::before,
-  .headline-wrap .hero-radar,
-  .ghost-radar,
   .dot,
-  .compile-dots span,
-  .skeleton-card {
+  .reading-ghost,
+  .map-origin-pulse,
+  .sky-rain line,
+  .sec-steam path,
+  .skeleton-card::before,
+  .pick-card.best::before {
     animation: none !important;
+    background-position: 50% 50%;
+  }
+
+  /* odometers jump to their final value rather than vanishing */
+  .count {
+    --n: var(--score, 0);
+  }
+
+  /* every path-drawn graphic renders complete */
+  .score-arc,
+  .ring-fill {
+    stroke-dashoffset: calc(100 - var(--score, 0));
+  }
+
+  .iso-arc {
+    stroke-dashoffset: calc(100 - var(--sweep, 0));
+  }
+
+  .map-route,
+  .radar-sense,
+  .mood-tug path {
+    stroke-dashoffset: 0;
+  }
+
+  .why-fill {
+    transform: scaleX(var(--v, 0));
   }
 
   .status-lines span {
@@ -1728,201 +4441,655 @@ main {
     opacity: 1;
   }
 
-  .compile-dots span {
+  .alt-rail .pick-card.alt {
+    animation: none;
+    transform: none;
     opacity: 1;
+  }
+
+  .sky-rain line {
+    opacity: 0.24;
   }
 }
 
-/* ===== Plan bar — the two inputs behind every pick ===== */
+/* ============================================================
+   TOGO — expression + motion engine
+   ALL CSS. No library, no rAF, no SMIL, no JS ticks. Transform and opacity
+   only, plus three stroke-dashoffset loops that exist solely during loading.
+   Six moods, one SVG, ZERO DOM change: nothing is added or removed per mood,
+   so React never re-renders him and Safari never re-rasterises him.
+   The expression channel is the EARS, not the brows. There are no brows.
+   ============================================================ */
 
-.plan-bar {
-  margin: 14px 0 4px;
-  border-radius: var(--r-md);
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--inset-top), var(--shadow-card);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
-  overflow: hidden;
+.togo {
+  display: block;
+  overflow: visible;
 }
-.plan-bar-skeleton {
-  height: 52px;
-  opacity: 0.5;
-}
-
-.plan-summary {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 13px 14px;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-align: left;
-}
-.plan-slot {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--ink-2);
-}
-/* Location takes the slack and truncates last; time and Change never shrink. */
-.plan-slot.loc {
-  flex: 1 1 auto;
-}
-.plan-slot.time {
-  flex: none;
-}
-.plan-slot.locating svg {
-  animation: pulse-soft 1.2s ease-in-out infinite;
-}
-.live-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--data);
-  box-shadow: 0 0 6px var(--data-glow);
-  animation: pulse-soft 2s ease-in-out infinite;
-  flex: none;
-}
-.plan-slot svg {
-  flex: none;
-  color: var(--accent);
-}
-.plan-value {
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.plan-meal {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--data);
-  border: 1px solid var(--data-border);
-  background: var(--data-soft);
-  border-radius: var(--r-pill);
-  padding: 2px 6px;
-}
-.plan-div {
-  width: 1px;
-  height: 18px;
-  background: var(--hairline);
-  flex: none;
-}
-.plan-edit {
-  margin-left: 2px;
-  flex: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent);
+/* the mark's documented uses are inline: beside the distance readout, beside
+   the UNSIGNED label, inside a CTA */
+.togo-mark {
+  display: inline-block;
+  vertical-align: middle;
+  overflow: visible;
 }
 
-.plan-editor {
-  padding: 4px 14px 16px;
-  border-top: 1px solid var(--hairline);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  animation: rise var(--dur-2) var(--ease-out) both;
-}
-.plan-editor .eyebrow {
-  margin-top: 8px;
-}
-.locate-chip {
-  align-self: flex-start;
-  color: var(--data);
-  border-color: var(--data-border);
-  background: var(--data-soft);
-}
-.locate-chip:disabled {
-  opacity: 0.6;
-}
-.plan-error {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--danger);
-}
-.plan-time-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--ink-2);
-}
-.plan-time-row input[type="time"] {
-  background: var(--bg-elevated);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  padding: 8px 10px;
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 13px;
+/* HARNESSED is the baseline — nothing is offset from anything. Every other mood
+   is a delta on these five numbers. */
+.togo {
+  --ear-rot: 0deg;
+  --ear-y: 0px;
+  --lid: 0;
+  --iris-x: 0px;
+  --yaw: 0deg;
 }
 
-/* ===== Account / sign-in ===== */
-
-.google-btn {
-  background: #fff;
-  color: #1f1f1f;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+/* GLOBAL TRANSITION — any mood to any mood is one attribute change, and always
+   lands soft. */
+.togo-body,
+.togo-skull,
+.togo-ear,
+.togo-eye,
+.togo-lid,
+.togo-needle-rot {
+  transition: transform 220ms var(--spring), opacity 140ms linear;
 }
-.google-btn:active {
-  background: #f1f1f1;
+.togo-iris {
+  transition: transform 220ms var(--spring), stroke-opacity 900ms linear;
 }
-
-.signin-privacy {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 7px;
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--ink-3);
-  text-align: left;
+.togo-mouth,
+.togo-tug,
+.togo-whisker,
+.togo-howl-only,
+.togo-eye-happy,
+.togo-eye-open {
+  transition: opacity 140ms linear;
 }
-.signin-privacy svg {
-  flex: none;
-  margin-top: 2px;
-}
-
-.account-card .big-btn {
-  margin-top: 4px;
+.togo-glow {
+  opacity: 0.32;
+  transition: opacity 300ms var(--ease-out);
 }
 
-.plan-auto {
-  font-family: var(--font-mono);
-  font-size: 8.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-pill);
-  padding: 1px 5px;
+/* Safari will not honour percentage origins inside SVG without transform-box;
+   absolute origins need view-box so the numbers mean user-space coordinates. */
+.togo-body {
+  transform-box: view-box;
+  transform-origin: 60px 112px; /* he grows from the chest, never from the centre */
 }
-.plan-hint {
-  margin-top: 8px;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--ink-3);
+.togo-bust .togo-body {
+  transform-origin: 60px 170px;
+}
+.togo-skull {
+  transform-box: view-box;
+  transform-origin: 60px 114px; /* the neck */
+  transform: rotate(calc(var(--yaw) + var(--tilt, 0deg)));
+}
+.togo-ear {
+  transform-box: fill-box;
+  transform-origin: 50% 96%; /* the BASE — ears hinge where they actually attach */
+  transform: translateY(var(--ear-y)) rotate(calc(var(--ear-rot) + var(--togo-look, 0deg)));
+}
+.togo-eye {
+  transform-box: view-box;
+  transform: translateX(var(--eye-x, 0px));
+}
+.togo-iris {
+  transform-box: view-box;
+  transform: translateX(var(--iris-x)); /* clamped to ±3px: meme side-eye is impossible */
+}
+.togo-lid {
+  transform-box: fill-box;
+  transform-origin: top center;
+  transform: scaleY(var(--lid));
+}
+.togo-needle-rot {
+  transform-box: view-box;
+  transform-origin: 24px 27px; /* the balance point — it swings like an instrument */
+  transform: rotate(var(--bearing, 0deg));
+}
+.togo-scan,
+.togo-sonar,
+.togo-spark {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-.plan-auto.locating {
-  color: var(--data);
-  border-color: var(--data-border);
-  animation: pulse-soft 1.2s ease-in-out infinite;
+/* THE BLAZE IS RIGID — and on the FACE it keeps the 1px light-theme outline,
+   because there the cream is fur sitting on a slate head and cannot invert.
+   The BARE MARK does not need it: it is a filled silhouette, so on light it
+   flips to ink instead (--needle-ice), which a knocked-out band could never do. */
+.togo-blaze {
+  stroke: var(--togo-blaze-edge);
+  stroke-width: 1;
 }
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+
+/* ═══ MOOD STATE — transforms, opacity and paint only ═══ */
+
+/* 2 · READING — "I'm reading the street." Ears swivel forward: the alert pin,
+   the most legible working-dog posture there is. Lids narrow to FOCUS, not
+   sleep. The right mouth arc drops, leaving a line of concentration. */
+.togo[data-mood="reading"] {
+  --ear-rot: 7deg;
+  --ear-y: -1.5px;
+  --lid: 0.3;
+}
+.togo[data-mood="reading"] .togo-mouth-r {
+  opacity: 0;
+}
+.togo[data-mood="reading"] .togo-scan {
+  opacity: 0.2;
+}
+
+/* 3 · LOCKED — "Got a line." The lock is STILLNESS PLUS DIRECTION, not a grin:
+   a working dog that has found the line does not smile, it stares. */
+.togo[data-mood="locked"] {
+  --ear-rot: 11deg;
+  --ear-y: -2px;
+  --lid: 0.12;
+  --yaw: 5deg;
+}
+.togo[data-mood="locked"] .togo-glow {
+  opacity: 0.58;
+}
+.togo[data-mood="locked"] .togo-tug-rest {
+  opacity: 0;
+}
+.togo[data-mood="locked"] .togo-tug-taut {
+  opacity: 1;
+}
+
+/* 4 · HEDGING — "This line's a gamble." ONE EAR HALF-BACK: asymmetric ear
+   carriage is the most legible canine uncertainty cue that exists and it lands
+   in under 150ms with no training. */
+.togo[data-mood="hedging"] {
+  --lid: 0.22;
+  --iris-x: 3px;
+  --yaw: -4deg;
+}
+.togo[data-mood="hedging"] .togo-ear-l {
+  --ear-rot: -26deg;
+  --ear-y: 1.5px;
+}
+.togo[data-mood="hedging"] .togo-ear-r {
+  --ear-rot: 6deg;
+}
+.togo[data-mood="hedging"] .togo-mouth-l,
+.togo[data-mood="hedging"] .togo-mouth-r {
+  opacity: 0;
+}
+.togo[data-mood="hedging"] .togo-mouth-flat {
+  opacity: 1;
+}
+.togo[data-mood="hedging"] .togo-tug-rest {
+  opacity: 0;
+}
+.togo[data-mood="hedging"] .togo-tug-slack {
+  opacity: 1;
+}
+
+/* 5 · BANKED — "Nothing worth moving for." Named for what sled dogs actually do
+   in a storm. THE CYAN POWERS DOWN, and that dimming is the whole idea:
+   NO "Zzz" GLYPH, EVER. No closed eyes, no snoring, no pleading. */
+.togo[data-mood="banked"] {
+  --ear-rot: -34deg;
+  --ear-y: 3px;
+  --lid: 0.72;
+}
+.togo[data-mood="banked"] .togo-glow {
+  opacity: 0.14;
+  transition-duration: 900ms;
+}
+.togo[data-mood="banked"] .togo-iris {
+  stroke-opacity: 0.2;
+}
+.togo[data-mood="banked"] .togo-whisker {
+  opacity: 0;
+}
+.togo[data-mood="banked"] .togo-whisker-droop {
+  opacity: 1;
+}
+.togo[data-mood="banked"] .togo-needle {
+  fill: var(--ink-3); /* greys and STOPS: no heading */
+}
+
+/* 6 · HOWL — twice in a user's life, which is exactly why it lands. Ears fold
+   back, which is what a howling dog actually does and the detail that stops it
+   reading as a cartoon bark. */
+.togo[data-mood="howl"] {
+  --ear-rot: -20deg;
+  --yaw: -18deg;
+}
+.togo[data-mood="howl"] .togo-skull {
+  transform-origin: 60px 113px;
+  transition-duration: 320ms;
+}
+.togo[data-mood="howl"] .togo-eye-open,
+.togo[data-mood="howl"] .togo-mouth {
+  opacity: 0;
+}
+.togo[data-mood="howl"] .togo-eye-happy,
+.togo[data-mood="howl"] .togo-howl-only {
+  opacity: 1;
+}
+.togo[data-mood="howl"] .togo-tug-rest {
+  opacity: 0;
+}
+.togo[data-mood="howl"] .togo-tug-slack {
+  opacity: 1; /* the run is over */
+}
+
+/* MODIFIER, not a seventh mood — composes with any mood. */
+.togo[data-tilt="1"] {
+  --tilt: 6deg;
+}
+
+/* ═══ AMBIENT LOOPS — under HARNESSED at every placement >= 32px. Three loops,
+   deliberately co-prime so they never re-phase. Per-instance desync from
+   --seed: two Togos on one screen must NEVER blink or flick in unison. ═══ */
+.togo[data-size="m"] .togo-body,
+.togo[data-size="l"] .togo-body {
+  animation: togo-breathe 4.4s ease-in-out infinite;
+  animation-delay: calc(var(--seed) * -0.9s);
+}
+.togo[data-size="m"] .togo-lid,
+.togo[data-size="l"] .togo-lid {
+  animation: togo-blink 6.8s linear infinite;
+  animation-delay: calc(var(--seed) * -0.9s + var(--blink-d, 0ms));
+}
+/* ONE EAR ONLY. An asymmetric ear flick is the cheapest, most species-accurate
+   aliveness cue available, and it costs one rotate on one path. */
+.togo[data-mood="harnessed"][data-size="m"] .togo-ear-r,
+.togo[data-mood="harnessed"][data-size="l"] .togo-ear-r {
+  animation: togo-ear-flick 7.6s linear infinite;
+  animation-delay: calc(var(--seed) * -0.9s);
+}
+
+/* ═══ MOOD MOTION — declared after the ambient loops so it wins ═══ */
+
+/* READING: five animated elements, all compositor-friendly. THE SCAN RUNS UP
+   THE NEEDLE — the direction it points — so the mascot and the telemetry system
+   become the same instrument. */
+.togo[data-mood="reading"] .togo-needle-rot {
+  animation: togo-search 1.9s var(--ease-out) alternate infinite;
+}
+.togo[data-mood="reading"] .togo-iris {
+  animation: togo-iris-drift 2.2s ease-in-out alternate infinite;
+}
+.togo[data-mood="reading"] .togo-scan {
+  animation: togo-scanline 1.5s linear infinite;
+}
+.togo[data-mood="reading"] .togo-tug {
+  stroke-dasharray: 6 20;
+  animation: togo-tug-run 1.1s linear infinite;
+}
+.togo[data-mood="reading"] .togo-body,
+.togo[data-mood="reading"] .togo-needle-rot {
+  will-change: transform;
+}
+.togo[data-mood="reading"][data-size="l"] .togo-sonar,
+.togo[data-mood="howl"] .togo-sonar {
+  animation: togo-sonar 1.6s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 520ms);
+}
+/* THE WHISKERS GO LIVE. In hedging only index 5 — adventure — stays lit, so he
+   is visibly still sensing the axis in question. */
+.togo[data-mood="reading"] .togo-whisker,
+.togo[data-mood="hedging"] .togo-whisker[data-w="5"],
+.togo-whisker.is-live {
+  stroke: var(--data);
+  stroke-dasharray: 4 26;
+  animation: togo-scan 900ms linear infinite;
+  animation-delay: calc(var(--i) * -110ms);
+}
+
+/* LOCKED: the single gesture that says "decided". Timed to land on the same
+   frame the score ring and the odometer resolve. */
+.togo[data-mood="locked"] .togo-needle-rot {
+  animation: togo-needle-settle 620ms var(--spring) both;
+}
+.togo[data-mood="locked"] .togo-body {
+  animation: togo-lock-pop 260ms var(--spring) both;
+}
+.togo[data-mood="locked"] .togo-whisker {
+  animation: togo-whisker-flash 1000ms var(--ease-out) both;
+}
+.togo[data-mood="locked"] .togo-ring {
+  animation: togo-ring-flash 1000ms var(--ease-out) both;
+}
+
+/* HEDGING: everything HOLDS except one restless instrument. Stillness plus a
+   drifting needle is what sells doubt; a looping animation would read as busy. */
+.togo[data-mood="hedging"] .togo-needle-rot {
+  animation: togo-needle-drift 3.4s ease-in-out alternate infinite;
+}
+
+/* BANKED: breathe slows with a +2px drift. Everything else frozen. */
+.togo[data-mood="banked"][data-size="m"] .togo-body,
+.togo[data-mood="banked"][data-size="l"] .togo-body {
+  animation: togo-bank-breathe 7.2s ease-in-out infinite;
+}
+.togo[data-mood="reading"] .togo-lid,
+.togo[data-mood="banked"] .togo-lid,
+.togo[data-mood="howl"] .togo-lid {
+  animation: none; /* these moods hold their own lid positions */
+}
+
+/* HOWL: five ember diamonds — the EXISTING badge glyph, reused, never new
+   confetti. Runs exactly once. */
+.togo[data-mood="howl"] .togo-spark {
+  animation: togo-burst 520ms var(--ease-out) both;
+  animation-delay: calc(var(--i) * 60ms);
+}
+
+/* ═══ ENTRANCES + ONE-SHOTS ═══ */
+.togo-brace {
+  animation: togo-brace 420ms var(--spring) both;
+  animation-delay: 120ms; /* the overshoot reads as him taking up the slack */
+}
+.togo-pull {
+  animation: togo-pull 480ms var(--spring) both;
+}
+.togo-refuse {
+  animation: togo-refuse 260ms var(--ease-out) both;
+}
+
+/* ═══ SIZE DEGRADATION — the plan-bar, tab-bar and why-line instances cost one
+   composited layer and nothing else. HARD FLOOR: below 24px, substitute the
+   flat needle rather than shrinking him. ═══ */
+.togo[data-size="s"] .togo-whiskers,
+.togo[data-size="s"] .togo-guard,
+.togo[data-size="s"] .togo-ruff,
+.togo[data-size="s"] .togo-spec-2,
+.togo[data-size="s"] .togo-tug,
+.togo[data-size="s"] .togo-sonar-g,
+.togo[data-size="s"] .togo-sparks {
+  display: none;
+}
+
+/* ═══ THE BEARING — the separable mark. Flat instrument ice as the bare mark;
+   the fur gradient belongs only to the blaze on the face. ═══ */
+.togo-needle {
+  fill: var(--needle-ice);
+}
+.togo-needle-hex {
+  stroke: var(--data);
+  stroke-opacity: 0.34;
+  stroke-width: 1.5;
+}
+
+/* THE COMPASS RING. A 14px barbed arrow with nothing around it reads as a stray
+   mouse cursor; a hairline bezel with an N tick reads as an instrument, which is
+   what it is — it is pointing at the restaurant's true bearing. */
+.togo-needle-ring {
+  stroke: var(--mono-label);
+  stroke-opacity: 0.7;
+  stroke-opacity: 0.75;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.togo-mark-ring {
+  overflow: visible;
+}
+.togo-mark[data-tone="ink"] .togo-needle {
+  fill: var(--togo-mark-ink);
+}
+.togo-mark[data-tone="data"] .togo-needle {
+  fill: var(--data);
+}
+/* THE UNSIGNED SIGNATURE — his endorsement becomes a currency by being visibly
+   withheld. No face, no eyes, no mood, no heading. */
+.togo-mark[data-tone="unsigned"] .togo-needle {
+  fill: var(--ink-3);
+  opacity: 0.4;
+}
+.togo-needle-spin {
+  animation: togo-needle-spin 1.6s linear infinite;
+}
+
+/* ═══ KEYFRAMES ═══ */
+
+@keyframes togo-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.014); /* 1.4% ceiling: he breathes, he never bounces */
+  }
+}
+@keyframes togo-bank-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(2px) scale(1.014);
+  }
+}
+@keyframes togo-blink {
+  0%,
+  94.8% {
+    transform: scaleY(var(--lid));
+  }
+  95.8% {
+    transform: scaleY(1);
+  }
+  96.8%,
+  100% {
+    transform: scaleY(var(--lid));
+  }
+}
+@keyframes togo-ear-flick {
+  0%,
+  90.7% {
+    transform: translateY(var(--ear-y)) rotate(var(--ear-rot));
+  }
+  92% {
+    transform: translateY(var(--ear-y)) rotate(calc(var(--ear-rot) + 6deg));
+  }
+  93.3%,
+  100% {
+    transform: translateY(var(--ear-y)) rotate(var(--ear-rot));
+  }
+}
+@keyframes togo-search {
+  from {
+    transform: rotate(-34deg);
+  }
+  to {
+    transform: rotate(34deg);
+  }
+}
+@keyframes togo-scanline {
+  from {
+    transform: translateY(112px);
+  }
+  to {
+    transform: translateY(-16px);
+  }
+}
+@keyframes togo-scan {
+  to {
+    stroke-dashoffset: -30;
+  }
+}
+@keyframes togo-tug-run {
+  to {
+    stroke-dashoffset: -26;
+  }
+}
+@keyframes togo-iris-drift {
+  from {
+    transform: translateX(-2px);
+  }
+  to {
+    transform: translateX(2px);
+  }
+}
+@keyframes togo-needle-settle {
+  0% {
+    transform: rotate(calc(var(--bearing, 0deg) - 26deg));
+  }
+  62% {
+    transform: rotate(calc(var(--bearing, 0deg) + 7deg));
+  }
+  100% {
+    transform: rotate(var(--bearing, 0deg));
+  }
+}
+@keyframes togo-needle-drift {
+  from {
+    transform: rotate(calc(var(--bearing, 0deg) + 9deg));
+  }
+  to {
+    transform: rotate(calc(var(--bearing, 0deg) + 15deg));
+  }
+}
+@keyframes togo-lock-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes togo-whisker-flash {
+  0%,
+  40% {
+    stroke: var(--accent);
+    stroke-width: 1.8;
+  }
+  100% {
+    stroke: var(--togo-whisker);
+    stroke-width: 1.4;
+  }
+}
+@keyframes togo-ring-flash {
+  0%,
+  40% {
+    fill: var(--accent-hi);
+  }
+  100% {
+    fill: var(--accent);
+  }
+}
+/* SCALE ON A CIRCLE IS FREE; NEVER ANIMATE r. */
+@keyframes togo-sonar {
+  from {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(8);
+    opacity: 0;
+  }
+}
+@keyframes togo-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(45deg) scale(0.5);
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--bx), var(--by)) rotate(45deg) scale(1);
+  }
+}
+@keyframes togo-brace {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes togo-pull {
+  0% {
+    transform: translateX(0) scale(1);
+  }
+  58% {
+    transform: translateX(3px) scale(1.03);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes togo-refuse {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25%,
+  75% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(0);
+  }
+}
+@keyframes togo-needle-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* COMMAND PARITY — every alternate `d` in the file uses an identical command
+   sequence, so it morphs where the browser can morph it. Shipped behind a
+   feature query so Safari version drift can never break it; everywhere else the
+   duplicate paths simply cross-fade on opacity. */
+@supports (transition-property: d) {
+  .togo-mouth,
+  .togo-tug,
+  .togo-whisker {
+    transition: d var(--dur-2) var(--ease-out), opacity 140ms linear;
+  }
+}
+
+/* ═══ EXPRESSION SURVIVES REDUCED MOTION — state is information, not
+   decoration. Every mood stays fully legible as a single still frame. ═══ */
+@media (prefers-reduced-motion: reduce) {
+  .togo,
+  .togo * {
+    animation: none !important;
+  }
+  .togo-mouth,
+  .togo-tug,
+  .togo-whisker {
+    transition: opacity 140ms linear; /* no d morph */
+  }
+  .togo-needle-rot {
+    transform: rotate(var(--bearing, 0deg)); /* jumps straight to the true heading */
+    transition: none;
+  }
+  .togo[data-mood="hedging"] .togo-needle-rot {
+    transform: rotate(calc(var(--bearing, 0deg) + 12deg));
+  }
+  /* the loading screen still communicates progress: a static scan bar 40% up
+     the blaze, a needle frozen at its search extreme, live cyan whiskers */
+  .togo[data-mood="reading"] .togo-needle-rot {
+    transform: rotate(34deg);
+  }
+  .togo[data-mood="reading"] .togo-scan {
+    transform: translateY(58px);
+  }
+  .togo[data-mood="reading"] .togo-whisker,
+  .togo[data-mood="hedging"] .togo-whisker[data-w="5"],
+  .togo-whisker.is-live {
+    stroke-dasharray: none;
+    stroke: var(--data);
+  }
+  .togo[data-mood="howl"] .togo-howl-only:not(.togo-spark) {
+    opacity: 1;
+  }
+  .togo[data-mood="howl"] .togo-spark,
+  .togo-sonar {
+    opacity: 0;
+  }
 }

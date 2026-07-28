@@ -1,3 +1,4 @@
+import type { MoodGlyphKey } from "@/components/glyphs/moods";
 import { Profile } from "@/lib/profile";
 
 // "Today's mood" — one-tap session preferences layered on top of the learned
@@ -7,17 +8,20 @@ import { Profile } from "@/lib/profile";
 export interface Mood {
   id: string;
   label: string;
-  emoji: string;
+  /** A drawn two-tone glyph, never a raster emoji. See components/glyphs. */
+  glyph: MoodGlyphKey;
 }
 
+// "Super close" was ⚡ — lightning means FAST, not NEAR, so it is now a pin with
+// radius rings. "Budget" was 💸, money leaving; it is now a coin stack.
 export const MOODS: Mood[] = [
-  { id: "spicy", label: "Spicy", emoji: "🌶️" },
-  { id: "light", label: "Light", emoji: "🥗" },
-  { id: "soupy", label: "Soupy", emoji: "🍲" },
-  { id: "comfort", label: "Comfort", emoji: "🍛" },
-  { id: "cheap", label: "Budget", emoji: "💸" },
-  { id: "nearby", label: "Super close", emoji: "⚡" },
-  { id: "surprise", label: "Surprise me", emoji: "🎲" },
+  { id: "spicy", label: "Spicy", glyph: "chilli" },
+  { id: "light", label: "Light", glyph: "leaf-bowl" },
+  { id: "soupy", label: "Soupy", glyph: "steam-bowl" },
+  { id: "comfort", label: "Comfort", glyph: "claypot" },
+  { id: "cheap", label: "Budget", glyph: "coin-stack" },
+  { id: "nearby", label: "Super close", glyph: "pin-radius" },
+  { id: "surprise", label: "Surprise me", glyph: "dice" },
 ];
 
 export function isValidMood(id: string): boolean {

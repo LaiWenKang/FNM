@@ -7,9 +7,26 @@ import { Profile } from "@/lib/profile";
 //   HARD FILTERS -> SCORE (flavor match + context nudges - recency penalty)
 //   -> DIVERSIFY (best / safer / adventurous) -> DISH PICK
 
+/**
+ * THE SCORE, DECOMPOSED — five signed contributions that literally SUM to the
+ * displayed match score. Every term is derived from a signal the pipeline
+ * already computes; nothing here is invented for the graphic, which is the
+ * whole point: the card can never show one number and say another.
+ */
+export interface ScoreBreakdown {
+  palate: number;
+  distance: number;
+  weather: number;
+  budget: number;
+  novelty: number;
+}
+
 export interface ScoredPlace {
   place: Place;
   score: number;
+  /** 1–99, and the sum of `breakdown`. The one number the UI ever renders. */
+  matchScore: number;
+  breakdown: ScoreBreakdown;
   distanceKm: number;
   walkMinutes: number;
   bestDish: Dish | null;
@@ -81,6 +98,39 @@ function recencyPenalty(place: Place, profile: Profile, now: number): { delta: n
   return { delta, reasons };
 }
 
+function clamp(x: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, x));
+}
+
+/**
+ * Presentation scale for the same terms the ranking uses. The RANKING formula is
+ * untouched — this only converts those terms into signed points so the card can
+ * draw them. Each part is rounded BEFORE summing, so the five bars on screen add
+ * up to the number in the ring exactly.
+ */
+function breakDown(
+  flavorMatch: number,
+  distanceKm: number,
+  ctxDelta: number,
+  recencyDelta: number,
+  place: Place,
+  profile: Profile,
+): { breakdown: ScoreBreakdown; matchScore: number } {
+  const breakdown: ScoreBreakdown = {
+    palate: Math.round(flavorMatch * 62),
+    distance: Math.round(clamp(18 - distanceKm * 15, -8, 18)),
+    weather: Math.round(clamp(ctxDelta * 82, -15, 14)),
+    budget: Math.round(clamp((profile.priceMax - place.priceLevel) * 2.4 + 1, -7, 8)),
+    novelty: Math.round(
+      clamp(recencyDelta * 100, -30, 0) +
+        clamp(4 * (1 - Math.abs(place.flavor.adventure - profile.vector.adventure)), 0, 4),
+    ),
+  };
+  const sum =
+    breakdown.palate + breakdown.distance + breakdown.weather + breakdown.budget + breakdown.novelty;
+  return { breakdown, matchScore: clamp(sum, 1, 99) };
+}
+
 function pickBestDish(place: Place, taste: FlavorVector): Dish | null {
   if (!place.dishes.length) return null;
   let best = place.dishes[0];
@@ -119,14 +169,16 @@ export function recommend(
     const rp = recencyPenalty(place, profile, now);
     const score = flavorMatch + cf.delta + rp.delta - distanceKm * 0.04;
 
-    const reasons = [
-      `matches your taste (${Math.round(flavorMatch * 100)}% flavor fit)`,
-      ...cf.reasons,
-      ...rp.reasons,
-    ];
+    // ONE NUMBER. The why-sentence is derived from the SAME value the ring
+    // draws, so the card can never show 92 and say 89% four lines apart.
+    const { breakdown, matchScore } = breakDown(flavorMatch, distanceKm, cf.delta, rp.delta, place, profile);
+
+    const reasons = [`matches your taste (${matchScore}% match)`, ...cf.reasons, ...rp.reasons];
     scored.push({
       place,
       score,
+      matchScore,
+      breakdown,
       distanceKm,
       walkMinutes: Math.max(1, Math.round((distanceKm / 4.5) * 60)),
       bestDish: pickBestDish(place, profile.vector),

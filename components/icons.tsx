@@ -176,6 +176,69 @@ export function LocateIcon(p: IconProps) {
   );
 }
 
+/** Umbrella — the COVERED WALK badge, from the seed's `sheltered` flag. */
+export function UmbrellaIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M3 12a9 9 0 0 1 18 0z" />
+      <path d="M12 12v6.5a2.5 2.5 0 0 1-5 0" />
+    </Svg>
+  );
+}
+
+/** Thermometer — the tonight strip's temperature slot. */
+export function ThermoIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M14 13.5V5a2 2 0 1 0-4 0v8.5a4 4 0 1 0 4 0z" />
+      <path d="M12 9v5" />
+    </Svg>
+  );
+}
+
+/** Storefront — the "spots indexed" / open-now counter. */
+export function StoreIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
+      <path d="M3.4 9l1.4-4.4A1 1 0 0 1 5.8 4h12.4a1 1 0 0 1 1 .6L20.6 9" />
+      <path d="M10 20v-5h4v5" />
+    </Svg>
+  );
+}
+
+/** Sliders — the taste / calibration module head. */
+export function SlidersIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+      <circle cx="16" cy="7" r="2.2" />
+      <circle cx="10" cy="17" r="2.2" />
+    </Svg>
+  );
+}
+
+/** Eye with a slash — the "hide Togo" control. */
+export function EyeOffIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M10.6 6.2A9.7 9.7 0 0 1 12 6c5 0 9 6 9 6a15.6 15.6 0 0 1-3 3.5M6.4 8.2A15.9 15.9 0 0 0 3 12s4 6 9 6a9.4 9.4 0 0 0 3.6-.7" />
+      <path d="M10 10a2.8 2.8 0 0 0 4 4" />
+      <path d="M4 4l16 16" />
+    </Svg>
+  );
+}
+
+/** Refresh — the re-roll / try-again control. */
+export function RefreshIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M20 12a8 8 0 1 1-2.6-5.9" />
+      <path d="M20 4v5h-5" />
+    </Svg>
+  );
+}
+
 /** Google "G" — brand mark for the sign-in button (multi-color, no stroke). */
 export function GoogleIcon({ size = 20 }: { size?: number }) {
   return (

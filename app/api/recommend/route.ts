@@ -11,17 +11,36 @@ import { recommend, ScoredPlace } from "@/lib/scoring";
 
 const DEFAULT_ORIGIN = { lat: 1.2841, lng: 103.8515 }; // Raffles Place
 
+// Purely ADDITIVE against the shipped shape: every field the client already
+// reads keeps its name, type and meaning. The new ones are the signals the
+// pipeline was computing and then discarding — the score and its decomposition,
+// the coordinates for the minimap and the true bearing, opening hours for the
+// closing chip, the shelter flag, and the dish vector for the dual radar.
 function serialize(pick: ScoredPlace | null, explanation?: string) {
   if (!pick) return null;
   return {
     placeId: pick.place.id,
     name: pick.place.name,
     cuisine: pick.place.cuisine,
-    dish: pick.bestDish ? { name: pick.bestDish.name, priceSgd: pick.bestDish.priceSgd } : null,
+    dish: pick.bestDish
+      ? {
+          id: pick.bestDish.id,
+          name: pick.bestDish.name,
+          priceSgd: pick.bestDish.priceSgd,
+          flavor: pick.bestDish.flavor,
+        }
+      : null,
     walkMinutes: pick.walkMinutes,
     distanceKm: Math.round(pick.distanceKm * 100) / 100,
     priceLevel: pick.place.priceLevel,
     explanation: explanation ?? pick.reasons.join(" · "),
+    matchScore: pick.matchScore,
+    breakdown: pick.breakdown,
+    lat: pick.place.lat,
+    lng: pick.place.lng,
+    openHour: pick.place.openHour,
+    closeHour: pick.place.closeHour,
+    sheltered: pick.place.sheltered,
   };
 }
 
@@ -93,6 +112,9 @@ export async function GET(req: NextRequest) {
     },
     note,
     swipeCount: profile.swipeCount,
+    // The session-effective palate (moods applied) — the ember polygon the dish
+    // vector is drawn against on the hero card.
+    vector: profile.vector,
     best: serialize(rec.best, bestExplanation),
     safer: serialize(rec.safer ?? null),
     adventurous: serialize(rec.adventurous ?? null),
