@@ -208,25 +208,25 @@ a {
      Slate coat (same value family as the glass surfaces, so he is the darkest
      object on screen while the CTA is the brightest and they can never be
      confused), cyan eyes, black nose, ember only in the harness. */
-  --togo-coat-1: #5a6478; /* top stop, lifted deliberately: ~4.3:1 against --bg */
-  --togo-coat-2: #394152;
-  --togo-coat-3: #1b1f2b;
-  --togo-mask: #141824; /* the dark face mask / cap */
-  --togo-blaze-1: #f7f4ec; /* cream-white — this is FUR, not the mark */
-  --togo-blaze-2: #d2dae6; /* COOL shadow on the cream — arctic animal, cool halftones */
-  --togo-ruff: #4a5468;
+  --togo-coat-1: #6b7690; /* top stop, lifted deliberately: ~4.3:1 against --bg */
+  --togo-coat-2: #454e63;
+  --togo-coat-3: #232838;
+  --togo-mask: #232a3c; /* the dark face mask / cap — mid stop */
+  --togo-mask-1: #333c54; /* lit shoulder of the cap, top-left */
+  --togo-mask-2: #12161f; /* its shadow side, bottom-right */
+  --togo-blaze-1: #fbf9f3; /* cream-white — this is FUR, not the mark */
+  --togo-blaze-2: #dae1eb; /* COOL shadow on the cream — arctic animal, cool halftones */
   --togo-iris: #8fe9ff;
   --togo-line: #10131c; /* nose + mouth, near-black */
-  --togo-whisker: rgba(235, 235, 245, 0.28);
-  --togo-ear-in: rgba(255, 122, 69, 0.22); /* backlit ear canal — the ONLY warm note above the jaw */
+  --togo-ear-in: rgba(255, 150, 120, 0.42); /* backlit ear canal — the ONLY warm note above the jaw */
   --togo-harness: #ff7a45; /* = --accent; named apart so a Hide-Togo build can null it */
   --togo-glow: rgba(255, 106, 42, 0.34);
   --togo-blaze-edge: transparent; /* light theme only — see the light block */
   --togo-mark-ink: #1b2029; /* the mark inverted for light surfaces */
   --togo-rim-1: rgba(255, 176, 58, 0.95);
-  --togo-rim-2: rgba(255, 122, 69, 0.34);
+  --togo-rim-2: rgba(255, 122, 69, 0.26);
   --togo-rim-3: rgba(255, 255, 255, 0);
-  --togo-rim-4: rgba(83, 217, 255, 0.36);
+  --togo-rim-4: rgba(83, 217, 255, 0.5);
 
   /* THE TUGLINE, as tokens, so it can carry a light-mode stop that survives a
      near-white ground. On dark it is the ember gradient; on light it darkens
@@ -332,15 +332,15 @@ a {
 
     /* Togo in light: a silhouette with modelling, rather than a lit object.
        --togo-iris does NOT change: the cyan eyes are the constant across themes. */
-    --togo-coat-1: #6e788c;
-    --togo-coat-2: #4a5468;
-    --togo-coat-3: #2b3140;
-    --togo-mask: #272d3c;
+    --togo-coat-1: #7c8699;
+    --togo-coat-2: #545e73;
+    --togo-coat-3: #333a4a;
+    --togo-mask: #39415a;
+    --togo-mask-1: #4d5674;
+    --togo-mask-2: #262c3d;
     --togo-blaze-1: #ffffff;
-    --togo-blaze-2: #c4cedc;
-    --togo-ruff: #5c687c;
+    --togo-blaze-2: #ccd6e2;
     --togo-line: #1b2029;
-    --togo-whisker: rgba(60, 60, 67, 0.32);
     --togo-glow: rgba(232, 84, 31, 0.2);
     --togo-blaze-edge: rgba(28, 38, 56, 0.3);
     --togo-rim-1: rgba(232, 84, 31, 0.55);
@@ -4498,7 +4498,6 @@ body:has(.sheet-layer) .tab-bar {
 }
 .togo-mouth,
 .togo-tug,
-.togo-whisker,
 .togo-howl-only,
 .togo-eye-happy,
 .togo-eye-open {
@@ -4641,12 +4640,6 @@ body:has(.sheet-layer) .tab-bar {
 .togo[data-mood="banked"] .togo-iris {
   stroke-opacity: 0.2;
 }
-.togo[data-mood="banked"] .togo-whisker {
-  opacity: 0;
-}
-.togo[data-mood="banked"] .togo-whisker-droop {
-  opacity: 1;
-}
 .togo[data-mood="banked"] .togo-needle {
   fill: var(--ink-3); /* greys and STOPS: no heading */
 }
@@ -4730,17 +4723,6 @@ body:has(.sheet-layer) .tab-bar {
   animation: togo-sonar 1.6s var(--ease-out) infinite;
   animation-delay: calc(var(--i) * 520ms);
 }
-/* THE WHISKERS GO LIVE. In hedging only index 5 — adventure — stays lit, so he
-   is visibly still sensing the axis in question. */
-.togo[data-mood="reading"] .togo-whisker,
-.togo[data-mood="hedging"] .togo-whisker[data-w="5"],
-.togo-whisker.is-live {
-  stroke: var(--data);
-  stroke-dasharray: 4 26;
-  animation: togo-scan 900ms linear infinite;
-  animation-delay: calc(var(--i) * -110ms);
-}
-
 /* LOCKED: the single gesture that says "decided". Timed to land on the same
    frame the score ring and the odometer resolve. */
 .togo[data-mood="locked"] .togo-needle-rot {
@@ -4748,9 +4730,6 @@ body:has(.sheet-layer) .tab-bar {
 }
 .togo[data-mood="locked"] .togo-body {
   animation: togo-lock-pop 260ms var(--spring) both;
-}
-.togo[data-mood="locked"] .togo-whisker {
-  animation: togo-whisker-flash 1000ms var(--ease-out) both;
 }
 .togo[data-mood="locked"] .togo-ring {
   animation: togo-ring-flash 1000ms var(--ease-out) both;
@@ -4795,9 +4774,6 @@ body:has(.sheet-layer) .tab-bar {
 /* ═══ SIZE DEGRADATION — the plan-bar, tab-bar and why-line instances cost one
    composited layer and nothing else. HARD FLOOR: below 24px, substitute the
    flat needle rather than shrinking him. ═══ */
-.togo[data-size="s"] .togo-whiskers,
-.togo[data-size="s"] .togo-guard,
-.togo[data-size="s"] .togo-ruff,
 .togo[data-size="s"] .togo-spec-2,
 .togo[data-size="s"] .togo-tug,
 .togo[data-size="s"] .togo-sonar-g,
@@ -4908,11 +4884,6 @@ body:has(.sheet-layer) .tab-bar {
     transform: translateY(-16px);
   }
 }
-@keyframes togo-scan {
-  to {
-    stroke-dashoffset: -30;
-  }
-}
 @keyframes togo-tug-run {
   to {
     stroke-dashoffset: -26;
@@ -4954,17 +4925,6 @@ body:has(.sheet-layer) .tab-bar {
   }
   100% {
     transform: scale(1);
-  }
-}
-@keyframes togo-whisker-flash {
-  0%,
-  40% {
-    stroke: var(--accent);
-    stroke-width: 1.8;
-  }
-  100% {
-    stroke: var(--togo-whisker);
-    stroke-width: 1.4;
   }
 }
 @keyframes togo-ring-flash {
@@ -5046,8 +5006,7 @@ body:has(.sheet-layer) .tab-bar {
    duplicate paths simply cross-fade on opacity. */
 @supports (transition-property: d) {
   .togo-mouth,
-  .togo-tug,
-  .togo-whisker {
+  .togo-tug {
     transition: d var(--dur-2) var(--ease-out), opacity 140ms linear;
   }
 }
@@ -5060,8 +5019,7 @@ body:has(.sheet-layer) .tab-bar {
     animation: none !important;
   }
   .togo-mouth,
-  .togo-tug,
-  .togo-whisker {
+  .togo-tug {
     transition: opacity 140ms linear; /* no d morph */
   }
   .togo-needle-rot {
@@ -5072,18 +5030,12 @@ body:has(.sheet-layer) .tab-bar {
     transform: rotate(calc(var(--bearing, 0deg) + 12deg));
   }
   /* the loading screen still communicates progress: a static scan bar 40% up
-     the blaze, a needle frozen at its search extreme, live cyan whiskers */
+     the blaze and a needle frozen at its search extreme */
   .togo[data-mood="reading"] .togo-needle-rot {
     transform: rotate(34deg);
   }
   .togo[data-mood="reading"] .togo-scan {
     transform: translateY(58px);
-  }
-  .togo[data-mood="reading"] .togo-whisker,
-  .togo[data-mood="hedging"] .togo-whisker[data-w="5"],
-  .togo-whisker.is-live {
-    stroke-dasharray: none;
-    stroke: var(--data);
   }
   .togo[data-mood="howl"] .togo-howl-only:not(.togo-spark) {
     opacity: 1;
