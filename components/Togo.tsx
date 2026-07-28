@@ -14,10 +14,7 @@
 //   · A SEPARATE MUZZLE LOBE. The ruff is widest at y 70 and the muzzle drops out
 //     of it at less than half that width, so the bottom of the silhouette is a
 //     snout rather than a chin.
-//   · RUFF SCALLOPS CUT INTO the jaw outline — three per side, each bowing out
-//     while the outline steps in, so the coat breaks the edge from inside.
 //   · NO TAIL ANYWHERE, in any mood, in any variant.
-//   · SIX SHORT VIBRISSAE leaving the muzzle, not long straight rays.
 //
 // Pure presentational: no hooks, no state, server-safe, every defs id
 // gid-prefixed (components/TasteRadar.tsx convention). Six moods drive the
@@ -36,7 +33,6 @@
 // Everything is symmetric about x=60 and every coordinate is literal and final.
 
 import type { CSSProperties } from "react";
-import { DIMS, FlavorVector } from "@/lib/flavor";
 import { NEEDLE_PATH } from "./Needle";
 
 export type TogoMood = "harnessed" | "reading" | "locked" | "hedging" | "banked" | "howl";
@@ -51,8 +47,6 @@ export interface TogoProps {
   size?: number;
   /** Degrees. Rotates the standalone needle only — the blaze never moves. */
   bearing?: number;
-  /** Draws each whisker to its dimension's strength, in real DIMS order. */
-  vector?: FlavorVector;
   /** Composable 6° head yaw. Not a seventh mood. */
   tilt?: boolean;
   /**
@@ -76,82 +70,84 @@ const VB: Record<TogoVariant, string> = {
 };
 const ASPECT: Record<TogoVariant, number> = { needle: 1, head: 1, bust: 170 / 120 };
 
-/* ── L1 EAR — a TALL triangle, not a corner tuft. Base runs (25.6,49.4) →
-   (51.5,41): 26 wide against a 36-unit rise, apex at x≈34.7 leaning ~8° out.
-   Inner bases land at x=51.5 and x=68.5, a 17-UNIT GAP — close-set is the husky
-   tell against a shepherd or a fox, and the deep V between the two is what the
-   eye actually reads at 20px. ─────────────────────────────────────────────── */
+/* ═══ GEOMETRY REVISION 3 — THE BABY SCHEMA ═══════════════════════════════
+   Revision 2 passed the 20px silhouette test and failed the only test that
+   decides whether anyone wants him on their home screen: it was drawn as an
+   adult working animal on purpose. Its own margins admitted it — "small and low
+   reads adult", "the outer corner is lifted 8°... the whole difference between
+   an alert working animal and a puppy", "there is not one circle in it". Every
+   one of those calls is inverted below, because the mascot's job is to be
+   liked, and neoteny is the mechanism:
+
+     PROPORTION   Cranium 82 wide against 75 tall — WIDER than tall, and round.
+                  Rev 2 was 76 × 79, tapering the whole way.
+     MUZZLE       Snub: 30 wide, 22 deep, rounded off. Rev 2 ran a long wedge
+                  to a chin at y 115.4; this ends at 108.5.
+     EYES         22 units across on an 82-wide head, at 49% of head height —
+                  BIG and HIGH. Rev 2: 18 × 12.6, at 57%, slanted up 8°.
+                  The slant is gone; a lifted outer corner is a glare.
+     NOSE         Bigger relative to the muzzle, and higher — an infant's
+                  features crowd the lower half of the face.
+     DROPPED      Whiskers and guard hairs. Both are realist texture, and both
+                  fought the flat-vector read at every size under 64px.
+
+   The husky is still unmistakably a husky: the tall close-set ears, the dark
+   cap, the white cheeks, the blaze up the forehead and the ice-blue eyes are
+   the species tells, and all five survive. ─────────────────────────────── */
+
+/* ── L1 EAR — still tall and close-set (that is the husky tell against a fox or
+   a shepherd, and the deep V between the pair is what the eye reads at 20px),
+   but the apex is now a ROUNDED CAP rather than a point. A sharp tip on a round
+   skull reads as a warning triangle. ─────────────────────────────────────── */
 const EAR =
-  "M25.6 49.4 C23.4 38 25.6 23.4 29.8 13.2 C31.8 8.2 37.6 8 39.6 13.2 L51.5 41 C53.3 44.8 50.4 49.2 46.1 48.1 Z";
-/* the same shape at 0.54 about its own centroid — light through thin skin, and
-   the only warm pixel above the jaw */
+  "M27 52 C22 39 24.5 24 29.2 14.5 C31.4 10 36.4 10.4 38.4 15 L53.5 43 C55.6 47.4 52.4 52.6 47.6 51.2 Z";
+/* the same shape inset — light through thin skin, and the only warm pixel
+   above the jaw */
 const EAR_INNER =
-  "M31 42.2 C29.8 36 31 28.1 33.2 22.6 C34.3 19.9 37.4 19.8 38.5 22.6 L45 37.6 C45.9 39.7 44.4 42.1 42 41.5 Z";
+  "M32.4 46.6 C29.4 37.6 31.2 28 34 22 C35.3 19.2 38.2 19.5 39.4 22.2 L48.4 40 C49.6 42.7 47.7 45.8 44.9 45 Z";
 
-/* ── L2 HEAD — the wedge. Crown at y 39.4, widest 98 at y 70, RUFF SCALLOPS
-   (three per side, y 70→100) cut INTO the outline, then a hard taper into a
-   MUZZLE LOBE less than half the ruff's width, chin at y 115.4. Taller than
-   wide, tapering the whole way: there is not one circle in it. ───────────── */
+/* ── L2 HEAD — a round cranium with a snub muzzle dropped out of it. Crown at
+   y 33, widest 82 at y 62, cheeks bulging OUT rather than tapering in, then a
+   short step into a 30-wide muzzle lobe and a chin at y 108.5. The cheek arcs
+   are the circles rev 2 was written to exclude; they are the whole point. ─ */
 const HEAD =
-  "M60 39.4 C64 37.6 66.6 36.6 68.5 36.2 C81 34.6 89.8 39.8 94.4 49.2 C97.4 55.4 98.4 62.4 98 69.8 C99.9 74.2 98.4 78.2 93.8 81 C95 85.8 93 89.2 88 91.2 C88.6 95.4 86 98.2 81 99.4 C79.6 100.6 78 101.2 76.6 101.6 C76.4 105.4 75.4 109 72.6 111.4 C69.6 114 65.2 115.2 60 115.4 C54.8 115.2 50.4 114 47.4 111.4 C44.6 109 43.6 105.4 43.4 101.6 C42 101.2 40.4 100.6 39 99.4 C34 98.2 31.4 95.4 32 91.2 C27 89.2 25 85.8 26.2 81 C21.6 78.2 20.1 74.2 22 69.8 C21.6 62.4 22.6 55.4 25.6 49.2 C30.2 39.8 39 34.6 51.5 36.2 C53.4 36.6 56 37.6 60 39.4 Z";
+  "M60 33 C78 33 96 42 101 60 C105 74 100 84 88 89 C82 91.5 78 92 75 93 C76.5 99 73 105 66 107.5 C64 108.2 62 108.5 60 108.5 C58 108.5 56 108.2 54 107.5 C47 105 43.5 99 45 93 C42 92 38 91.5 32 89 C20 84 15 74 19 60 C24 42 42 33 60 33 Z";
 
-/* ── L4 MASK — one continuous band with a shallow V under the bridge, clipped to
-   the head so its edges are the head's edges. NEVER two separate eye patches:
-   two blotches read as a bandit, one band reads as equipment. ────────────── */
+/* ── L4 MASK — one continuous band with a V under the bridge, clipped to the
+   head so its edges are the head's edges. NEVER two separate eye patches: two
+   blotches read as a bandit, one band reads as a mask. It brackets the eyes at
+   their widest and then RELEASES: taken any lower it covered three quarters of
+   the head and the whole animal collapsed into one black blob with a white
+   wedge in it. The three tones — dark cap, slate cheek, cream muzzle — are what
+   make him read as a husky rather than as a panda. ──────────────────────── */
 const MASK =
-  "M12 24 L108 24 L108 74 C99 84.5 90 88 79 86.6 C70 85.4 64 82.6 60 80 C56 82.6 50 85.4 41 86.6 C30 88 21 84.5 12 74 Z";
+  "M8 20 L112 20 L112 71 C104 81.5 94 85.5 82 84 C72 82.8 65 79.4 60 75.8 C55 79.4 48 82.8 38 84 C26 85.5 16 81.5 8 71 Z";
 
-/* ── L5 BLAZE — the needle, on the face. Apex (60,41); the flanks obey
-   x = 60 ± 0.5774·(y−41), so the apex is exactly 60° — TasteRadar's own spoke
-   step. The barb tips at (47.3,63) and (72.7,63) ARE the pale brow spots and
-   now sit clear ABOVE the almonds; the pinch at y 68–83 is the bridge between
-   the eyes; the flare below y 87 is the muzzle. One shape doing three
-   anatomical jobs and reading as an arrow the whole time. ────────────────── */
+/* ── L5 BLAZE — the needle, on the face. Apex (60,36); the flanks still obey
+   x = 60 ± 0.5774·(y−36), so the apex is exactly 60° — TasteRadar's own spoke
+   step, and the one law carried over from rev 2 untouched. The barbs at y 59.4
+   are the pale brow spots, the pinch at y 65–80 is the bridge between the eyes,
+   and the flare below y 84 IS the muzzle. One shape doing three anatomical jobs
+   and reading as an arrow the whole time. ───────────────────────────────── */
 const BLAZE =
-  "M60 41 L72.7 63 C69.6 63.5 67.2 65 66.2 68.4 C65.4 71.4 65 74 65.2 78 C65.6 83.4 72.4 87.4 72.8 95 C73.2 103.6 68 110.6 60 111 C52 110.6 46.8 103.6 47.2 95 C47.6 87.4 54.4 83.4 54.8 78 C55 74 54.6 71.4 53.8 68.4 C52.8 65 50.4 63.5 47.3 63 Z";
+  "M60 36 L73.5 59.4 C70 60 67.6 61.8 66.6 65.2 C65.8 68 65.4 71 65.6 75 C66 80.5 73.4 84.5 74.8 92 C76.4 100.4 70 107.6 60 108 C50 107.6 43.6 100.4 45.2 92 C46.6 84.5 54 80.5 54.4 75 C54.6 71 54.2 68 53.4 65.2 C52.4 61.8 50 60 46.5 59.4 Z";
 
-/* ── L6 ALMOND — 18 wide × 12.6 tall on a 76-wide head, sitting at 51% of head
-   height. Small and low reads adult; big and high reads toy. The outer corner is
-   lifted 8° at placement — that single 8° is the whole difference between an
-   alert working animal and a puppy. ─────────────────────────────────────── */
-const ALMOND = "M-9 0 C-6.4 -5.6 -1 -7.2 4.6 -5.2 C7.6 -4 9 -2 9 -1 C9 1.4 5.8 4.8 .8 5.4 C-4.2 6 -7 3.4 -9 0 Z";
-const EYE_X = 77;
-const EYE_Y = 76;
+/* ── L6 EYE — 16.4 × 17.6 on an 82-wide head. ROUNDNESS is what reads cute,
+   not raw area: rev 2's 18 × 12.6 was wide and squinting, and a first pass at
+   21 × 22.8 put 63% of the face width inside two eyeballs and went straight
+   past cute into uncanny. Taller than wide, placed LEVEL — rev 2 rotated the
+   pair -8° so the outer corners lifted, which is the difference between a look
+   and a glare. ──────────────────────────────────────────────────────────── */
+const EYE =
+  "M0 -8.8 C4.6 -8.8 8.2 -4.9 8.2 0 C8.2 4.9 4.6 8.8 0 8.8 C-4.6 8.8 -8.2 4.9 -8.2 0 C-8.2 -4.9 -4.6 -8.8 0 -8.8 Z";
+const EYE_X = 74.6;
+const EYE_Y = 70.5;
 
-/* ── L7 NOSE — husky black, a rounded trapezoid wider than tall, at the needle's
-   foot. IT TAKES NO EMBER: a warm nose puts saturated pixels at the exact
-   optical centre of the face and turns a guide into a pet. ───────────────── */
+/* ── L7 NOSE — husky black, a rounded heart wider than tall, sitting HIGH on the
+   snub muzzle. IT TAKES NO EMBER: a warm nose puts saturated pixels at the exact
+   optical centre of the face and turns a guide into a plush toy. ─────────── */
 const NOSE =
-  "M60 93 C64.2 93 68 94.8 68 97.5 C68 100.6 63.6 103.2 60 103.2 C56.4 103.2 52 100.6 52 97.5 C52 94.8 55.8 93 60 93 Z";
-
-/* ── L9 WHISKERS — SIX SHORT VIBRISSAE leaving the muzzle, indexed to
-   lib/flavor.ts DIMS order [heat, sweet, soupy, fried, rich, adventure]. With
-   `vector` passed, DRAWN LENGTH = DIMENSION STRENGTH and the mascot becomes a
-   data visualisation with zero extra art. ───────────────────────────────── */
-const WHISKERS = [
-  "M47 95 C41 92.6 36 90 31.6 86.4", // 0 heat
-  "M46.4 99.4 C39.6 99 33.6 98 28.4 96.4", // 1 sweet
-  "M47 103.6 C41.4 105.6 36.6 108 32.6 111", // 2 soupy
-  "M73 95 C79 92.6 84 90 88.4 86.4", // 3 fried
-  "M73.6 99.4 C80.4 99 86.4 98 91.6 96.4", // 4 rich
-  "M73 103.6 C78.6 105.6 83.4 108 87.4 111", // 5 adventure
-];
-/** BANKED droop — the same six paths, +3 on every terminal y. Command parity. */
-const WHISKERS_DROOP = [
-  "M47 95 C41 92.6 36 90 31.6 89.4",
-  "M46.4 99.4 C39.6 99 33.6 98 28.4 99.4",
-  "M47 103.6 C41.4 105.6 36.6 108 32.6 114",
-  "M73 95 C79 92.6 84 90 88.4 89.4",
-  "M73.6 99.4 C80.4 99 86.4 98 91.6 99.4",
-  "M73 103.6 C78.6 105.6 83.4 108 87.4 114",
-];
-
-/** L10 GUARD HAIRS — purely textural, three per side, mirrored, riding the ruff. */
-const GUARD = [
-  "M27 78 C25.4 81 25.6 84 27.6 86.4",
-  "M30.6 89 C29 91.4 30 94 32.6 95.8",
-  "M35.4 97.6 C37.4 99.6 40 101 43 101.8",
-];
+  "M60 88.4 C64.6 88.4 68.4 90.5 68.4 93.5 C68.4 96.9 64.2 99.8 60 99.8 C55.8 99.8 51.6 96.9 51.6 93.5 C51.6 90.5 55.4 88.4 60 88.4 Z";
 
 /* ══ BUST — viewBox 0 0 120 170, head group translated y−2. The body ends in a
    MASKED DISSOLVE rather than at the frame edge, so there is no hard horizontal
@@ -162,15 +158,10 @@ const NECK = "M46 100 C41 111 38 122 37 136 L83 136 C82 122 79 111 74 100 Z";
 const SHOULDER = "M16 170 C16 142 34 130 60 130 C86 130 104 142 104 170 Z";
 const BIB = "M60 131 C71 131 77.5 141.5 78.5 170 L41.5 170 C42.5 141.5 49 131 60 131 Z";
 
-/** RUFF fringe — six scallops over the collar. Texture only, never data. */
-const RUFF = [
-  "M30 130 Q35 139.5 40 131",
-  "M40 131 Q45 140.5 50 132",
-  "M50 132 Q55 141 60 132.5",
-  "M60 132.5 Q65 141 70 132",
-  "M70 132 Q75 140.5 80 131",
-  "M80 131 Q85 139.5 90 130",
-];
+/* NO RUFF. Six scallops ran across the top of the chest as texture; against
+   the round head and the flat fills of revision 3 they stopped reading as fur
+   and started reading as a lace collar. Same verdict as the whiskers: realist
+   detail that fights a flat drawing loses. */
 
 /* HARNESS — a CLOSED YOKE, never a free-floating V or a single open arc: a
    padded collar band with real thickness running round the chest, two side
@@ -213,49 +204,54 @@ function hash(s: string): number {
 }
 
 /**
- * One eye, authored once and placed twice. The 8° slant mirrors correctly
- * because the whole placement mirrors: outer corner up on BOTH sides.
+ * One eye, authored once and placed twice. Placed LEVEL: rev 2 rotated the pair
+ * -8° so the outer corners lifted, which is the difference between a look and a
+ * glare and was costing him every ounce of warmth he had.
  */
 function Eye({ gid, side }: { gid: string; side: "l" | "r" }) {
-  const p = `rotate(-8 ${EYE_X} ${EYE_Y}) translate(${EYE_X} ${EYE_Y})`;
+  const p = `translate(${EYE_X} ${EYE_Y})`;
   const place = side === "r" ? p : `translate(120,0) scale(-1,1) ${p}`;
   return (
     <g transform={place}>
       <g className="togo-eye">
         <g className="togo-eye-open">
-          <path d={ALMOND} fill="var(--togo-blaze-1)" />
+          <path d={EYE} fill="var(--togo-blaze-1)" />
           <g clipPath={`url(#${gid}-eyeclip)`}>
             <g className="togo-iris">
               {/* the 1px stroke is a fake bloom that costs zero filter time */}
-              <circle r="6" fill={`url(#${gid}-iris)`} stroke="rgba(83,217,255,.55)" strokeWidth="1" />
-              <circle r="3" fill="#08111A" />
+              <circle r="7.7" fill={`url(#${gid}-iris)`} stroke="rgba(83,217,255,.55)" strokeWidth=".9" />
+              <circle r="3.5" fill="#08111A" />
               {/* two ASYMMETRIC speculars — the cheapest single trick separating
-                  premium vector from free-icon work */}
-              <circle cx="2.6" cy="-2.8" r="2.2" fill="#fff" opacity=".95" />
-              <circle className="togo-spec-2" cx="-2.1" cy="2.4" r="1" fill="#fff" opacity=".38" />
+                  premium vector from free-icon work, and scaled WITH the iris:
+                  a big eye with a small catchlight reads as glass, not as life.
+                  THE IRIS FILLS 94% OF THE EYE. Leave more cream than that
+                  and it reads as a thick sclera ring — a cartoon eye wants a
+                  RIM, not a white of the eye. */}
+              <circle cx="2.8" cy="-3.1" r="2.5" fill="#fff" opacity=".95" />
+              <circle className="togo-spec-2" cx="-2.4" cy="2.8" r="1.2" fill="#fff" opacity=".42" />
             </g>
           </g>
         </g>
         {/* HOWL only — the celebration is spent exactly once */}
         <path
           className="togo-eye-happy"
-          d="M-7 1.6 Q0 -5.4 7 1.6"
+          d="M-6.6 1.9 Q0 -5.6 6.6 1.9"
           stroke="var(--togo-blaze-1)"
-          strokeWidth="3.2"
+          strokeWidth="3.4"
           fill="none"
           strokeLinecap="round"
           opacity="0"
         />
         {/* ONE property drives blink and every half-lidded mood. Clipped to the
-            almond because the un-clipped rect reaches into the blaze, and THE
+            eye because the un-clipped rect reaches into the blaze, and THE
             BLAZE IS RIGID: it must be pixel-identical in every mood. */}
         <g clipPath={`url(#${gid}-eyeclip)`}>
           <rect
             className="togo-lid"
-            x="-10"
-            y="-7.6"
-            width="20"
-            height="14"
+            x="-9.4"
+            y="-9.8"
+            width="18.8"
+            height="19"
             fill="var(--togo-mask)"
             transform="scale(1,0)"
             style={side === "r" ? ({ "--blink-d": "25ms" } as CSSProperties) : undefined}
@@ -271,7 +267,6 @@ export default function Togo({
   variant = "head",
   size = 40,
   bearing = 0,
-  vector,
   tilt = false,
   tug = false,
   gid = "tg",
@@ -280,8 +275,7 @@ export default function Togo({
 }: TogoProps) {
   const dataSize = size <= 32 ? "s" : size <= 72 ? "m" : "l";
   const isBust = variant === "bust";
-  const shift = isBust ? "translate(0 -2)" : undefined;
-  const values = vector ? DIMS.map((d) => vector[d]) : null;
+  const shift = isBust ? "translate(0 10)" : undefined;
 
   const root: CSSProperties = {
     "--seed": hash(gid) % 7,
@@ -310,6 +304,11 @@ export default function Togo({
           <stop offset=".52" stopColor="var(--togo-coat-2)" />
           <stop offset="1" stopColor="var(--togo-coat-3)" />
         </linearGradient>
+        <linearGradient id={`${gid}-cap`} x1=".18" y1="0" x2=".82" y2="1">
+          <stop offset="0" stopColor="var(--togo-mask-1)" />
+          <stop offset=".62" stopColor="var(--togo-mask)" />
+          <stop offset="1" stopColor="var(--togo-mask-2)" />
+        </linearGradient>
         <linearGradient id={`${gid}-blaze`} x1=".5" y1="0" x2=".5" y2="1">
           <stop offset="0" stopColor="var(--togo-blaze-1)" />
           <stop offset=".62" stopColor="var(--togo-blaze-1)" />
@@ -324,10 +323,14 @@ export default function Togo({
         {/* The app's own light model: ember falls top-left exactly like
             --bg-glow-1, cyan bounces back bottom-right from --data. He is LIT BY
             the Ember Engine, not painted in it. */}
+        {/* Four stops, not two, and the transparent one sits at .55 rather
+            than .60 — at .60 the ember ran out mid-crown and terminated in a
+            visible hard end, which read as a stray orange hair across the top
+            of his head rather than as a light. */}
         <linearGradient id={`${gid}-rim`} x1=".10" y1="0" x2=".92" y2="1">
           <stop offset="0" stopColor="var(--togo-rim-1)" />
-          <stop offset=".36" stopColor="var(--togo-rim-2)" />
-          <stop offset=".60" stopColor="var(--togo-rim-3)" />
+          <stop offset=".30" stopColor="var(--togo-rim-2)" />
+          <stop offset=".55" stopColor="var(--togo-rim-3)" />
           <stop offset="1" stopColor="var(--togo-rim-4)" />
         </linearGradient>
         <linearGradient id={`${gid}-ear`} x1=".5" y1="1" x2=".5" y2="0">
@@ -360,7 +363,7 @@ export default function Togo({
           <path d={HEAD} />
         </clipPath>
         <clipPath id={`${gid}-eyeclip`}>
-          <path d={ALMOND} />
+          <path d={EYE} />
         </clipPath>
         <clipPath id={`${gid}-blazeclip`}>
           <path d={BLAZE} />
@@ -410,11 +413,6 @@ export default function Togo({
                     strokeLinecap="round"
                   />
                 </g>
-                <g className="togo-ruff" fill="none" stroke="var(--togo-ruff)" strokeWidth="2.4" strokeLinecap="round">
-                  {RUFF.map((d) => (
-                    <path key={d} d={d} />
-                  ))}
-                </g>
               </>
             )}
 
@@ -449,7 +447,9 @@ export default function Togo({
                   strokeLinejoin="round"
                 />
                 {/* L4 */}
-                <path d={MASK} fill="var(--togo-mask)" clipPath={`url(#${gid}-clip)`} />
+                {/* Lit, not painted: a flat fill here made the whole cranium one
+                    dead black plate and cost the head its roundness. */}
+                <path d={MASK} fill={`url(#${gid}-cap)`} clipPath={`url(#${gid}-clip)`} />
                 {/* L5 */}
                 <path className="togo-blaze" d={BLAZE} fill={`url(#${gid}-blaze)`} />
                 <g clipPath={`url(#${gid}-blazeclip)`}>
@@ -465,82 +465,38 @@ export default function Togo({
                 <Eye gid={gid} side="r" />
                 {/* L7 */}
                 <path d={NOSE} fill="var(--togo-line)" />
-                <circle cx="57" cy="95" r="1.6" fill="#fff" opacity=".5" />
-                {/* L8 — two paths so the halves move independently */}
-                <g fill="none" stroke="var(--togo-line)" strokeWidth="2.4" strokeLinecap="round">
-                  <path className="togo-mouth togo-mouth-l" d="M60 103.7 Q54.8 108.4 49 105.6" />
-                  <path className="togo-mouth togo-mouth-r" d="M60 103.7 Q65.2 108.4 71 105.6" />
+                <circle cx="56.6" cy="91" r="1.9" fill="#fff" opacity=".5" />
+                {/* L8 MOUTH — two paths so the halves move independently. Both
+                    now turn UP at the far end: rev 2's halves ran level out of
+                    the corner, which is a muzzle line rather than a smile. */}
+                <g fill="none" stroke="var(--togo-line)" strokeWidth="2.1" strokeLinecap="round">
+                  <path className="togo-mouth togo-mouth-l" d="M60 99.4 Q56.2 104 52.2 101.4" />
+                  <path className="togo-mouth togo-mouth-r" d="M60 99.4 Q63.8 104 67.8 101.4" />
                   {/* drawn 1px off level — that is the entire "unimpressed" read */}
-                  <path className="togo-mouth togo-mouth-flat" d="M51.5 106.6 L68.5 105.6" opacity="0" />
+                  <path className="togo-mouth togo-mouth-flat" d="M53.4 102.2 L66.6 101.4" opacity="0" />
                 </g>
 
                 {/* HOWL ONLY. The tongue exists nowhere else in this file. */}
                 <g className="togo-howl">
                   <path
                     className="togo-howl-only togo-howl-mouth"
-                    d="M53 103 C56 101.4 64 101.4 67 103 C67 110.4 64 114.2 60 114.2 C56 114.2 53 110.4 53 103 Z"
+                    d="M52.6 100.2 C55.6 98.6 64.4 98.6 67.4 100.2 C67.4 107.6 64 111.4 60 111.4 C56 111.4 52.6 107.6 52.6 100.2 Z"
                     fill="#2A1620"
                     opacity="0"
                   />
                   <path
                     className="togo-howl-only togo-tongue"
-                    d="M56.4 108.6 C57.8 107 62.2 107 63.6 108.6 C63.6 112 61.8 113.4 60 113.4 C58.2 113.4 56.4 112 56.4 108.6 Z"
-                    fill="#C4566A"
+                    d="M56 105.6 C57.4 104 62.6 104 64 105.6 C64 109.4 62 110.8 60 110.8 C58 110.8 56 109.4 56 105.6 Z"
+                    fill="#E8798D"
                     opacity="0"
                   />
                 </g>
 
-                {/* L9 WHISKERS — rooted in the muzzle flare, so they travel with
-                    the head rather than staying pinned to the frame. */}
-                <g
-                  className="togo-whiskers"
-                  fill="none"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  stroke="var(--togo-whisker)"
-                >
-                  {WHISKERS.map((d, i) => (
-                    <path
-                      key={d}
-                      className="togo-whisker"
-                      data-w={i}
-                      d={d}
-                      pathLength={100}
-                      strokeDasharray={values ? `${(values[i] * 100).toFixed(1)} 100` : undefined}
-                      style={{ "--i": i } as CSSProperties}
-                    />
-                  ))}
-                  {WHISKERS_DROOP.map((d, i) => (
-                    <path
-                      key={d}
-                      className="togo-whisker togo-whisker-droop"
-                      data-w={i}
-                      d={d}
-                      pathLength={100}
-                      strokeDasharray={values ? `${(values[i] * 100).toFixed(1)} 100` : undefined}
-                      opacity="0"
-                      style={{ "--i": i } as CSSProperties}
-                    />
-                  ))}
-                </g>
-
-                {/* L10 GUARD HAIRS — purely textural */}
-                <g
-                  className="togo-guard"
-                  fill="none"
-                  stroke="rgba(235,235,245,.22)"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                >
-                  {GUARD.map((d) => (
-                    <path key={d} d={d} />
-                  ))}
-                  <g transform="scale(-1,1) translate(-120,0)">
-                    {GUARD.map((d) => (
-                      <path key={d} d={d} />
-                    ))}
-                  </g>
-                </g>
+                {/* NO BLUSH. It is the standard cute lever and it was tried
+                    here: on a DARK-coated animal a warm cheek patch has no pale
+                    ground to tint, so at every opacity that was visible at all
+                    it read as a bruise. Cuteness on this face comes from
+                    proportion, not from makeup. */}
               </g>
 
               {/* SCALE ON A CIRCLE IS FREE; NEVER ANIMATE r. */}
