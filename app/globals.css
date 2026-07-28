@@ -2268,7 +2268,7 @@ body:has(.sheet-layer) .tab-bar {
 /* ── TITLE ROW — a flex row, which is what deleted the padding-right:60px
    magic number that was wrong for both ring sizes anyway. ──────────────── */
 
-.pick-card .tag {
+.tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -5052,4 +5052,317 @@ body:has(.sheet-layer) .tab-bar {
   .togo-sonar {
     opacity: 0;
   }
+}
+
+/* ═══ THE GROUP DECISION ═══════════════════════════════════════════════════
+   One route, three states. Everything here is sized for a phone held one-handed
+   while walking, which is the actual posture of the person reading it. */
+
+.group-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  padding-bottom: var(--tabbar-clearance);
+}
+
+.together-btn {
+  margin-top: var(--s3);
+}
+
+/* THE CODE IS THE HEADLINE. It gets read aloud across a table at least as often
+   as the link gets tapped, so it is set in the telemetry mono at a size that
+   survives being squinted at from the far side of a hawker centre. */
+.group-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4);
+  border-radius: var(--r-lg);
+}
+
+.group-code {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--data);
+  text-shadow: 0 0 18px rgba(83, 217, 255, 0.35);
+}
+
+.group-where {
+  min-width: 0;
+}
+.group-place {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-time {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.group-warn {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent-tint);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.group-join,
+.group-dead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s5);
+  border-radius: var(--r-lg);
+}
+.group-dead {
+  align-items: center;
+  text-align: center;
+}
+.group-togo {
+  align-self: flex-start;
+}
+.group-say {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.group-label {
+  margin: var(--s3) 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mono-label);
+}
+
+.group-input {
+  width: 100%;
+  padding: 13px var(--s4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: var(--mat-thin-tint);
+  color: var(--ink);
+  font-size: 16px; /* 16px or iOS zooms the whole page on focus */
+  font-family: inherit;
+}
+.group-input:focus-visible {
+  outline: 2px solid var(--data);
+  outline-offset: 1px;
+}
+
+.quick-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.quick-card {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+}
+.quick-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.quick-btns {
+  display: flex;
+  gap: 6px;
+}
+.quick-btn {
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--dur-1) linear, color var(--dur-1) linear;
+}
+.quick-btn.on.yes {
+  background: var(--accent-soft);
+  color: var(--accent-tint);
+  border-color: transparent;
+}
+.quick-btn.on.no {
+  background: var(--mat-reg-tint);
+  color: var(--ink-2);
+}
+
+.group-fine {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.member {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: 9px var(--s4);
+  border-radius: var(--r-md);
+}
+.member-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.member-state {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.member.unseeded .member-state {
+  color: var(--accent-tint);
+}
+
+.group-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.group-pick {
+  padding: var(--s5);
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.group-pick.lead {
+  border: 1px solid var(--accent-soft);
+}
+.group-pick h3 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.gp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.gp-score {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-hi);
+}
+.gp-dish {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.gp-price {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--data);
+}
+.gp-meta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.gp-meta svg {
+  margin-left: 6px;
+}
+
+/* THE SPREAD. One row per person, sorted worst-first, because the whole point
+   is to surface the member the pick serves badly rather than bury them in an
+   average. */
+.gp-spread {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+}
+.gp-row {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: var(--s3);
+}
+.gp-who {
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gp-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.gp-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent-grad);
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: bar-in var(--dur-4) var(--ease-out) 160ms forwards;
+}
+.gp-val {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  text-align: right;
+}
+.gp-warn {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--accent-tint);
 }

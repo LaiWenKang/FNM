@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { loadPlan, effectiveHour } from "@/lib/plan";
 import { useState } from "react";
 import { MOODS } from "@/lib/mood";
 import { MOOD_LINES, togoLine } from "@/lib/togoLines";
 import Glyph from "@/components/Glyph";
 import Togo, { TogoMood } from "@/components/Togo";
-import { BowlIcon } from "@/components/icons";
+import { BowlIcon, PersonIcon } from "@/components/icons";
 
 // One-tap "today" preferences. Selections are session-only: they ride along
 // as query params and never modify the learned taste profile.
@@ -35,6 +36,7 @@ export default function MoodCard() {
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
   const [last, setLast] = useState<string | null>(null);
+  const [making, setMaking] = useState(false);
 
   function toggle(id: string) {
     setSelected((cur) => {
@@ -47,6 +49,28 @@ export default function MoodCard() {
   function go() {
     const q = selected.length ? `?mood=${selected.join(",")}` : "";
     router.push(`/recommend${q}`);
+  }
+
+  /* EAT TOGETHER. The group opens from the SAME card as the solo pick, seeded
+     with the same place and time the plan bar is already showing, so "us" is
+     one tap off "me" rather than a separate mode you have to go and find. */
+  async function together() {
+    setMaking(true);
+    const plan = loadPlan();
+    const r = await fetch("/api/group", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lat: plan.lat,
+        lng: plan.lng,
+        label: plan.label,
+        hour: effectiveHour(plan),
+      }),
+    })
+      .then((x) => x.json())
+      .catch(() => null);
+    if (r?.code) router.push(`/g/${r.code}`);
+    else setMaking(false);
   }
 
   const pose = last ? CHIP_MOOD[last] : null;
@@ -145,6 +169,11 @@ export default function MoodCard() {
         <BowlIcon size={20} strokeWidth={2} />
         Eat now
         {selected.length > 0 && <span className="count-pill">{selected.length}</span>}
+      </button>
+
+      <button className="big-btn secondary together-btn" type="button" onClick={() => void together()} disabled={making}>
+        <PersonIcon size={18} strokeWidth={2} />
+        {making ? "Opening…" : "Eat together"}
       </button>
     </div>
   );
