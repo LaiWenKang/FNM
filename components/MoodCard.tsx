@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MOODS } from "@/lib/mood";
+import { BowlIcon } from "@/components/icons";
 
 // One-tap "today" preferences. Selections are session-only: they ride along
 // as query params and never modify the learned taste profile.
@@ -22,6 +23,7 @@ export default function MoodCard() {
 
   return (
     <div className="mood-card">
+      <p className="eyebrow">Input</p>
       <p className="mood-title">Feeling anything today?</p>
       <div className="mood-chips">
         {MOODS.map((m) => (
@@ -36,7 +38,9 @@ export default function MoodCard() {
         ))}
       </div>
       <button className="big-btn" onClick={go} type="button">
-        🍜 Eat now{selected.length ? ` · ${selected.length} picked` : ""}
+        <BowlIcon size={20} strokeWidth={2} />
+        Eat now
+        {selected.length > 0 && <span className="count-pill">{selected.length} picked</span>}
       </button>
     </div>
   );

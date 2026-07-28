@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
+import BrandRow from "@/components/BrandRow";
+import { ShieldIcon, TagIcon, WalkIcon } from "@/components/icons";
 
 // The You tab: search settings and data controls. No accounts yet — everything
 // lives in this device's cookie (see PLAN.md privacy rules).
@@ -50,28 +53,38 @@ export default function ProfilePage() {
 
   return (
     <main>
-      <div className="brand">
-        FNM <span>·</span> you
-      </div>
+      <BrandRow label="You" />
       {!settings ? (
         <div className="center">Loading…</div>
       ) : (
         <>
-          <div className="setting-card">
-            <p className="setting-label">🚶 How far will you go?</p>
+          <div className="setting-card" style={{ animationDelay: "0ms", marginTop: 16 }}>
+            <p className="module-head">
+              <WalkIcon size={20} />
+              Range
+            </p>
+            <p className="setting-label">How far will you go?</p>
             <input
               type="range"
               min={0.5}
               max={5}
               step={0.5}
               value={settings.maxKm}
+              style={{ "--val": settings.maxKm } as CSSProperties}
               onChange={(e) => void update({ maxKm: parseFloat(e.target.value) })}
             />
-            <p className="setting-value">{settings.maxKm} km (~{Math.round((settings.maxKm / 4.5) * 60)} min walk)</p>
+            <p className="range-readout">
+              {settings.maxKm} <span className="unit">KM</span> · ~
+              {Math.round((settings.maxKm / 4.5) * 60)} <span className="unit">MIN</span>
+            </p>
           </div>
 
-          <div className="setting-card">
-            <p className="setting-label">💰 Usual budget ceiling</p>
+          <div className="setting-card" style={{ animationDelay: "90ms" }}>
+            <p className="module-head">
+              <TagIcon size={20} />
+              Budget
+            </p>
+            <p className="setting-label">Usual budget ceiling</p>
             <div className="mood-chips">
               {[1, 2, 3, 4].map((p) => (
                 <button
@@ -86,17 +99,26 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="setting-card">
-            <p className="setting-label">📱 Your data</p>
+          <div className="setting-card" style={{ animationDelay: "180ms" }}>
+            <p className="module-head">
+              <ShieldIcon size={20} />
+              Data
+            </p>
             <p className="setting-note">
-              No account, no name, no tracking — your taste profile ({settings.swipeCount} swipes,{" "}
-              {settings.recentCount} recent meals) lives in this device&apos;s browser only.
+              No account, no name, no tracking — your taste profile (
+              <span className="data-num">{settings.swipeCount}</span> swipes,{" "}
+              <span className="data-num">{settings.recentCount}</span> recent meals) lives in this
+              device&apos;s browser only.
             </p>
             <button className="big-btn secondary danger" type="button" onClick={() => void reset()}>
               Erase my data
             </button>
           </div>
-          {saved && <p className="context-line">Saved ✓</p>}
+          {saved && (
+            <div className="toast" role="status">
+              Saved ✓
+            </div>
+          )}
         </>
       )}
     </main>

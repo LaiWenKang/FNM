@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import BrandRow from "@/components/BrandRow";
+import ScoreRing from "@/components/ScoreRing";
+import { ArrowIcon, CloudRainIcon, TargetIcon, WalkIcon } from "@/components/icons";
 
 interface Pick {
   placeId: string;
@@ -28,7 +31,25 @@ function distanceLabel(pick: Pick): string {
   return pick.walkMinutes <= 45 ? `${pick.walkMinutes} min walk` : `${pick.distanceKm} km away`;
 }
 
+/** Price-tier telemetry: active "$" in ink-2, remaining slots as ink-3 dots. */
+function PriceTier({ level }: { level: number }) {
+  return (
+    <span className="meta-price" aria-label={`Price tier ${level} of 4`}>
+      <span className="tier-on">{"$".repeat(level)}</span>
+      <span className="tier-off" aria-hidden="true">
+        {"$".repeat(Math.max(0, 4 - level))}
+      </span>
+    </span>
+  );
+}
+
 const DEFAULT_ORIGIN = { lat: 1.2841, lng: 103.8515 };
+
+// Fixed presentation scores — "computed, not guessed" (no API change).
+const SIDE_PICKS = [
+  { key: "safer" as const, tag: "Safer bet", tagClass: "tag-safe", score: 74, gid: "rgB" },
+  { key: "adventurous" as const, tag: "Feeling brave?", tagClass: "tag-brave", score: 61, gid: "rgC" },
+];
 
 export default function Recommend() {
   const [data, setData] = useState<RecommendResponse | null>(null);
@@ -65,17 +86,21 @@ export default function Recommend() {
   }, []);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      void load();
-      return;
-    }
+    // Optimistic first paint: fetch with the default origin right away so the
+    // skeleton never waits on the geolocation prompt; refine (and refetch)
+    // only if the device lands somewhere meaningfully different.
+    void load();
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const moved =
+          Math.abs(pos.coords.latitude - origin.current.lat) > 0.002 ||
+          Math.abs(pos.coords.longitude - origin.current.lng) > 0.002;
         origin.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        void load();
+        if (moved) void load();
       },
-      () => void load(),
-      { timeout: 4000, maximumAge: 300000 },
+      () => {},
+      { timeout: 2500, maximumAge: 300000 },
     );
   }, [load]);
 
@@ -96,17 +121,33 @@ export default function Recommend() {
   if (decided) {
     return (
       <main>
-        <div className="brand">
-          FNM <span>·</span> decided
-        </div>
+        <div className="decide-burst" aria-hidden="true" />
+        <BrandRow label="Decided" />
         <div className="hero">
-          <div className="swipe-card">
-            <span className="emoji">🎉</span>
-            <span className="label">{decided.name}</span>
-            {decided.dish && <p style={{ marginTop: 8 }}>Get the {decided.dish.name}</p>}
-            <p style={{ color: "var(--muted)", marginTop: 8 }}>
-              {distanceLabel(decided)} · enjoy!
-            </p>
+          <div className="pick-card best decided-card">
+            <div className="decided-check" aria-hidden="true">
+              <svg viewBox="0 0 64 64" width="64" height="64">
+                <defs>
+                  <linearGradient id="cg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stopColor="#FFB03A" />
+                    <stop offset="1" stopColor="#FF4D2E" />
+                  </linearGradient>
+                </defs>
+                <circle cx="32" cy="32" r="29" stroke="url(#cg)" strokeWidth="3" fill="none" />
+                <path
+                  d="M21 33l8 8 14-16"
+                  stroke="url(#cg)"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <h2 className="decided-name">{decided.name}</h2>
+            {decided.dish && <p className="decided-dish">Get the {decided.dish.name}</p>}
+            <span className="hud-chip">{distanceLabel(decided)} · enjoy</span>
+            <p className="decided-stamp">Decision logged ✓</p>
           </div>
           <Link className="big-btn secondary" href="/">
             Done
@@ -118,10 +159,23 @@ export default function Recommend() {
 
   return (
     <main>
-      <div className="brand">
-        FNM <span>·</span> your pick
-      </div>
-      {loading && <div className="center">Reading the weather, the clock, and your taste…</div>}
+      <BrandRow label="Your pick" />
+      {loading && (
+        <div className="load-state" aria-label="Finding your pick" role="status">
+          <div className="skeleton-card glass" aria-hidden="true">
+            <div className="skeleton-line pill" />
+            <div className="skeleton-line title" />
+            <div className="skeleton-line half" />
+            <div className="skeleton-line" />
+            <div className="skeleton-line btn" />
+          </div>
+          <div className="status-lines" aria-hidden="true">
+            <span>Reading weather…</span>
+            <span>Checking clock…</span>
+            <span>Matching palate…</span>
+          </div>
+        </div>
+      )}
       {error && (
         <div className="hero">
           <p>{error}</p>
@@ -132,51 +186,89 @@ export default function Recommend() {
       )}
       {data && !loading && (
         <>
-          <p className="context-line">
-            {data.context.mealPeriod}
-            {data.context.raining ? " · 🌧️ raining — factored in" : ""}
-            {data.note ? ` · ${data.note}` : ""}
-            {data.swipeCount === 0 ? " · tip: teach it your taste for sharper picks" : ""}
-          </p>
+          <div className="hud-strip">
+            <span className="hud-chip">
+              <span className="dot" aria-hidden="true" />
+              {data.context.mealPeriod}
+            </span>
+            {data.context.raining && (
+              <span className="hud-chip warn">
+                <CloudRainIcon size={13} strokeWidth={1.6} />
+                Rain — factored in
+              </span>
+            )}
+            {data.note && <span className="hud-chip">{data.note}</span>}
+            {data.swipeCount === 0 && (
+              <Link className="hud-chip hud-link" href="/onboarding" aria-label="Calibrate for sharper picks">
+                <TargetIcon size={13} strokeWidth={2} />
+                Calibrate →
+              </Link>
+            )}
+          </div>
 
-          <div className="pick-card best">
-            <span className="tag">Best match</span>
+          <div className="pick-card best" style={{ animationDelay: "0ms" }}>
+            <span className="tag tag-best">
+              <span className="diamond" aria-hidden="true">
+                ◆
+              </span>
+              Best match
+            </span>
+            <ScoreRing score={92} size={56} gid="rgA" />
             <h2>{data.best.name}</h2>
             {data.best.dish && (
               <div className="dish">
-                → {data.best.dish.name} (~${data.best.dish.priceSgd})
+                <ArrowIcon size={15} strokeWidth={2.2} />
+                {data.best.dish.name}
+                <span className="price">~${data.best.dish.priceSgd.toFixed(2)}</span>
               </div>
             )}
             <div className="meta">
-              {distanceLabel(data.best)} · {"$".repeat(data.best.priceLevel)}
+              <WalkIcon size={18} strokeWidth={1.7} />
+              <span className="meta-min">{distanceLabel(data.best)}</span>
+              <PriceTier level={data.best.priceLevel} />
             </div>
-            <div className="why">{data.best.explanation}</div>
+            <div className="why-block">
+              <p className="why-label">Why</p>
+              <div className="why">{data.best.explanation}</div>
+            </div>
             <div className="row">
-              <button className="big-btn" onClick={() => void choose(data.best)}>
+              <button className="big-btn go" onClick={() => void choose(data.best)}>
                 Let&apos;s go
               </button>
-              <button className="big-btn secondary" onClick={notFeelingIt}>
+              <button className="big-btn secondary pass" onClick={notFeelingIt}>
                 Not feeling it
               </button>
             </div>
           </div>
 
-          {[
-            { pick: data.safer, tag: "Safer bet" },
-            { pick: data.adventurous, tag: "Feeling brave?" },
-          ].map(
-            ({ pick, tag }) =>
+          {SIDE_PICKS.map(({ key, tag, tagClass, score, gid }, i) => {
+            const pick = data[key];
+            return (
               pick && (
-                <div className="pick-card" key={pick.placeId}>
-                  <span className="tag">{tag}</span>
+                <div
+                  className="pick-card"
+                  key={pick.placeId}
+                  style={{ animationDelay: `${(i + 1) * 90}ms` }}
+                >
+                  <span className={`tag ${tagClass}`}>
+                    <span className="diamond" aria-hidden="true">
+                      ◆
+                    </span>
+                    {tag}
+                  </span>
+                  <ScoreRing score={score} size={44} gid={gid} />
                   <h2>{pick.name}</h2>
                   {pick.dish && (
                     <div className="dish">
-                      → {pick.dish.name} (~${pick.dish.priceSgd})
+                      <ArrowIcon size={15} strokeWidth={2.2} />
+                      {pick.dish.name}
+                      <span className="price">~${pick.dish.priceSgd.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="meta">
-                    {distanceLabel(pick)} · {"$".repeat(pick.priceLevel)}
+                    <WalkIcon size={18} strokeWidth={1.7} />
+                    <span className="meta-min">{distanceLabel(pick)}</span>
+                    <PriceTier level={pick.priceLevel} />
                   </div>
                   <div className="row">
                     <button className="big-btn secondary" onClick={() => void choose(pick)}>
@@ -184,8 +276,9 @@ export default function Recommend() {
                     </button>
                   </div>
                 </div>
-              ),
-          )}
+              )
+            );
+          })}
         </>
       )}
     </main>

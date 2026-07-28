@@ -10,24 +10,41 @@ import { ScoredPlace } from "@/lib/scoring";
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 
-function templateExplanation(pick: ScoredPlace, ctx: Context): string {
-  const bits: string[] = [];
-  if (pick.bestDish) bits.push(`get the ${pick.bestDish.name}`);
-  bits.push(
-    pick.walkMinutes <= 45
-      ? `${pick.walkMinutes} min walk`
-      : `${Math.round(pick.distanceKm)} km away`,
-  );
-  if (pick.bestDish) bits.push(`~$${pick.bestDish.priceSgd}`);
-  const contextReason = pick.reasons.find((r) => r.includes("rain") || r.includes("hot afternoon"));
-  if (contextReason) bits.push(contextReason);
-  const recency = pick.reasons.find((r) => r.includes("recently"));
-  if (recency) bits.push(recency);
-  return bits.join(" · ");
+// Short clauses for context reasons — the meta row already shows walk time and
+// price, so the WHY section must add information, not restate it.
+const CONTEXT_REWRITES: Array<[RegExp, string]> = [
+  [/raining — something warm/, "it beats the rain"],
+  [/sheltered from the rain/, "you'll stay dry getting there"],
+  [/hot afternoon/, "it's light enough for a hot afternoon"],
+];
+
+function templateExplanation(pick: ScoredPlace, profile: Profile): string {
+  const fitPct = pick.reasons
+    .map((r) => r.match(/\((\d+)% flavor fit\)/)?.[1])
+    .find(Boolean);
+  const taste = describeTaste(profile.vector);
+  const lead = fitPct
+    ? `${fitPct}% flavor match for your ${taste} palate`
+    : `A close flavor match for your ${taste} palate`;
+
+  const extras: string[] = [];
+  for (const reason of pick.reasons) {
+    const rewrite = CONTEXT_REWRITES.find(([re]) => re.test(reason));
+    if (rewrite) {
+      extras.push(rewrite[1]);
+      break;
+    }
+  }
+  if (!extras.length && pick.reasons.some((r) => r.includes("recently"))) {
+    extras.push("you haven't had this recently");
+  }
+
+  const sentence = extras.length ? `${lead} — and ${extras[0]}` : lead;
+  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
 }
 
 export async function explain(pick: ScoredPlace, profile: Profile, ctx: Context): Promise<string> {
-  const fallback = templateExplanation(pick, ctx);
+  const fallback = templateExplanation(pick, profile);
   if (!process.env.ANTHROPIC_API_KEY) return fallback;
 
   try {
