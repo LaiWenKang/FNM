@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildContext } from "@/lib/context";
+import { Craving, parseCraving } from "@/lib/craving";
 import { enrichPicks } from "@/lib/dishes";
 import { explain } from "@/lib/explain";
 import { applyMoods, isValidMood } from "@/lib/mood";
@@ -60,8 +61,20 @@ export async function GET(req: NextRequest) {
   const hourParam = searchParams.get("hour");
   const hour = hourParam !== null && hourParam !== "" ? Number(hourParam) : undefined;
   const label = (searchParams.get("label") ?? "").slice(0, 60) || null;
+  const cravingText = (searchParams.get("craving") ?? "").slice(0, 120).trim();
 
   const profile = applyMoods(await readProfile(req), moods);
+
+  /* A craving is a stated intent, so it overrides the LEARNED vector on the
+     dimensions it speaks to — but only those. Saying "spicy" should not reset
+     what the app knows about how rich or adventurous you are. */
+  const craving: Craving | null = cravingText ? await parseCraving(cravingText) : null;
+  if (craving) {
+    for (const [dim, v] of Object.entries(craving.vector)) {
+      profile.vector[dim as keyof typeof profile.vector] = v as number;
+    }
+    if (craving.priceMax) profile.priceMax = craving.priceMax;
+  }
   // Hours have to be resolved before the candidate fetch, because Google's
   // opening periods are matched against the hour the user is actually
   // planning for — not against whatever time the server thinks it is.
@@ -88,6 +101,7 @@ export async function GET(req: NextRequest) {
       ctx,
       { lat, lng },
       exclude,
+      craving,
     );
     if (rec) {
       note = step.note;
@@ -100,6 +114,13 @@ export async function GET(req: NextRequest) {
       { error: "Everything seems closed right now — even the fallbacks. Try again shortly.", context: ctx },
       { status: 404 },
     );
+  }
+
+  /* NOTHING MATCHED WHAT THEY ASKED FOR. Never a dead end — the pick still
+     stands on palate and context — but saying so is the difference between an
+     app that ignored you and one that looked and came up short. */
+  if (craving && craving.terms.length && !rec.best.cravingHit) {
+    note = `Nothing nearby matches "${craving.text}" right now — here's the closest thing.`;
   }
 
   /* TIER 2 — MINE DISHES FOR THE PICKS ACTUALLY BEING SHOWN.
@@ -138,6 +159,7 @@ export async function GET(req: NextRequest) {
       lng: Math.round(lng * 10000) / 10000,
     },
     note,
+    craving: craving ? { text: craving.text, hit: rec.best.cravingHit ?? null } : null,
     swipeCount: profile.swipeCount,
     // The session-effective palate (moods applied) — the ember polygon the dish
     // vector is drawn against on the hero card.

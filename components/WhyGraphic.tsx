@@ -29,6 +29,7 @@ const ROWS: { key: keyof ScoreBreakdown; label: string }[] = [
   // Only rendered when it is non-zero — curated places carry no crowd rating,
   // and a permanent 0 bar would read as "badly rated" rather than "not rated".
   { key: "quality", label: "Rating" },
+  { key: "craving", label: "Craving" },
 ];
 
 /** Confidence, not decoration: the pose is a function of the number. */
@@ -59,7 +60,12 @@ export default function WhyGraphic({
   compare,
   gid = "why",
 }: WhyGraphicProps) {
-  const rows = ROWS.filter((r) => r.key !== "quality" || breakdown.quality !== 0);
+  // A permanent 0 bar reads as "scored badly" rather than "not applicable", so
+  // rows that only exist conditionally are dropped when they carry no value.
+  const rows = ROWS.filter((r) =>
+    (r.key !== "quality" || breakdown.quality !== 0) &&
+    (r.key !== "craving" || breakdown.craving !== 0),
+  );
   const values = rows.map((r) => breakdown[r.key]);
   const denom = Math.max(20, ...values.map((v) => Math.abs(v)));
   const { mood, tilt } = moodForScore(score);

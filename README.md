@@ -9,6 +9,7 @@ Full product plan: [PLAN.md](./PLAN.md).
 - **Swipe bootstrap** (`/onboarding`) — ~16 dish cards build your flavor-level taste vector in about a minute.
 - **"Eat now"** (`/recommend`) — hard filters (open now, distance, budget) → flavor-vector scoring → context nudges (rain → soupy/warm via the free NEA weather API; recency penalty so you don't repeat meals) → 1 best pick + safer + adventurous alternatives, each with a one-line "why".
 - **Dish-level picks** for the curated catalog (e.g. Wingstop → Mango Habanero if you like sweet-heat) — tier 1 of the dish/flavor catalog in PLAN.md.
+- **"Craving anything?"** — type it in plain words (`ramen`, `cheesy`, `not spicy`, `korean but light`) and it goes straight into the ranking. A craving **outranks the learned palate**: you said it out loud, so it wins. Works with zero keys via a lexicon plus literal name matching; `ANTHROPIC_API_KEY` adds negation and synonym handling.
 - **Eat together** (`/g/[code]`) — one tap opens a group, you send the link, and everyone who taps it lands on the same decision. See below.
 - **PWA** — add to home screen from the browser; no app store needed.
 
@@ -66,6 +67,32 @@ npm run dev
 | `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` + `AUTH_SECRET` | Google sign-in |
 | `REQUIRE_AUTH=true` | Makes sign-in mandatory (ignored unless Google keys are set) |
 | `DATABASE_URL` | Postgres — signed-in profiles sync across devices, **and group links become reliable** |
+
+## "Craving anything?"
+
+The mood chips cover broad shapes — spicy, light, cheap. They cannot say
+*ramen*, *something with cheese*, or *korean but not too heavy*, which is how
+people actually name what they want at 12:15. The craving line takes free text.
+
+**The governing rule: a craving outranks the learned palate.** If you type
+"ramen" and the app serves chicken rice because your profile likes it, the app
+argued with you — and that is the exact failure this exists to prevent. So a
+direct hit is the largest single term in the score, and a place matching nothing
+you asked for is *penalised* rather than merely missing a bonus. Without that
+asymmetry the gap between "what you asked for" and "what your profile likes" is
+too narrow to be decisive.
+
+It never dead-ends. If nothing nearby matches, you still get a pick — and the
+screen says *"Nothing nearby matches «ramen» right now — here's the closest
+thing."* An app that looked and came up short is a different thing from one that
+ignored you.
+
+Two tiers, like everything else here:
+
+| | How it parses |
+|---|---|
+| **Zero keys** | A small lexicon for flavour intent, plus **literal matching** against place, cuisine and dish names. The literal matcher does most of the work and needs no vocabulary — *"banana leaf"* is in no lexicon and still finds *Indian Banana Leaf Restaurant*. |
+| **With `ANTHROPIC_API_KEY`** | Claude handles what a lexicon cannot: negation (*"no pork"*), cuisine, and vagueness (*"something like laksa but milder"*). Its output is unioned with the local parse, because it occasionally swaps the typed word for a synonym and the typed word is the one thing we know for certain you meant. |
 
 ## Eat together — the group link
 

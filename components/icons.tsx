@@ -137,6 +137,16 @@ export function CheckIcon(p: IconProps) {
 }
 
 /** X — no / dismiss. */
+/** Magnifier — the craving line. Same 24-grid, same stroke language. */
+export function SearchIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M15.8 15.8L21 21" />
+    </Svg>
+  );
+}
+
 export function XIcon(p: IconProps) {
   return (
     <Svg {...p}>

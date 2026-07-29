@@ -17,7 +17,7 @@ import TasteRadar from "@/components/TasteRadar";
 import Togo from "@/components/Togo";
 import WhyGraphic from "@/components/WhyGraphic";
 import { FRESH_PICK_KEY } from "@/components/TabBar";
-import { CloudRainIcon, RefreshIcon, StoreIcon, TargetIcon, WalkIcon } from "@/components/icons";
+import { CloudRainIcon, RefreshIcon, SearchIcon, StoreIcon, TargetIcon, WalkIcon } from "@/components/icons";
 import type { MealPeriod } from "@/lib/context";
 import type { FlavorVector } from "@/lib/flavor";
 import { SEED_PLACES } from "@/lib/data/seed";
@@ -55,6 +55,7 @@ interface RecommendResponse {
     lng: number;
   };
   note: string | null;
+  craving: { text: string; hit: string | null } | null;
   swipeCount: number;
   vector: FlavorVector;
   best: Pick;
@@ -159,13 +160,19 @@ export default function Recommend() {
     setLoading(true);
     setError(null);
     try {
-      const urlMood = new URLSearchParams(window.location.search).get("mood") ?? "";
+      const url = new URLSearchParams(window.location.search);
+      const urlMood = url.get("mood") ?? "";
       const mood = [urlMood, reasonMood.current].filter(Boolean).join(",");
       const params = new URLSearchParams({
         ...planParams(plan.current),
         exclude: excluded.current.join(","),
         mood,
       });
+      // The craving has to survive the hop from the home card to this fetch, and
+      // through every "not feeling it" re-roll after it — dropping it here is
+      // how "wings" silently became McDonald's.
+      const urlCraving = url.get("craving") ?? "";
+      if (urlCraving) params.set("craving", urlCraving);
       const res = await fetch(`/api/recommend?${params}`);
       const json = (await res.json()) as RecommendResponse;
       if (!res.ok) {
@@ -301,6 +308,12 @@ export default function Recommend() {
               <span className="hud-chip warn">
                 <CloudRainIcon size={13} strokeWidth={1.6} />
                 Rain — factored in
+              </span>
+            )}
+            {data.craving?.text && (
+              <span className={`hud-chip${data.craving.hit ? " craving-hit" : ""}`}>
+                <SearchIcon size={13} strokeWidth={1.9} />
+                {data.craving.text}
               </span>
             )}
             {data.note && <span className="hud-chip">{data.note}</span>}

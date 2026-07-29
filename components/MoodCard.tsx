@@ -7,7 +7,7 @@ import { MOODS } from "@/lib/mood";
 import { MOOD_LINES, togoLine } from "@/lib/togoLines";
 import Glyph from "@/components/Glyph";
 import Togo, { TogoMood } from "@/components/Togo";
-import { BowlIcon, PersonIcon } from "@/components/icons";
+import { BowlIcon, PersonIcon, SearchIcon, XIcon } from "@/components/icons";
 
 // One-tap "today" preferences. Selections are session-only: they ride along
 // as query params and never modify the learned taste profile.
@@ -37,6 +37,7 @@ export default function MoodCard() {
   const [selected, setSelected] = useState<string[]>([]);
   const [last, setLast] = useState<string | null>(null);
   const [making, setMaking] = useState(false);
+  const [craving, setCraving] = useState("");
 
   function toggle(id: string) {
     setSelected((cur) => {
@@ -47,8 +48,12 @@ export default function MoodCard() {
   }
 
   function go() {
-    const q = selected.length ? `?mood=${selected.join(",")}` : "";
-    router.push(`/recommend${q}`);
+    const q = new URLSearchParams();
+    if (selected.length) q.set("mood", selected.join(","));
+    const c = craving.trim();
+    if (c) q.set("craving", c);
+    const s = q.toString();
+    router.push(`/recommend${s ? `?${s}` : ""}`);
   }
 
   /* EAT TOGETHER. The group opens from the SAME card as the solo pick, seeded
@@ -147,6 +152,36 @@ export default function MoodCard() {
       <span className="mood-hitch togo-face" aria-hidden="true" />
 
       <p className="mood-say togo-say">{last ? MOOD_LINES[last] : togoLine("home")}</p>
+
+      {/* THE CRAVING LINE. The chips cover broad shapes — spicy, light, cheap —
+          and cannot say "ramen" or "something with cheese", which is how people
+          actually name what they want. Free text goes straight into the ranking
+          and OUTRANKS the learned palate: you said it out loud, so it wins. */}
+      <div className="craving-row">
+        <SearchIcon size={17} strokeWidth={1.9} />
+        <input
+          className="craving-input"
+          value={craving}
+          maxLength={120}
+          placeholder="Craving anything? e.g. ramen, cheesy, not spicy"
+          aria-label="What are you craving?"
+          enterKeyHint="search"
+          onChange={(e) => setCraving(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") go();
+          }}
+        />
+        {craving && (
+          <button
+            type="button"
+            className="craving-clear"
+            aria-label="Clear craving"
+            onClick={() => setCraving("")}
+          >
+            <XIcon size={14} strokeWidth={2.2} />
+          </button>
+        )}
+      </div>
 
       <div className="mood-chips grid-2">
         {MOODS.map((m, i) => (
