@@ -1,23 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="FNM">
   <title>FNM</title>
   <!--
-    THE ICON, REBUILT AROUND WHY THE LAST ONE FAILED.
+    SIZING, MEASURED RATHER THAN EYEBALLED. The previous cut left 5.6% margin at
+    the top and 17.7% at the sides — the ears were jammed against the edge while
+    the flanks floated — and the optical centre sat 25px above the tile's.
 
-    Rendered beside real home-screen neighbours the old tile read as a HOLE in
-    the row: a dark square with a small pale motif floating in the middle, while
-    every icon around it committed to a bold colour field with one large shape.
-    By 29px it was mush and the loose ember arc under the chin read as a smudge.
+    The cause was the ARTWORK, not the transform: cream ears 41 units tall made
+    the bounding box 76 x 93, far taller than the square it had to sit in, so no
+    placement could be balanced. Shortening and darkening them brings the box to
+    76 x 84 — near enough to square that even margins cost the face nothing.
 
-    Three changes, each answering one of those:
-      COMMIT TO A COLOUR   Ember, the brand's own accent, and the one hue that
-                           reads as FOOD next to the blues and greens.
-      FILL THE TILE        The head spans ~74% edge to edge. The neighbours all
-                           do; the old one managed 45%.
-      FOUR MARKS TOTAL     Cap, two eyes, nose, smile. Everything that could not
-                           survive 29px is gone.
-
-    The blaze is KNOCKED OUT back to the ember field rather than painted, so one
-    shape is simultaneously a husky's blaze and FNM's own 60° needle.
+    Now: 13.1% top, 13.1% bottom, 16.6% each side, optical centre on the tile
+    centre. Every number here is checked by test/icon.test.ts.
   -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2=".72" y2="1">
@@ -25,26 +19,37 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#bg)"/>
-  <g transform="translate(256 268) scale(4.35) translate(-60 -66)">
-    <!-- ONE cream silhouette: ears and head as a single mass. -->
-    <path fill="#FFF6EC" d="M30 44 C26 32 29 20 34 15 C38 11 43 13 45 19 L51 38 Z"/>
-    <path fill="#FFF6EC" d="M90 44 C94 32 91 20 86 15 C82 11 77 13 75 19 L69 38 Z"/>
-    <circle cx="60" cy="66" r="38" fill="#FFF6EC"/>
-    <!-- INNER EARS. Without them the cream triangles read as a rabbit; this is
-         the one mark that makes the species unambiguous at 26px. -->
-    <path fill="#E0563A" d="M34.5 39 C32 31 33.5 23.5 36.5 20.5 C38.8 18.2 41.5 19.4 42.7 22.9 L46.3 34.3 Z"/>
-    <path fill="#E0563A" d="M85.5 39 C88 31 86.5 23.5 83.5 20.5 C81.2 18.2 78.5 19.4 77.3 22.9 L73.7 34.3 Z"/>
-    <!-- THREE DARK MARKS AND NOTHING ELSE: cap, eyes, nose. -->
+  <g transform="translate(256 274) scale(4.51) translate(-60 -66)">
+    <!-- EARS: dark and small, so they merge with the cap into one mass. Cream
+         ears at 41 units tall were the single biggest fault of the last cut —
+         two pale spikes taller than the head itself, reading as a rabbit. -->
     <g fill="#20141B">
-      <path d="M22.1 64 A38 38 0 0 1 97.9 64 C94 64 86 60 74 54 C68 50.4 64 48 60 48 C56 48 52 50.4 46 54 C34 60 26 64 22.1 64 Z"/>
-      <ellipse cx="46" cy="64" rx="5.6" ry="6.4"/><ellipse cx="74" cy="64" rx="5.6" ry="6.4"/>
-      <path d="M60 76 C63.8 76 66.6 77.8 66.6 80.4 C66.6 83.3 63 85.6 60 85.6 C57 85.6 53.4 83.3 53.4 80.4 C53.4 77.8 56.2 76 60 76 Z"/>
+      <path d="M31 47 C28 38 30 27 34 21 C36.5 17.5 40.5 18.5 42 23 L50 42 C51.4 46 48.6 49.6 45 48.4 Z"/>
+      <path d="M89 47 C92 38 90 27 86 21 C83.5 17.5 79.5 18.5 78 23 L70 42 C68.6 46 71.4 49.6 75 48.4 Z"/>
+    </g>
+    <g fill="#E0563A">
+      <path d="M35 44 C33 37 34.4 29 37.2 24.6 C38.6 22.4 41 23 41.9 26 L47 40 Z"/>
+      <path d="M85 44 C87 37 85.6 29 82.8 24.6 C81.4 22.4 79 23 78.1 26 L73 40 Z"/>
+    </g>
+
+    <circle cx="60" cy="66" r="38" fill="#FFF6EC"/>
+
+    <!-- THE CAP -->
+    <path fill="#20141B" d="M22.1 64 A38 38 0 0 1 97.9 64 C94 64 86 60 74 54 C68 50.4 64 48 60 48 C56 48 52 50.4 46 54 C34 60 26 64 22.1 64 Z"/>
+
+    <!-- THE BLAZE, CREAM rather than knocked out to the ember. A saturated
+         orange triangle on pure black read as a traffic cone stuck to his
+         forehead; cream makes it continuous with the face below, which is what
+         a husky's blaze actually is. The 60° apex — FNM's own needle angle —
+         is unchanged; only the fill is. -->
+    <path fill="#FFF6EC" d="M60 30 L70.4 48 C66 47.4 63 48.6 60 51 C57 48.6 54 47.4 49.6 48 Z"/>
+
+    <g fill="#20141B">
+      <ellipse cx="46" cy="63" rx="5.6" ry="6.4"/><ellipse cx="74" cy="63" rx="5.6" ry="6.4"/>
+      <path d="M60 75 C63.8 75 66.6 76.8 66.6 79.4 C66.6 82.3 63 84.6 60 84.6 C57 84.6 53.4 82.3 53.4 79.4 C53.4 76.8 56.2 75 60 75 Z"/>
     </g>
     <g fill="none" stroke="#20141B" stroke-width="2.6" stroke-linecap="round">
-      <path d="M60 85.6 Q55.4 91.6 50.4 88.2"/><path d="M60 85.6 Q64.6 91.6 69.6 88.2"/>
+      <path d="M60 84.6 Q55.4 90.6 50.4 87.2"/><path d="M60 84.6 Q64.6 90.6 69.6 87.2"/>
     </g>
-    <!-- THE BLAZE, KNOCKED BACK OUT TO THE EMBER FIELD. One shape doing two
-         jobs: a husky's blaze, and FNM's own 60° needle. -->
-    <path fill="url(#bg)" d="M60 30 L70.4 48 C66 47.4 63 48.6 60 51 C57 48.6 54 47.4 49.6 48 Z"/>
   </g>
 </svg>
