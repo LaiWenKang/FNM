@@ -33,7 +33,8 @@ export type DishGlyphKey =
   | "prata"
   | "kaya-toast"
   | "dim-sum"
-  | "kopi";
+  | "kopi"
+  | "shaved-ice";
 
 /** The shared vessels — reused so twenty-four drawings read as one family. */
 const BOWL = "M2.4 16.6h27.2c0 7.4-6.1 12.8-13.6 12.8S2.4 24 2.4 16.6z";
@@ -190,6 +191,14 @@ export const DISH_PATHS: Record<DishGlyphKey, [string, string, string]> = {
     "M3.4 17.6h25.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H3.4c-.9 0-1.6-.7-1.6-1.6v-6.4c0-.9.7-1.6 1.6-1.6zM4.4 12.4h23.2c.9 0 1.6.7 1.6 1.6s-.7 1.6-1.6 1.6H4.4c-.9 0-1.6-.7-1.6-1.6s.7-1.6 1.6-1.6z",
     "M8.6 5.6c2.4 0 4.4 1.9 4.4 4.2 0 .9-.3 1.7-.8 2.4H5c-.5-.7-.8-1.5-.8-2.4 0-2.3 2-4.2 4.4-4.2zM21.4 6.4c2.4 0 4.4 1.9 4.4 4.2 0 .6-.1 1.1-.3 1.6h-8.2c-.2-.5-.3-1-.3-1.6 0-2.3 2-4.2 4.4-4.2z",
     "M6.4 20.6c-.2 2.4.6 4.1 2.4 5.1-3-.5-4.2-2.3-2.4-5.1z",
+  ],
+  // DESSERT, which the deck had no way to draw and therefore no way to ask
+  // about. A mound of shaved ice over the standard bowl, drizzled, with beans
+  // underneath — chendol and ice kacang share this silhouette.
+  "shaved-ice": [
+    "M2.4 16.6h27.2c0 7.4-6.1 12.8-13.6 12.8S2.4 24 2.4 16.6zM6.2 16.6c0-5.2 4.4-9.4 9.8-9.4s9.8 4.2 9.8 9.4z",
+    "M7.6 16.6c0-4.5 3.8-8.1 8.4-8.1s8.4 3.6 8.4 8.1zM4.6 18.2c3.2-1.4 7-2.2 11.4-2.2s8.2.8 11.4 2.2c-1.6 5.6-6.3 9.4-11.4 9.4S6.2 23.8 4.6 18.2z",
+    "M11.4 11.4c1.3-.9 2.9-1.4 4.6-1.4v2c-1.2 0-2.4.4-3.4 1zM9.6 20.6a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 0 1 0-3.4zM15.8 22.4a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 0 1 0-3.4zM21.6 20.8a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 0 1 0-3.4z",
   ],
   // kopi cup on a saucer + steam
   kopi: [

@@ -1,4 +1,5 @@
 import type { DishGlyphKey } from "@/components/glyphs/dishes";
+import type { Cuisine } from "@/lib/cuisine";
 import { FlavorVector, vec } from "@/lib/flavor";
 
 // Curated launch catalog: Singapore CBD-area places (hawker stalls, kopitiams,
@@ -16,7 +17,9 @@ export interface Dish {
 export interface Place {
   id: string;
   name: string;
-  cuisine: string;
+  /** A closed vocabulary — see lib/cuisine.ts for why it stopped being a
+      bare string, and what silently broke while it was one. */
+  cuisine: Cuisine;
   lat: number;
   lng: number;
   priceLevel: 1 | 2 | 3 | 4; // 1 = hawker, 4 = fine dining
@@ -79,7 +82,9 @@ export const SEED_PLACES: Place[] = [
   {
     id: "amoy-a-noodle-story",
     name: "A Noodle Story (Amoy Street)",
-    cuisine: "singapore-ramen",
+    // Singapore-style ramen, so "singaporean" rather than the japanese family —
+    // being sent here does not mean you have had Japanese today.
+    cuisine: "singaporean",
     lat: 1.2794, lng: 103.8469, priceLevel: 2,
     flavor: vec({ heat: 0.45, sweet: 0.4, soupy: 0.35, fried: 0.5, rich: 0.7, adventure: 0.6 }),
     openHour: 11, closeHour: 14, sheltered: true, source: "curated",
@@ -113,7 +118,7 @@ export const SEED_PLACES: Place[] = [
   {
     id: "wingstop-marina",
     name: "Wingstop (Marina Area)",
-    cuisine: "american-wings",
+    cuisine: "fried-chicken",
     lat: 1.2839, lng: 103.8517, priceLevel: 2,
     flavor: vec({ heat: 0.55, sweet: 0.5, soupy: 0.05, fried: 0.9, rich: 0.7, adventure: 0.35 }),
     openHour: 11, closeHour: 22, sheltered: true, source: "curated",
@@ -201,7 +206,7 @@ export const SEED_PLACES: Place[] = [
   {
     id: "market-st-ah-kow",
     name: "Ah Kow Minced Meat Noodles (Market Street)",
-    cuisine: "teochew-noodles",
+    cuisine: "teochew",
     lat: 1.2843, lng: 103.8496, priceLevel: 1,
     flavor: vec({ heat: 0.45, sweet: 0.45, soupy: 0.5, fried: 0.5, rich: 0.5, adventure: 0.45 }),
     openHour: 7, closeHour: 15, sheltered: true, source: "curated",
@@ -257,21 +262,52 @@ export interface SwipeCard {
   flavor: FlavorVector;
 }
 
+/* THE POOL, NOT THE DECK. lib/calibration.ts picks a BALANCED sixteen out of
+   this list; see CALIBRATION_DECK for why choosing them by hand went wrong.
+
+   EVERY CARD NOW STATES ITS SWEETNESS, and that is the point of the rewrite.
+   The old sixteen left `sweet` unwritten on fifteen of them — so `vec()` filled
+   it with 0.5, exactly one card ever pushed it, and after a full calibration
+   every user on earth came out at sweet ≈ 0.5. One of the six axes the palate
+   is scored on was measuring nothing at all. A dish is allowed to be silent
+   about an axis (see SPEAKS in lib/flavor.ts), but it should be silent because
+   it genuinely has no opinion, not because nobody filled the field in.
+
+   The eight new cards are also the eight food CATEGORIES the deck was missing
+   in a Singapore app: kopitiam breakfast, roti prata, satay, curry noodles,
+   Korean stew, tonkotsu ramen, nasi padang sambal, and kopi. */
 export const SWIPE_CARDS: SwipeCard[] = [
-  { id: "c-laksa", label: "Laksa", glyph: "laksa", flavor: vec({ heat: 0.65, soupy: 0.9, rich: 0.75, sweet: 0.4 }) },
-  { id: "c-chicken-rice", label: "Chicken Rice", glyph: "chicken-rice", flavor: vec({ heat: 0.15, soupy: 0.2, rich: 0.5, adventure: 0.1 }) },
-  { id: "c-mala", label: "Mala Xiang Guo", glyph: "mala", flavor: vec({ heat: 0.9, fried: 0.6, rich: 0.7, adventure: 0.7 }) },
-  { id: "c-salad", label: "Grain Bowl / Salad", glyph: "grain-bowl", flavor: vec({ heat: 0.1, fried: 0.05, rich: 0.15, adventure: 0.3 }) },
-  { id: "c-fried-chicken", label: "Crispy Fried Chicken", glyph: "fried-chicken", flavor: vec({ fried: 0.95, rich: 0.7, heat: 0.4, sweet: 0.4 }) },
-  { id: "c-sushi", label: "Sushi & Sashimi", glyph: "sushi", flavor: vec({ heat: 0.05, fried: 0.1, rich: 0.3, adventure: 0.5 }) },
-  { id: "c-tom-yum", label: "Tom Yum Soup", glyph: "tom-yum", flavor: vec({ heat: 0.8, soupy: 0.9, sweet: 0.4, adventure: 0.5 }) },
-  { id: "c-burger", label: "Cheeseburger", glyph: "burger", flavor: vec({ fried: 0.75, rich: 0.7, heat: 0.15, adventure: 0.05 }) },
-  { id: "c-fish-soup", label: "Sliced Fish Soup", glyph: "fish-soup", flavor: vec({ soupy: 0.95, rich: 0.25, heat: 0.1, adventure: 0.3 }) },
-  { id: "c-rendang", label: "Beef Rendang", glyph: "rendang", flavor: vec({ heat: 0.65, rich: 0.85, adventure: 0.45, sweet: 0.4 }) },
-  { id: "c-mango-habanero", label: "Sweet-Spicy Glazed Wings", glyph: "wings", flavor: vec({ heat: 0.8, sweet: 0.8, fried: 0.9, rich: 0.6 }) },
-  { id: "c-dim-sum", label: "Dim Sum", glyph: "dim-sum", flavor: vec({ heat: 0.15, fried: 0.4, rich: 0.5, adventure: 0.35 }) },
-  { id: "c-kbbq", label: "Korean BBQ", glyph: "kbbq", flavor: vec({ rich: 0.8, heat: 0.5, sweet: 0.5, adventure: 0.45 }) },
-  { id: "c-pad-thai", label: "Pad Thai (stir-fried noodles)", glyph: "bak-chor-mee", flavor: vec({ sweet: 0.7, heat: 0.35, fried: 0.5, adventure: 0.35 }) },
-  { id: "c-porridge", label: "Congee / Porridge", glyph: "porridge", flavor: vec({ soupy: 0.95, rich: 0.3, heat: 0.05, adventure: 0.2 }) },
-  { id: "c-omakase", label: "Chef's Choice Omakase", glyph: "chirashi", flavor: vec({ adventure: 0.95, rich: 0.5, heat: 0.3 }) },
+  { id: "c-laksa", label: "Laksa", glyph: "laksa", flavor: vec({ heat: 0.68, sweet: 0.45, soupy: 0.92, fried: 0.2, rich: 0.78, adventure: 0.5 }) },
+  { id: "c-chicken-rice", label: "Chicken Rice", glyph: "chicken-rice", flavor: vec({ heat: 0.15, sweet: 0.35, soupy: 0.25, fried: 0.2, rich: 0.5, adventure: 0.12 }) },
+  { id: "c-mala", label: "Mala Xiang Guo", glyph: "mala", flavor: vec({ heat: 0.92, sweet: 0.18, soupy: 0.2, fried: 0.62, rich: 0.72, adventure: 0.72 }) },
+  { id: "c-salad", label: "Grain Bowl / Salad", glyph: "grain-bowl", flavor: vec({ heat: 0.12, sweet: 0.28, soupy: 0.05, fried: 0.05, rich: 0.16, adventure: 0.3 }) },
+  { id: "c-fried-chicken", label: "Crispy Fried Chicken", glyph: "fried-chicken", flavor: vec({ heat: 0.38, sweet: 0.38, soupy: 0.05, fried: 0.95, rich: 0.72, adventure: 0.12 }) },
+  { id: "c-sushi", label: "Sushi & Sashimi", glyph: "sushi", flavor: vec({ heat: 0.08, sweet: 0.12, soupy: 0.1, fried: 0.08, rich: 0.28, adventure: 0.58 }) },
+  { id: "c-tom-yum", label: "Tom Yum Soup", glyph: "tom-yum", flavor: vec({ heat: 0.82, sweet: 0.42, soupy: 0.9, fried: 0.08, rich: 0.4, adventure: 0.52 }) },
+  { id: "c-burger", label: "Cheeseburger", glyph: "burger", flavor: vec({ heat: 0.15, sweet: 0.42, soupy: 0.05, fried: 0.78, rich: 0.72, adventure: 0.06 }) },
+  { id: "c-fish-soup", label: "Sliced Fish Soup", glyph: "fish-soup", flavor: vec({ heat: 0.12, sweet: 0.3, soupy: 0.95, fried: 0.12, rich: 0.25, adventure: 0.3 }) },
+  { id: "c-rendang", label: "Beef Rendang", glyph: "rendang", flavor: vec({ heat: 0.68, sweet: 0.42, soupy: 0.15, fried: 0.25, rich: 0.86, adventure: 0.48 }) },
+  { id: "c-mango-habanero", label: "Sweet-Spicy Glazed Wings", glyph: "wings", flavor: vec({ heat: 0.8, sweet: 0.78, soupy: 0.02, fried: 0.92, rich: 0.62, adventure: 0.35 }) },
+  { id: "c-dim-sum", label: "Dim Sum", glyph: "dim-sum", flavor: vec({ heat: 0.15, sweet: 0.38, soupy: 0.2, fried: 0.38, rich: 0.52, adventure: 0.35 }) },
+  { id: "c-kbbq", label: "Korean BBQ", glyph: "kbbq", flavor: vec({ heat: 0.5, sweet: 0.55, soupy: 0.1, fried: 0.35, rich: 0.82, adventure: 0.42 }) },
+  { id: "c-pad-thai", label: "Pad Thai (stir-fried noodles)", glyph: "bak-chor-mee", flavor: vec({ heat: 0.38, sweet: 0.72, soupy: 0.08, fried: 0.55, rich: 0.5, adventure: 0.35 }) },
+  { id: "c-porridge", label: "Congee / Porridge", glyph: "porridge", flavor: vec({ heat: 0.06, sweet: 0.2, soupy: 0.95, fried: 0.05, rich: 0.28, adventure: 0.18 }) },
+  { id: "c-omakase", label: "Chef's Choice Omakase", glyph: "chirashi", flavor: vec({ heat: 0.25, sweet: 0.3, soupy: 0.3, fried: 0.15, rich: 0.5, adventure: 0.95 }) },
+  { id: "c-kaya-toast", label: "Kaya Toast & Soft-Boiled Eggs", glyph: "kaya-toast", flavor: vec({ heat: 0.02, sweet: 0.88, soupy: 0.12, fried: 0.32, rich: 0.5, adventure: 0.15 }) },
+  { id: "c-prata", label: "Roti Prata with Curry", glyph: "prata", flavor: vec({ heat: 0.5, sweet: 0.3, soupy: 0.3, fried: 0.88, rich: 0.68, adventure: 0.3 }) },
+  { id: "c-satay", label: "Satay with Peanut Sauce", glyph: "satay", flavor: vec({ heat: 0.45, sweet: 0.68, soupy: 0.05, fried: 0.35, rich: 0.62, adventure: 0.3 }) },
+  { id: "c-curry-noodles", label: "Curry Chicken Noodles", glyph: "curry-beehoon", flavor: vec({ heat: 0.62, sweet: 0.35, soupy: 0.85, fried: 0.2, rich: 0.72, adventure: 0.4 }) },
+  { id: "c-jjigae", label: "Kimchi Jjigae", glyph: "jjigae", flavor: vec({ heat: 0.75, sweet: 0.25, soupy: 0.9, fried: 0.08, rich: 0.58, adventure: 0.5 }) },
+  { id: "c-ramen", label: "Tonkotsu Ramen", glyph: "ramen", flavor: vec({ heat: 0.28, sweet: 0.3, soupy: 0.9, fried: 0.25, rich: 0.82, adventure: 0.35 }) },
+  { id: "c-sambal", label: "Nasi Padang with Sambal", glyph: "sambal", flavor: vec({ heat: 0.9, sweet: 0.35, soupy: 0.2, fried: 0.6, rich: 0.68, adventure: 0.5 }) },
+  { id: "c-kopi", label: "Kopi-O Kosong (black, no sugar)", glyph: "kopi", flavor: vec({ heat: 0.02, sweet: 0.08, soupy: 0.55, fried: 0.02, rich: 0.25, adventure: 0.2 }) },
+  /* SWEET AND ADVENTUROUS BOTH NEEDED SOMEWHERE TO COME FROM. A pool of real
+     savoury dishes leans low on both axes, so no amount of clever selection
+     could balance the deck out of it — the cards simply were not there. These
+     four are the poles the deck was missing, and desserts were a missing food
+     CATEGORY besides: the app could not have asked about one. */
+  { id: "c-chendol", label: "Chendol", glyph: "shaved-ice", flavor: vec({ heat: 0.02, sweet: 0.95, soupy: 0.3, fried: 0.02, rich: 0.55, adventure: 0.35 }) },
+  { id: "c-bubble-tea", label: "Bubble Tea (full sugar)", glyph: "kopi", flavor: vec({ heat: 0.02, sweet: 0.88, soupy: 0.6, fried: 0.02, rich: 0.5, adventure: 0.25 }) },
+  { id: "c-century-egg", label: "Century Egg Porridge", glyph: "porridge", flavor: vec({ heat: 0.08, sweet: 0.18, soupy: 0.92, fried: 0.05, rich: 0.32, adventure: 0.8 }) },
+  { id: "c-kway-chap", label: "Kway Chap (braised offal)", glyph: "curry-beehoon", flavor: vec({ heat: 0.3, sweet: 0.3, soupy: 0.6, fried: 0.15, rich: 0.75, adventure: 0.85 }) },
 ];

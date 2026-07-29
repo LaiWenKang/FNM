@@ -85,11 +85,16 @@ export async function DELETE(req: NextRequest) {
   } else if (reason === "far") {
     // Says nothing about taste. Recorded as no change, on purpose.
   } else if (flavor) {
+    // "Too rich" NAMES the axis, so it is applied directly rather than left to
+    // the blame heuristic in nudge() — which exists precisely because a plain
+    // "not feeling it" does not say which part was wrong. A stated reason
+    // should never be re-derived from a guess.
     profile.vector = nudge(
       profile.vector,
       flavor,
       false,
       reason === "rich" ? REJECT_WEIGHT : REJECT_AMBIGUOUS_WEIGHT,
+      reason === "rich" ? "rich" : undefined,
     );
   }
 

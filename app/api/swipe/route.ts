@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { swipeWeight } from "@/lib/calibration";
 import { SWIPE_CARDS } from "@/lib/data/seed";
 import { nudge } from "@/lib/flavor";
 import { readProfile, writeProfile } from "@/lib/profile";
 
 // Records one bootstrap swipe and nudges the taste vector. Early swipes move
-// the vector more (cold start), later ones fine-tune.
+// the vector more (cold start), later ones fine-tune; a rejection counts for
+// less than an acceptance because it does not say WHICH part was wrong. Both
+// rules live in lib/calibration.ts with the reasoning.
+//
+// Cards are looked up in the whole POOL rather than the sixteen-card deck, so
+// a card that was in someone's deck yesterday still resolves today if the
+// selection changes underneath them.
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -16,8 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   const profile = await readProfile(req);
-  const weight = Math.max(0.08, 0.3 / (1 + profile.swipeCount * 0.15));
-  profile.vector = nudge(profile.vector, card.flavor, liked, weight);
+  profile.vector = nudge(profile.vector, card.flavor, liked, swipeWeight(profile.swipeCount, liked));
   profile.swipeCount += 1;
 
   const res = NextResponse.json({ swipeCount: profile.swipeCount, vector: profile.vector });

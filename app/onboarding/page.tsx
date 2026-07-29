@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { SWIPE_CARDS } from "@/lib/data/seed";
+import { CALIBRATION_DECK } from "@/lib/calibration";
 import { DIMS, Dim, FlavorVector } from "@/lib/flavor";
 import BrandRow from "@/components/BrandRow";
 import SwipeDeck from "@/components/SwipeDeck";
@@ -47,8 +47,8 @@ export default function Onboarding() {
   const [reaction, setReaction] = useState<"yes" | "no" | null>(null);
   const reactTimer = useRef<number | null>(null);
 
-  const card = SWIPE_CARDS[index];
-  const done = index >= SWIPE_CARDS.length;
+  const card = CALIBRATION_DECK[index];
+  const done = index >= CALIBRATION_DECK.length;
 
   async function answer(liked: boolean) {
     if (busy || done) return;
@@ -75,7 +75,7 @@ export default function Onboarding() {
       setExit(null);
       const next = index + 1;
       setIndex(next);
-      if (next >= SWIPE_CARDS.length) {
+      if (next >= CALIBRATION_DECK.length) {
         router.push("/recommend");
       }
     }
@@ -108,14 +108,14 @@ export default function Onboarding() {
       <div className="swipe-head">
         <p className="swipe-prompt">Would you eat this?</p>
         <span className="progress-head">
-          {String(index + 1).padStart(2, "0")} / {SWIPE_CARDS.length}
+          {String(index + 1).padStart(2, "0")} / {CALIBRATION_DECK.length}
         </span>
       </div>
 
       <SwipeDeck
         card={card}
         index={index}
-        total={SWIPE_CARDS.length}
+        total={CALIBRATION_DECK.length}
         axes={axes}
         busy={busy}
         exit={exit}
