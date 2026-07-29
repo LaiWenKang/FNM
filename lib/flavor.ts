@@ -21,11 +21,58 @@ export function vec(partial: Partial<FlavorVector>): FlavorVector {
   return { ...neutralVector(), ...partial };
 }
 
-/** Similarity in [0, 1]: 1 = identical taste, 0 = maximally different. */
-export function similarity(a: FlavorVector, b: FlavorVector): number {
-  let dist = 0;
-  for (const d of DIMS) dist += Math.abs(a[d] - b[d]);
-  return 1 - dist / DIMS.length;
+/* ── HOW WELL A DISH SUITS A PALATE ───────────────────────────────────────
+   AXES YOU HAVE NO OPINION ABOUT USED TO COUNT AS MUCH AS THE ONES YOU DO.
+   A flat mean over six axes meant somebody sitting at soupy 0.95 and heat
+   0.50 had their indifference to chilli drag on the score exactly as hard as
+   their love of broth. With six axes and only one or two strong opinions
+   apiece, the four quiet ones swamped the signal: measured across the
+   catalogue, the palate term moved only 16 points of its 54-point budget,
+   handing every place a near-constant ~34 and leaving the app's entire
+   premise — this is matched to YOUR taste — the least decisive term in the
+   ranking, behind novelty, weather and distance.
+
+   So each axis is weighted by how strongly the palate holds an opinion on it.
+   The floor matters as much as the weighting: without it a brand-new profile
+   sitting at 0.5 everywhere would have every weight at zero and no opinion at
+   all, and with it a neutral palate degrades cleanly to the flat mean this
+   used to be. Someone with real preferences gets those preferences amplified;
+   someone with none is not punished for it.
+
+   ASYMMETRIC ON PURPOSE — the first argument is the diner, the second is the
+   food. All three call sites pass them that way round.
+
+   Returns [0, 1]: 1 = exactly your thing, 0 = the opposite of it. */
+const OPINION_FLOOR = 0.25;
+
+export function similarity(taste: FlavorVector, item: FlavorVector): number {
+  let weighted = 0;
+  let total = 0;
+  for (const d of DIMS) {
+    const opinion = Math.max(OPINION_FLOOR, Math.abs(taste[d] - 0.5) * 2);
+    weighted += opinion * Math.abs(taste[d] - item[d]);
+    total += opinion;
+  }
+  return 1 - weighted / total;
+}
+
+/**
+ * The same comparison, scaled so the number means something.
+ *
+ * HALF MARKS FOR A COIN FLIP was the other half of the problem. Raw similarity
+ * across real food never drops below about 0.5 — no restaurant is the exact
+ * opposite of you on all six axes at once — so scoring it directly handed
+ * every candidate roughly half the palate budget before anything was compared.
+ * That constant is not a match, it is a floor, and it drowned the part that
+ * actually varied.
+ *
+ * 0.5 is the honest zero: a place as different from you as it is similar tells
+ * you nothing, and should contribute nothing. Everything above it is stretched
+ * across the full range, so the palate term finally swings as widely as the
+ * terms it is supposed to outrank.
+ */
+export function palateFit(taste: FlavorVector, item: FlavorVector): number {
+  return clamp01((similarity(taste, item) - 0.5) * 2);
 }
 
 /* ── WHAT A DISH ACTUALLY CLAIMS ──────────────────────────────────────────

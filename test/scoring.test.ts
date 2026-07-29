@@ -37,18 +37,56 @@ describe("score-sum invariant", () => {
   });
 
   it("holds when a craving pushes the raw total past the 99 the ring can draw", () => {
-    // Wings + a palate that already loves them + a 1-minute walk is the case
-    // that overflows: without scaling this returns bars summing to ~120.
+    // Standing on Wingstop's doorstep, craving wings, with a palate that IS
+    // Wingstop's flavour profile. Without scaling the bars sum past the ring.
+    const wingstop = SEED_PLACES.find((p) => p.id === "wingstop-marina")!;
     const profile = {
       ...defaultProfile(),
       maxKm: 50,
-      vector: vec({ heat: 0.8, sweet: 0.6, fried: 0.95, rich: 0.75, adventure: 0.4 }),
+      priceMax: 4 as const,
+      vector: vec(wingstop.flavor),
     };
-    const craving = parseCravingLocal("wings");
-    const rec = recommend(profile, SEED_PLACES, CTX, ORIGIN, [], craving);
-    expect(rec).not.toBeNull();
+    const rec = recommend(
+      profile,
+      SEED_PLACES,
+      CTX,
+      { lat: wingstop.lat, lng: wingstop.lng },
+      [],
+      parseCravingLocal("wings"),
+    );
+    expect(rec!.best.place.id).toBe("wingstop-marina");
     expect(rec!.best.matchScore).toBe(99);
     expect(sumOf(rec!.best.breakdown)).toBe(99);
+  });
+
+  it("holds at the FLOOR too, where a clamp used to lie", () => {
+    // The mirror of the overflow case, and it was a live bug the moment the
+    // palate term stopped handing every candidate a free ~28 points: asking
+    // for "not spicy" within 2 km put Mala Xiang Guo's terms at −1, and the
+    // card displayed a 1 with bars adding up to −1 beside it.
+    //
+    // The −34 avoid penalty is scaled back to whatever makes the row land on
+    // exactly 1, so the ring and the bars agree at the bottom of the range the
+    // same way they do at the top.
+    const profile = {
+      ...defaultProfile(),
+      maxKm: 2,
+      priceMax: 4 as const,
+      vector: vec({ heat: 0.7, soupy: 0.9, rich: 0.8 }),
+    };
+    const rec = recommend(profile, SEED_PLACES, CTX, ORIGIN, [], parseCravingLocal("not spicy"));
+    expect(rec).not.toBeNull();
+
+    const floored = [rec!.best, rec!.safer, rec!.adventurous].filter(
+      (p): p is NonNullable<typeof p> => p?.matchScore === 1,
+    );
+    expect(floored.length, "expected a pick pinned to the floor").toBeGreaterThan(0);
+    for (const pick of floored) {
+      expect(sumOf(pick.breakdown)).toBe(1);
+      // Scaled, not clamped: the penalty was pulled in from its full −34.
+      expect(pick.breakdown.craving).toBeLessThan(0);
+      expect(pick.breakdown.craving).toBeGreaterThan(-34);
+    }
   });
 
   it("holds across many profile/craving combinations", () => {
