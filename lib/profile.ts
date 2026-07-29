@@ -1,33 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { dbConfigured, loadProfile, storeProfile, deleteProfile } from "@/lib/db";
-import { FlavorVector, neutralVector } from "@/lib/flavor";
+import { MAX_RECENT, Profile, defaultProfile } from "@/lib/profile-shape";
 
-// A user's taste profile. Storage location depends on sign-in state:
+// Where a user's taste profile is KEPT. The shape itself lives in
+// lib/profile-shape.ts, which has no server dependencies.
 //   signed out → httpOnly cookie on the device (nothing leaves the phone)
 //   signed in  → Postgres row keyed by account id (follows them across devices)
 // See lib/db.ts for the full data-location note.
 
-export interface RecentMeal {
-  placeId: string;
-  cuisine: string;
-  at: number; // epoch ms
-}
-
-export interface Profile {
-  vector: FlavorVector;
-  swipeCount: number;
-  priceMax: 1 | 2 | 3 | 4;
-  maxKm: number;
-  recent: RecentMeal[];
-}
+export type { Profile, RecentMeal } from "@/lib/profile-shape";
+export { defaultProfile } from "@/lib/profile-shape";
 
 const COOKIE_NAME = "fnm_profile";
-const MAX_RECENT = 10;
-
-export function defaultProfile(): Profile {
-  return { vector: neutralVector(), swipeCount: 0, priceMax: 3, maxKm: 1.5, recent: [] };
-}
 
 /** The signed-in account id, or null for guests. */
 export async function currentUserId(): Promise<string | null> {

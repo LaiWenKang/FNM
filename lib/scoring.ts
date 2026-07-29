@@ -2,7 +2,7 @@ import { Context } from "@/lib/context";
 import { Dish, Place } from "@/lib/data/seed";
 import { Craving, cravingFit } from "@/lib/craving";
 import { FlavorVector, similarity } from "@/lib/flavor";
-import { Profile } from "@/lib/profile";
+import type { Profile } from "@/lib/profile-shape";
 
 // The recommendation pipeline from PLAN.md:
 //   HARD FILTERS -> SCORE (flavor match + context nudges - recency penalty)
@@ -25,6 +25,8 @@ export interface ScoreBreakdown {
   quality: number;
   /** What you actually asked for today. Zero when you asked for nothing. */
   craving: number;
+  /** You saved this from a post and have not been yet. Zero otherwise. */
+  saved: number;
 }
 
 export interface ScoredPlace {
@@ -138,12 +140,26 @@ function breakDown(
     ),
     quality: qualityTerm(place),
     /* A CRAVING OUTRANKS THE LEARNED PALATE. Someone who typed "ramen" told us
-       in plain words; a profile is an inference. So a direct hit is worth more
-       than any other single term, and a place matching nothing they asked for
-       is PENALISED rather than merely missing a bonus — otherwise the gap
-       between "what you asked for" and "what your profile likes" is too narrow
-       to be decisive, which is the whole failure this feature exists to fix. */
+       in plain words; a profile is an inference. A direct hit is therefore
+       worth more than any other single term — 45 against palate's 54 ceiling,
+       and a hit usually carries a flavour nudge too, so it wins decisively.
+       THREE STATES, and the middle one is deliberately neutral:
+         HIT     up to +45
+         NO HIT  0 — NOT a penalty. Every non-matching place would take the
+                 same hit, so it changes no ranking among them; and when
+                 nothing matches at all it would drag every score down and
+                 print a negative bar on a pick whose only fault is that the
+                 user asked for something this street does not sell. The
+                 fallback to palate should be quiet, not punitive.
+         AVOIDED −34, because "no pork" is an instruction, not a preference. */
     craving: Math.round(cravingScore >= 0 ? cravingScore * 45 : -34),
+    /* YOU ALREADY DECIDED YOU WANTED THIS. Saving a post is a deliberate act
+       of intent, made when you were not even hungry — which is cleaner
+       evidence than most of what the profile infers. The app's job is to
+       notice when you are finally standing near it, and 28 is enough to
+       surface it over a marginally better stranger without steamrolling an
+       explicit craving. */
+    saved: place.wantToTry ? 28 : 0,
   };
 
   /* THE RING CANNOT LIE. The card states "sums to match", and with seven terms
@@ -157,10 +173,11 @@ function breakDown(
     breakdown.budget +
     breakdown.novelty +
     breakdown.quality +
-    breakdown.craving;
+    breakdown.craving +
+    breakdown.saved;
 
   if (raw > 99) {
-    const keys = ["palate", "distance", "weather", "budget", "novelty", "quality", "craving"] as const;
+    const keys = ["palate", "distance", "weather", "budget", "novelty", "quality", "craving", "saved"] as const;
     const negatives = keys.reduce((t, k) => t + Math.min(0, breakdown[k]), 0);
     const positives = raw - negatives;
     const room = 99 - negatives;
@@ -266,6 +283,7 @@ export function recommend(
       reasons.push(`rated ${place.rating.toFixed(1)} by ${place.ratingCount} people`);
     }
     if (cr.hit) reasons.push(`matches what you're craving (${cr.hit})`);
+    if (place.wantToTry) reasons.push("you saved this one");
     scored.push({
       place,
       cravingHit: cr.hit,

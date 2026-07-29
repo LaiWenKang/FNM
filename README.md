@@ -50,13 +50,53 @@ Live places also carry `flavorKnown` and `hoursKnown` flags, so the UI can tell
 an estimate from a reading and never prints a closing time it does not actually
 have.
 
+## The learning loop
+
+Sixteen onboarding swipes bootstrap your palate. After that:
+
+| Signal | Weight | Why |
+|---|---|---|
+| Calibration swipe | 0.30, decaying | A deliberate answer to a direct question. |
+| **You chose this place** | 0.10 | A preference expressed with your feet and your money — better evidence than a card tapped during setup, but noisier: you might have picked it because it was raining. |
+| **"Too rich?"** | 0.08 | A flavour complaint. Nudges away. |
+| **"Just bored?"** | — | Raises `adventure` only. Boredom is about novelty, not about this dish. |
+| **"Too far?"** | **0** | Says nothing about taste. Learning from it would teach the app you dislike a cuisine when all you said was "not that walk". |
+| Rejection, no reason | 0.04 | Ambiguous — barely a whisper. |
+
+Until recently `/api/pick` recorded the meal for the recency penalty and nothing
+else, so the app learned your palate during onboarding and then never learned
+again.
+
 ## Run it locally
 
 ```bash
 npm install
-npm run dev
-# open http://localhost:3000
+npm run dev     # http://localhost:3000
+npm test        # 50 unit tests over the scoring engine
 ```
+
+### What the tests cover, and why those things
+
+The recommendation engine is pure functions over plain data, so it is cheap to
+test precisely — and the bugs that reached production were in the **wiring**,
+not the maths. The suite pins the things a hand-check kept catching:
+
+- **The score-sum invariant.** The card prints *"N terms · sums to match"*, so a
+  pick whose bars do not add up to its own ring is the UI lying. Held by luck
+  until the clamp became a scale; now asserted across 96 profile × craving ×
+  radius combinations.
+- **A craving outranks the palate** — the rule the whole feature exists for.
+- **The group blend** — that it is exactly `0.6·mean + 0.4·min`, that the higher
+  floor wins a tie on the mean, and that distance and budget ceilings are the
+  strictest member's rather than an average.
+- **Hard filters** — never a closed place, never over budget, exclusions honoured.
+- **Catalogue integrity** — no duplicate ids, every flavour value in 0..1, and
+  *something open at every hour of the day* so the app can never dead-end.
+
+Writing them immediately found two real bugs: `"no pork"` was being discarded
+entirely (the avoid list sat behind a guard requiring match terms, and a pure
+negation produces none), and the group card showed a mean and a group score a
+user doing the arithmetic could not reconcile.
 
 ## Optional keys (`.env.local`, see `.env.example`)
 
@@ -67,6 +107,38 @@ npm run dev
 | `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` + `AUTH_SECRET` | Google sign-in |
 | `REQUIRE_AUTH=true` | Makes sign-in mandatory (ignored unless Google keys are set) |
 | `DATABASE_URL` | Postgres — signed-in profiles sync across devices, **and group links become reliable** |
+
+## Saved from TikTok / Rednote / Douyin
+
+The original idea was "pull restaurants from Google, Rednote, TikTok, Douyin".
+Two very different things were hiding in that sentence, and conflating them is
+what made it look impossible:
+
+| | |
+|---|---|
+| **Crawling their catalogues** | Not possible, and not worth pretending. None expose a public API for discovering food posts, they block scrapers, and a scraper breaks the week they change their markup. |
+| **Importing what you saved** | Entirely possible — and *better*, because it is already filtered by your own taste. |
+
+Everybody saves food videos and then never finds them again at the one moment
+they matter: hungry, standing somewhere, deciding. Paste the share text into
+**You → Want to try** and FNM turns it into a place with coordinates, an address
+and a walk time — then **raises it in the ranking when you are actually near
+it**. That is the whole point: not a bookmark folder you never reopen, but the
+app remembering it for you.
+
+What is available per platform, and what the code relies on:
+
+- **TikTok** — a public oEmbed endpoint, no auth, officially supported. Returns the caption.
+- **Douyin / Rednote** — no oEmbed, but the caption travels in the shared text itself, which is what iOS puts on the clipboard. Rednote's share format is literally `「title」 http://xhslink.com/…`.
+
+So the caption is the raw material in every case, and the extractor works from
+caption text alone. Claude reads the restaurant name out of it; Google Places
+`searchText` resolves it to coordinates. Without keys it still saves the post
+and says plainly that it could not match it to a place.
+
+**Paste, not share-sheet.** A PWA can register as a Web Share Target, but iOS
+Safari does not implement it — shipping that button would mean shipping
+something that silently does nothing on an iPhone.
 
 ## "Craving anything?"
 

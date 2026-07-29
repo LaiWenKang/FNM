@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Context } from "@/lib/context";
 import { describeTaste } from "@/lib/flavor";
-import { Profile } from "@/lib/profile";
+import type { Profile } from "@/lib/profile-shape";
 import { ScoredPlace } from "@/lib/scoring";
 
 // "Why this pick" — one human sentence per recommendation. Uses Claude when an

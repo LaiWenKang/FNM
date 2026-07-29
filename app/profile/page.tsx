@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import BrandRow from "@/components/BrandRow";
+import SavedPosts from "@/components/SavedPosts";
 import Togo from "@/components/Togo";
 import {
   CheckIcon,
@@ -166,6 +167,11 @@ export default function ProfilePage() {
               <span className="stat-v small">{settings.tasteDescription ?? "balanced"}</span>
             </div>
           </div>
+
+          {/* SAVED FROM SOCIAL. Sits high on the tab because it is the only
+              part of this screen that is a LIST rather than a setting, and
+              because the whole point is that you reopen it. */}
+          <SavedPosts />
 
           <p className="section-eyebrow">Search</p>
 

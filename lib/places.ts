@@ -266,6 +266,46 @@ async function fetchGooglePlaces(
   }
 }
 
+/**
+ * A place you saved from a video, converted into a real candidate.
+ *
+ * These carry `wantToTry`, which the scorer treats as a strong boost: you
+ * already decided you wanted this — the app's job is to notice when you are
+ * finally standing near it, which is the entire reason the saved list exists
+ * rather than being a bookmark folder you never reopen.
+ */
+export function placeFromSaved(saved: {
+  placeId: string;
+  name: string;
+  lat: number;
+  lng: number;
+  rating: number | null;
+  ratingCount: number;
+}, dishName: string | null): Place {
+  return {
+    id: saved.placeId,
+    name: saved.name,
+    cuisine: "restaurant",
+    lat: saved.lat,
+    lng: saved.lng,
+    priceLevel: 2,
+    flavor: vec({}),
+    // Hours are unknown for a saved place, and pretending otherwise would
+    // filter it out of exactly the meal it was saved for.
+    openHour: 0,
+    closeHour: 24,
+    sheltered: false,
+    dishes: [],
+    source: "google",
+    rating: saved.rating,
+    ratingCount: saved.ratingCount,
+    flavorKnown: false,
+    hoursKnown: false,
+    wantToTry: true,
+    savedDish: dishName,
+  };
+}
+
 export async function getCandidatePlaces(
   lat: number,
   lng: number,

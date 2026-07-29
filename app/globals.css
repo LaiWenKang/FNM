@@ -5438,3 +5438,127 @@ body:has(.sheet-layer) .tab-bar {
   background: var(--accent-soft);
   color: var(--accent-tint);
 }
+
+/* ═══ SAVED FROM SOCIAL ════════════════════════════════════════════════════ */
+
+.saved {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.saved-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s5);
+  border-radius: var(--r-lg);
+}
+
+.saved-say {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.saved-togo {
+  float: left;
+  margin: 0 var(--s3) 2px 0;
+}
+
+.saved-row {
+  margin: 0;
+}
+
+.saved-err {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--danger);
+}
+.saved-fine {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.saved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saved-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4);
+  border-radius: var(--r-md);
+}
+/* Eaten, not deleted — the history is worth keeping, the nagging is not. */
+.saved-item.done {
+  opacity: 0.5;
+}
+.saved-item.done .saved-name {
+  text-decoration: line-through;
+}
+
+.saved-main {
+  min-width: 0;
+}
+.saved-name {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.saved-dish {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--accent-tint);
+}
+.saved-meta {
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.saved-platform {
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: var(--mat-reg-tint);
+  color: var(--data);
+}
+
+.saved-acts {
+  display: flex;
+  gap: 6px;
+}
+.saved-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}

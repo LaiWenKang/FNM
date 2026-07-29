@@ -4,7 +4,10 @@ import { Craving, parseCraving } from "@/lib/craving";
 import { enrichPicks } from "@/lib/dishes";
 import { explain } from "@/lib/explain";
 import { applyMoods, isValidMood } from "@/lib/mood";
-import { getCandidatePlaces } from "@/lib/places";
+import { getCandidatePlaces, placeFromSaved } from "@/lib/places";
+import { listSaved } from "@/lib/social";
+import { memberIdFrom } from "@/lib/member";
+import { currentUserId } from "@/lib/profile";
 import { readProfile } from "@/lib/profile";
 import { pickBestDish, recommend, ScoredPlace } from "@/lib/scoring";
 
@@ -80,6 +83,28 @@ export async function GET(req: NextRequest) {
   // planning for — not against whatever time the server thinks it is.
   const ctx = await buildContext(lat, lng, hour);
   const places = await getCandidatePlaces(lat, lng, profile.maxKm, ctx.hourSg);
+
+  /* THE SAVED LIST JOINS THE POOL. A bookmark folder you never reopen is not a
+     feature; the value of saving a post is the app remembering it FOR you and
+     raising it the day you happen to be nearby. Unvisited only — once you have
+     eaten there it is a normal place like any other. */
+  const savedOwner = (await currentUserId()) ?? memberIdFrom(req).id;
+  const ownerKey = (await currentUserId()) ? `u:${savedOwner}` : `d:${savedOwner}`;
+  const saved = await listSaved(ownerKey).catch(() => []);
+  const known = new Set(places.map((p) => p.id));
+  for (const post of saved) {
+    if (!post.resolved || post.visitedAt) continue;
+    if (known.has(post.resolved.placeId)) {
+      // Already in the pool from the nearby search — just flag the intent.
+      const existing = places.find((p) => p.id === post.resolved!.placeId);
+      if (existing) {
+        existing.wantToTry = true;
+        existing.savedDish = post.dishName;
+      }
+      continue;
+    }
+    places.push(placeFromSaved(post.resolved, post.dishName));
+  }
 
   // Never dead-end: if the strict filters leave nothing, relax them step by
   // step (wider radius, then any budget, then nearest matches anywhere) and

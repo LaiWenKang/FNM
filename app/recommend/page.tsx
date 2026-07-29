@@ -212,15 +212,33 @@ export default function Recommend() {
   async function choose(pick: Pick) {
     setDecidedInSec(Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)));
     setDecided(pick);
+    // SEND THE FLAVOUR, not just the id. Without it the server can record the
+    // meal but cannot learn from it, which is how the app came to stop learning
+    // anything after onboarding.
     await fetch("/api/pick", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ placeId: pick.placeId, cuisine: pick.cuisine }),
+      body: JSON.stringify({
+        placeId: pick.placeId,
+        cuisine: pick.cuisine,
+        dishFlavor: pick.dish?.flavor ?? null,
+      }),
     }).catch(() => {});
   }
 
-  function notFeelingIt() {
-    if (data?.best) excluded.current.push(data.best.placeId);
+  function notFeelingIt(reason?: string) {
+    const best = data?.best;
+    if (best) {
+      excluded.current.push(best.placeId);
+      // A REFUSAL IS DATA. It used to be handled entirely client-side, so the
+      // strongest negative signal the app ever receives — you looked at its
+      // best guess and said no — never reached the server at all.
+      void fetch("/api/pick", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason ?? null, dishFlavor: best.dish?.flavor ?? null }),
+      }).catch(() => {});
+    }
     void load();
   }
 
@@ -379,7 +397,9 @@ export default function Recommend() {
               onClick={() => {
                 reasonMood.current = r.mood;
                 setReasonOpen(false);
-                notFeelingIt();
+                // The stated reason decides what, if anything, is learned —
+                // "too far" says nothing about taste. See /api/pick DELETE.
+                notFeelingIt(r.id);
               }}
             >
               {r.label}

@@ -36,6 +36,10 @@ export interface Place {
   /** False when openHour/closeHour are the 0–24 placeholder, so the UI must
       not print a closing time it does not actually know. */
   hoursKnown?: boolean;
+  /** Saved from a TikTok / Rednote / Douyin post the user wants to try. */
+  wantToTry?: boolean;
+  /** The dish that post was actually about, if it named one. */
+  savedDish?: string | null;
 }
 
 export const SEED_PLACES: Place[] = [

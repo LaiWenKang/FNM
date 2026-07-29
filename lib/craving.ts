@@ -13,8 +13,11 @@ import { DIMS, FlavorVector } from "@/lib/flavor";
 // app has failed — they told it what they wanted in plain words and it argued.
 // So the craving term is worth more than palate (45 vs 54 is close, but a
 // literal name hit also carries the flavour nudge, so a real match wins
-// decisively), and a place matching nothing the user asked for takes a
-// penalty rather than merely missing out on a bonus.
+// decisively). A place that simply does not match scores ZERO rather than a
+// penalty — every non-match would take the same hit, changing no ranking among
+// them, and when nothing matches at all a penalty would just drag the honest
+// fallback down. An explicitly AVOIDED place is a different case and is
+// punished hard: "no pork" is an instruction, not a preference.
 //
 // TWO TIERS, same as everything else here:
 //   ZERO KEYS   a lexicon for flavour intent, plus LITERAL TEXT MATCHING
@@ -209,7 +212,11 @@ export interface CravingFit {
 }
 
 export function cravingFit(place: Place, craving: Craving | null): CravingFit {
-  if (!craving || !craving.terms.length) return { score: 0, hit: null };
+  // THE GUARD HAS TO ADMIT PURE NEGATIONS. It used to require `terms`, and
+  // "no pork" produces NO terms — the word goes to `avoid` — so an outright
+  // instruction not to serve someone something was silently discarded before
+  // the avoid list was ever consulted.
+  if (!craving || (!craving.terms.length && !craving.avoid.length)) return { score: 0, hit: null };
   const hay = haystack(place);
 
   for (const bad of craving.avoid) {
@@ -225,6 +232,7 @@ export function cravingFit(place: Place, craving: Craving | null): CravingFit {
     }
   }
   if (!hits) return { score: 0, hit: null };
+
   // Two matched terms is a strong signal; beyond that there are diminishing
   // returns, and a long craving should not out-score a precise one.
   return { score: Math.min(1, 0.7 + 0.3 * (hits - 1)), hit: first };
