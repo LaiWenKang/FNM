@@ -159,7 +159,40 @@ export async function extractPlace(caption: string): Promise<Extracted> {
 /* ── RESOLUTION ───────────────────────────────────────────────────────────
    A name is not yet useful. searchText turns "Hjh Maimunah, Jalan Pisang" into
    coordinates, hours and a rating — the difference between a video you saved
-   and a place you can walk to. */
+   and a place you can walk to.
+
+   BUT searchText ALWAYS RETURNS SOMETHING. Fed the caption of a pet video it
+   returned "GUESS KIDS", a clothing shop, with total confidence — and that
+   would have gone onto the want-to-try list and then into a recommendation.
+   Google's text search is a matcher, not a validator; it has no notion of
+   having failed.
+
+   So the result is checked for being FOOD before it is accepted. This catches
+   the keyless case, where the local extractor can only guess that a caption is
+   a restaurant name, and it equally catches the LLM naming something that
+   turns out to be a shop. Better to say "not matched to a place yet" than to
+   send someone to a clothes shop for lunch. */
+const FOOD_TYPES = new Set([
+  "restaurant", "food", "cafe", "coffee_shop", "bakery", "bar", "meal_takeaway",
+  "meal_delivery", "fast_food_restaurant", "sandwich_shop", "dessert_shop",
+  "ice_cream_shop", "juice_shop", "pub", "deli", "donut_shop", "bagel_shop",
+  "food_court", "buffet_restaurant", "fine_dining_restaurant", "diner",
+  "breakfast_restaurant", "brunch_restaurant", "steak_house", "pizza_restaurant",
+  "hamburger_restaurant", "barbecue_restaurant", "seafood_restaurant",
+  "sushi_restaurant", "ramen_restaurant", "vegetarian_restaurant",
+  "vegan_restaurant", "tea_house", "wine_bar", "bar_and_grill",
+]);
+
+/** Exported for tests — this guard is the difference between lunch and a
+    clothing shop, so it is worth pinning. */
+export function isFoodForTest(types: string[] | undefined): boolean {
+  return isFood(types);
+}
+
+function isFood(types: string[] | undefined): boolean {
+  if (!types?.length) return false;
+  return types.some((t) => FOOD_TYPES.has(t) || t.endsWith("_restaurant"));
+}
 export async function resolvePlace(
   query: string,
   near: { lat: number; lng: number },
@@ -174,7 +207,7 @@ export async function resolvePlace(
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount",
+          "places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount,places.types",
       },
       body: JSON.stringify({
         textQuery: query.slice(0, 120),
@@ -194,10 +227,13 @@ export async function resolvePlace(
         formattedAddress?: string;
         rating?: number;
         userRatingCount?: number;
+        types?: string[];
       }>;
     };
     const p = data.places?.[0];
     if (!p?.location || !p.displayName) return null;
+    // The guard that stops a pet video becoming a clothing shop.
+    if (!isFood(p.types)) return null;
     return {
       placeId: `g-${p.id}`,
       name: p.displayName.text,
@@ -315,6 +351,10 @@ export async function importPost(
   const { placeName, dishName, areaHint } = await extractPlace(caption);
   const query = [placeName, areaHint, "Singapore"].filter(Boolean).join(" ");
   const resolved = placeName ? await resolvePlace(query, near) : null;
+  // NOT MATCHED IS AN HONEST OUTCOME. The post is still saved with its caption
+  // so nothing the user pasted is lost, and the list says plainly that it has
+  // nowhere to send them — which is the truth, and far better than a confident
+  // wrong address.
 
   return {
     id: idFor(link),

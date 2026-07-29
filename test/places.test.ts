@@ -99,6 +99,19 @@ describe("social link parsing", () => {
     expect(idFor("https://a.com/1")).not.toBe(idFor("https://a.com/2"));
   });
 
+  it("only treats genuine food types as a resolvable place", async () => {
+    // searchText ALWAYS returns something: fed a pet video's caption it
+    // returned "GUESS KIDS", a clothing shop, with full confidence. The type
+    // guard is what stops that reaching the want-to-try list.
+    const { isFoodForTest } = await import("@/lib/social");
+    expect(isFoodForTest(["clothing_store", "store"])).toBe(false);
+    expect(isFoodForTest(["restaurant", "food"])).toBe(true);
+    expect(isFoodForTest(["indonesian_restaurant"])).toBe(true);
+    expect(isFoodForTest(["cafe"])).toBe(true);
+    expect(isFoodForTest([])).toBe(false);
+    expect(isFoodForTest(undefined)).toBe(false);
+  });
+
   it("strips hashtags and urls from a caption without an API key", () => {
     const out = extractLocal("Best laksa at Sungei Road #sgfood #foodie https://x.com/a");
     expect(out.placeName).not.toContain("#");
