@@ -111,9 +111,16 @@ export default function WhyGraphic({
         {vector && (
           <div className="why-radar" aria-hidden="true">
             <TasteRadar vector={vector} compare={compare ?? undefined} decorative gid={`${gid}-r`} size={92} />
+            {/* The DISH swatch only exists when there IS a dish. Live Google
+                results carry no dish data, and a legend naming a series that
+                was never plotted reads as a rendering fault. */}
             <span className="why-radar-key">
               <i className="k-you" /> You
-              <i className="k-dish" /> Dish
+              {compare && (
+                <>
+                  <i className="k-dish" /> Dish
+                </>
+              )}
             </span>
           </div>
         )}

@@ -17,7 +17,7 @@ import TasteRadar from "@/components/TasteRadar";
 import Togo from "@/components/Togo";
 import WhyGraphic from "@/components/WhyGraphic";
 import { FRESH_PICK_KEY } from "@/components/TabBar";
-import { CloudRainIcon, RefreshIcon, TargetIcon, WalkIcon } from "@/components/icons";
+import { CloudRainIcon, RefreshIcon, StoreIcon, TargetIcon, WalkIcon } from "@/components/icons";
 import type { MealPeriod } from "@/lib/context";
 import type { FlavorVector } from "@/lib/flavor";
 import { SEED_PLACES } from "@/lib/data/seed";
@@ -439,11 +439,21 @@ function HeroCard({
           <ScoreReadout score={pick.matchScore} size={72} gid="srA" />
         </div>
 
-        {pick.dish && (
+        {pick.dish ? (
           <div className="dish-row">
             <Glyph name={dishGlyph(pick.dish.id, pick.cuisine, pick.dish.flavor)} size={24} />
             <span className="dish-name">{pick.dish.name}</span>
             <span className="price">~${pick.dish.priceSgd.toFixed(2)}</span>
+          </div>
+        ) : (
+          /* SAY WHY THERE IS NO DISH. Dish-level picking is the product's whole
+             promise, and on a live Google result it silently disappeared —
+             which reads as a missing element rather than a stated limit. Google
+             has no menu data, so the honest move is to name the limit and still
+             be useful about it. */
+          <div className="dish-row dish-none">
+            <StoreIcon size={20} strokeWidth={1.8} />
+            <span className="dish-name">Restaurant match — no menu data here</span>
           </div>
         )}
 
