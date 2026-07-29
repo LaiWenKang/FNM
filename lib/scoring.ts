@@ -1,5 +1,6 @@
 import { Context } from "@/lib/context";
 import { Dish, Place } from "@/lib/data/seed";
+import { Craving, cravingFit } from "@/lib/craving";
 import { FlavorVector, similarity } from "@/lib/flavor";
 import { Profile } from "@/lib/profile";
 
@@ -22,10 +23,14 @@ export interface ScoreBreakdown {
   /** Crowd rating, weighted by how many people it took to get there. Zero for
       curated places, which carry no rating — see qualityTerm. */
   quality: number;
+  /** What you actually asked for today. Zero when you asked for nothing. */
+  craving: number;
 }
 
 export interface ScoredPlace {
   place: Place;
+  /** The craving term that matched, for the UI to name. */
+  cravingHit?: string | null;
   score: number;
   /** 1–99, and the sum of `breakdown`. The one number the UI ever renders. */
   matchScore: number;
@@ -118,6 +123,7 @@ function breakDown(
   recencyDelta: number,
   place: Place,
   profile: Profile,
+  cravingScore: number,
 ): { breakdown: ScoreBreakdown; matchScore: number } {
   const breakdown: ScoreBreakdown = {
     // 62 -> 54 to make room for quality without inflating the total, so the
@@ -131,15 +137,50 @@ function breakDown(
         clamp(4 * (1 - Math.abs(place.flavor.adventure - profile.vector.adventure)), 0, 4),
     ),
     quality: qualityTerm(place),
+    /* A CRAVING OUTRANKS THE LEARNED PALATE. Someone who typed "ramen" told us
+       in plain words; a profile is an inference. So a direct hit is worth more
+       than any other single term, and a place matching nothing they asked for
+       is PENALISED rather than merely missing a bonus — otherwise the gap
+       between "what you asked for" and "what your profile likes" is too narrow
+       to be decisive, which is the whole failure this feature exists to fix. */
+    craving: Math.round(cravingScore >= 0 ? cravingScore * 45 : -34),
   };
-  const sum =
+
+  /* THE RING CANNOT LIE. The card states "sums to match", and with seven terms
+     the raw total can exceed the 99 the ring can draw — at which point a clamp
+     would silently break that claim. Scaling the positives keeps every bar an
+     honest share of the total AND keeps the arithmetic exact. */
+  const raw =
     breakdown.palate +
     breakdown.distance +
     breakdown.weather +
     breakdown.budget +
     breakdown.novelty +
-    breakdown.quality;
-  return { breakdown, matchScore: clamp(sum, 1, 99) };
+    breakdown.quality +
+    breakdown.craving;
+
+  if (raw > 99) {
+    const keys = ["palate", "distance", "weather", "budget", "novelty", "quality", "craving"] as const;
+    const negatives = keys.reduce((t, k) => t + Math.min(0, breakdown[k]), 0);
+    const positives = raw - negatives;
+    const room = 99 - negatives;
+    let running = 0;
+    for (const k of keys) {
+      if (breakdown[k] > 0) {
+        breakdown[k] = Math.round((breakdown[k] / positives) * room);
+        running += breakdown[k];
+      }
+    }
+    // Rounding can drift a point or two; put it on the largest bar so the
+    // displayed bars sum to the displayed ring EXACTLY.
+    const drift = 99 - (running + negatives);
+    if (drift !== 0) {
+      const biggest = keys.reduce((a, b) => (breakdown[b] > breakdown[a] ? b : a));
+      breakdown[biggest] += drift;
+    }
+    return { breakdown, matchScore: 99 };
+  }
+  return { breakdown, matchScore: clamp(raw, 1, 99) };
 }
 
 /**
@@ -193,6 +234,7 @@ export function recommend(
   ctx: Context,
   origin: { lat: number; lng: number },
   excludeIds: string[] = [],
+  craving: Craving | null = null,
 ): Recommendation | null {
   const now = Date.now();
   const excluded = new Set(excludeIds);
@@ -209,18 +251,24 @@ export function recommend(
     const flavorMatch = similarity(profile.vector, place.flavor);
     const cf = contextFit(place, ctx);
     const rp = recencyPenalty(place, profile, now);
-    const score = flavorMatch + cf.delta + rp.delta - distanceKm * 0.04 + qualityTerm(place) / 100;
+    const cr = cravingFit(place, craving);
+    const score =
+      flavorMatch + cf.delta + rp.delta - distanceKm * 0.04 + qualityTerm(place) / 100 + cr.score * 1.2;
 
     // ONE NUMBER. The why-sentence is derived from the SAME value the ring
     // draws, so the card can never show 92 and say 89% four lines apart.
-    const { breakdown, matchScore } = breakDown(flavorMatch, distanceKm, cf.delta, rp.delta, place, profile);
+    const { breakdown, matchScore } = breakDown(
+      flavorMatch, distanceKm, cf.delta, rp.delta, place, profile, cr.score,
+    );
 
     const reasons = [`matches your taste (${matchScore}% match)`, ...cf.reasons, ...rp.reasons];
     if (typeof place.rating === "number" && (place.ratingCount ?? 0) >= 20) {
       reasons.push(`rated ${place.rating.toFixed(1)} by ${place.ratingCount} people`);
     }
+    if (cr.hit) reasons.push(`matches what you're craving (${cr.hit})`);
     scored.push({
       place,
+      cravingHit: cr.hit,
       score,
       matchScore,
       breakdown,
