@@ -5366,3 +5366,14 @@ body:has(.sheet-layer) .tab-bar {
   font-size: 12.5px;
   color: var(--accent-tint);
 }
+
+/* A stated limit, not a missing row. Reads as chrome rather than as a dish, so
+   it can never be mistaken for a recommendation. */
+.dish-row.dish-none {
+  color: var(--ink-3);
+}
+.dish-row.dish-none .dish-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+}

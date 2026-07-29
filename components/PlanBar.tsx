@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AREAS } from "@/lib/areas";
+import { PICKER_AREAS } from "@/lib/areas";
 import {
   MOVED_KM,
   Plan,
@@ -214,7 +214,7 @@ export default function PlanBar({ onChange }: PlanBarProps) {
             <LocateIcon size={14} strokeWidth={1.9} />
             {locating ? "Locating…" : auto ? "Following my location" : "Use my location"}
           </button>
-          {AREAS.map((a) => (
+          {PICKER_AREAS.map((a) => (
             <button
               key={a.id}
               type="button"
