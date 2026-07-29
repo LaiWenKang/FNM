@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -15,6 +16,18 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "..", "public");
 const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
+
+/** Width and height out of a PNG's IHDR, plus its colour type. */
+function png(file: string) {
+  const buf = readFileSync(join(ROOT, file));
+  expect(buf.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a"); // PNG magic
+  return {
+    width: buf.readUInt32BE(16),
+    height: buf.readUInt32BE(20),
+    /** 6 = RGBA, 2 = RGB. iOS renders alpha in a home-screen icon as black. */
+    colorType: buf.readUInt8(25),
+  };
+}
 
 /** `translate(a b) scale(s) translate(-60 -66)` → a mapper from art to tile. */
 function placement(svg: string) {
@@ -81,6 +94,59 @@ describe("the app icon is sized, not eyeballed", () => {
     for (const f of ["icon.svg", "icon-512.svg", "icon-maskable.svg"]) {
       expect(read(f)).toContain('viewBox="0 0 512 512"');
     }
+  });
+});
+
+/* ── THE ICON HAS TO SURVIVE THE TRIP TO A HOME SCREEN ────────────────────
+   Every check above passed while an iPhone showed a blurry orange arrow,
+   because none of them asked the only question that matters on iOS: is there
+   a PNG, and is it declared where Safari actually looks? */
+describe("iOS can actually install this icon", () => {
+  it("ships a 180px apple-touch-icon", () => {
+    // "Add to Home Screen" reads apple-touch-icon and NOTHING else — not the
+    // manifest, not rel=icon. With none declared it grabs the first rel=icon
+    // and upscales it, which is how a 32px favicon ended up at 180.
+    const m = png("apple-touch-icon.png");
+    expect([m.width, m.height]).toEqual([180, 180]);
+  });
+
+  it("keeps every full-bleed tile opaque", () => {
+    // iOS masks the corners itself and does not composite: transparency in the
+    // source renders BLACK, which is worse than any sizing fault.
+    for (const f of ["apple-touch-icon.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png"]) {
+      expect(png(f).colorType, `${f} must have no alpha channel`).toBe(2);
+    }
+  });
+
+  it("declares apple-touch-icon in the document head", () => {
+    // A PNG sitting in public/ that nothing points at is not an icon.
+    const layout = readFileSync(join(__dirname, "..", "app", "layout.tsx"), "utf8");
+    expect(layout).toMatch(/apple:\s*\[/);
+    expect(layout).toContain("/apple-touch-icon.png");
+  });
+
+  it("offers PNG icons in the manifest, not SVG alone", () => {
+    // Android is more forgiving than iOS but not universally — an all-SVG
+    // manifest silently degrades on older Chrome and on some launchers.
+    const manifest = JSON.parse(read("manifest.webmanifest")) as {
+      icons: { src: string; type: string; purpose: string }[];
+    };
+    const pngs = manifest.icons.filter((i) => i.type === "image/png");
+    expect(pngs.length).toBeGreaterThanOrEqual(3);
+    expect(pngs.some((i) => i.purpose === "maskable")).toBe(true);
+    for (const i of manifest.icons) expect(existsSync(join(ROOT, i.src.slice(1)))).toBe(true);
+  });
+
+  it("has not let the PNGs drift from the SVGs they came from", () => {
+    // The one failure a dimension check cannot see: an SVG edited without
+    // re-running `npm run icons`, leaving PNGs that render the OLD artwork
+    // while every source file looks correct. Fix by running it.
+    const lock = JSON.parse(read("icons.lock.json")) as Record<string, string>;
+    for (const [src, hash] of Object.entries(lock)) {
+      const actual = createHash("sha256").update(readFileSync(join(ROOT, src))).digest("hex").slice(0, 16);
+      expect(actual, `${src} changed — run \`npm run icons\``).toBe(hash);
+    }
+    expect(Object.keys(lock).sort()).toEqual(["favicon.svg", "icon-maskable.svg", "icon.svg"]);
   });
 });
 
