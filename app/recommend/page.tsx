@@ -55,6 +55,7 @@ interface RecommendResponse {
     lng: number;
   };
   note: string | null;
+  canReset?: boolean;
   craving: { text: string; hit: string | null } | null;
   swipeCount: number;
   vector: FlavorVector;
@@ -65,7 +66,12 @@ interface RecommendResponse {
 }
 
 function distanceLabel(pick: Pick): string {
-  return pick.walkMinutes <= 45 ? `${pick.walkMinutes} min walk` : `${pick.distanceKm} km away`;
+  // THREE BANDS, because "148633 MIN WALK" is not a distance, it is a defect.
+  // Past a few kilometres nobody is walking, so stop calling it a walk; past
+  // 60 km it is another city and the round number is the honest unit.
+  if (pick.walkMinutes <= 45) return `${pick.walkMinutes} min walk`;
+  if (pick.distanceKm < 60) return `${pick.distanceKm} km away`;
+  return `${Math.round(pick.distanceKm)} km away`;
 }
 
 /** "Tian Tian Chicken Rice (Maxwell)" → title + a mono area chip, never an h2. */
@@ -132,6 +138,7 @@ const TELEMETRY = [
 export default function Recommend() {
   const [data, setData] = useState<RecommendResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [canReset, setCanReset] = useState(false);
   const [loading, setLoading] = useState(true);
   const [decided, setDecided] = useState<Pick | null>(null);
   const [reasonOpen, setReasonOpen] = useState(false);
@@ -177,6 +184,7 @@ export default function Recommend() {
       const json = (await res.json()) as RecommendResponse;
       if (!res.ok) {
         setError(json.error ?? "Something went wrong.");
+        setCanReset(json.canReset === true);
         setData(null);
       } else {
         setData(json);
@@ -308,6 +316,7 @@ export default function Recommend() {
       {error && !loading && (
         <ErrorState
           message={error}
+          canReset={canReset}
           session={session}
           onRetry={() => void load()}
           onReset={() => {
@@ -626,23 +635,31 @@ function AltCard({
  */
 function ErrorState({
   message,
+  canReset,
   session,
   onRetry,
   onReset,
 }: {
   message: string;
+  canReset: boolean;
   session: number;
   onRetry: () => void;
   onReset: () => void;
 }) {
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  /* THE SERVER NOW SAYS WHETHER STARTING OVER WOULD HELP, so stop inferring it
+     by pattern-matching the prose. Sniffing the message meant that rewording an
+     error could silently change which button the user was offered — and it
+     already had: "everything open near you turned down" does not contain
+     "closed", so a copy edit was one word away from showing "Try again" for a
+     situation retrying cannot fix. */
   const kind = offline
     ? ("offline" as const)
-    : /closed|shut/i.test(message)
-      ? ("nothingOpen" as const)
+    : canReset
+      ? ("excluded" as const)
       : /location|where/i.test(message)
         ? ("locationDenied" as const)
-        : ("excluded" as const);
+        : ("nothingOpen" as const);
 
   const banked = kind === "offline" || kind === "nothingOpen";
 

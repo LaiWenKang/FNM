@@ -1,20 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="FNM">
   <title>FNM</title>
-  <!--
-    VARIANT C — THE MARK ALONE. Not a shrunken character: his logo, which
-    happens to be an arrow, the single most legible form at this size. A
-    character-only mascot has to be degraded into mush at 16px; Togo just
-    switches to his logo.
-
-    The needle nested in the shipped hexagon geometry — hexPath(14) centred
-    16/17, vertex-up, exactly as TasteRadar's pt() lays it out. The needle's
-    apex is 60°, which is the hexagon's own spoke step, so the two forms are
-    provably one drawing. This path is an exact 2/3 scaling of the canonical
-    48-grid needle and preserves that 60° apex.
-  -->
-  <rect width="32" height="32" rx="7" fill="#0B0A10"/>
-  <path fill="none" stroke="#53D9FF" stroke-opacity=".34" stroke-width="1"
-        d="M16 3 L28.1 10 L28.1 24 L16 31 L3.9 24 L3.9 10 Z"/>
-  <path fill="#EDF3F7"
-        d="M16 3.3 L23.7 16.7 C22.1 16.8 20.5 17.5 20.1 19.5 C19.6 22.7 19.1 25.7 18.5 28.1 C18.2 29.6 13.8 29.6 13.5 28.1 C12.9 25.7 12.4 22.7 11.9 19.5 C11.5 17.5 9.9 16.8 8.3 16.7 Z"/>
+  <!-- AT 16px A FACE IS MUSH AND A MARK IS NOT. The tab icon drops the husky
+       and shows his blaze alone — the same 60° needle, now the whole tile. -->
+  <defs>
+    <linearGradient id="f" x1="0" y1="0" x2=".7" y2="1">
+      <stop offset="0" stop-color="#FFA23D"/><stop offset="1" stop-color="#F0341F"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#f)"/>
+  <path fill="#FFF6EC" d="M16 4 L24.5 19 C22.7 19.1 21 19.9 20.5 22.1 C19.9 25.7 19.4 29 18.8 31.5 C18.5 32.8 13.5 32.8 13.2 31.5 C12.6 29 12.1 25.7 11.5 22.1 C11 19.9 9.3 19.1 7.5 19 Z"/>
 </svg>

@@ -114,7 +114,12 @@ export async function GET(req: NextRequest) {
     { maxKm: Math.max(3, profile.maxKm), priceMax: profile.priceMax, note: "widened the search to ~3 km" },
     { maxKm: 8, priceMax: 4, note: "widened the search to ~8 km" },
     { maxKm: 50, priceMax: 4, note: "nothing close by — showing options further out" },
-    { maxKm: 40075, priceMax: 4, note: "showing the nearest open matches (demo catalog covers Singapore CBD)" },
+    /* THE CEILING IS 120 km, NOT THE CIRCUMFERENCE OF THE EARTH. The old final
+       step used 40075, so a bad GPS fix returned a place 11,147 km away and the
+       card rendered "148633 MIN WALK". A number that absurd is not a fallback,
+       it is a bug wearing a fallback's clothes — and it is better to say
+       nothing is near you than to offer a three-month walk. */
+    { maxKm: 120, priceMax: 4, note: "nothing open near you — these are the closest matches we have" },
   ];
 
   let rec = null;
@@ -135,8 +140,20 @@ export async function GET(req: NextRequest) {
   }
 
   if (!rec) {
+    /* TWO VERY DIFFERENT FAILURES WERE SHARING ONE MESSAGE. Refusing every
+       candidate produced "Everything seems closed right now — try again
+       shortly", which is factually false (nothing is shut, you turned it all
+       down) and gives advice that cannot work (waiting changes nothing). The
+       same dead-end complaint from field testing, in a new disguise. */
+    const refusedEverything = exclude.length > 0;
     return NextResponse.json(
-      { error: "Everything seems closed right now — even the fallbacks. Try again shortly.", context: ctx },
+      {
+        error: refusedEverything
+          ? "That's everything open near you turned down. Start over, or widen the search in You."
+          : "Everything nearby is shut right now. Try a different time or area.",
+        canReset: refusedEverything,
+        context: ctx,
+      },
       { status: 404 },
     );
   }
