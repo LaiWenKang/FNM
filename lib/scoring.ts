@@ -154,14 +154,26 @@ function breakDown(
  */
 function qualityTerm(place: Place): number {
   const rating = place.rating;
-  if (typeof rating !== "number") return 0;
   const n = place.ratingCount ?? 0;
+
+  // AN UNRATED CURATED PLACE AND AN UNRATED GOOGLE PLACE ARE NOT THE SAME
+  // THING, and the first cut treated both as a neutral 0. A curated entry was
+  // hand-picked, so silence about its rating carries no information. A live
+  // listing with nobody's opinion attached is unvetted by anyone — which is
+  // weak evidence, not an absence of evidence, and it let a zero-rating
+  // caterer take the top slot in production. Small penalty, not a filter:
+  // genuinely new places exist and deserve to surface eventually.
+  if (typeof rating !== "number" || n === 0) {
+    return place.source === "google" ? -6 : 0;
+  }
+  if (n < 5) return -3;
+
   const confidence = Math.min(1, n / 200);
   // 4.0 is the pivot: above it earns, below it loses.
   return Math.round(clamp((rating - 4.0) * 9 * confidence, -10, 10));
 }
 
-function pickBestDish(place: Place, taste: FlavorVector): Dish | null {
+export function pickBestDish(place: Place, taste: FlavorVector): Dish | null {
   if (!place.dishes.length) return null;
   let best = place.dishes[0];
   let bestSim = -1;

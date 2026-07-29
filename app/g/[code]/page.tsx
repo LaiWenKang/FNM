@@ -284,7 +284,9 @@ export default function GroupPage({ params }: { params: Promise<{ code: string }
                     <p className="gp-dish">
                       <Glyph name={p.dish.glyph as never} size={20} />
                       {p.dish.name}
-                      <span className="gp-price">~${p.dish.priceSgd.toFixed(2)}</span>
+                      {p.dish.priceSgd > 0 && (
+                        <span className="gp-price">~${p.dish.priceSgd.toFixed(2)}</span>
+                      )}
                     </p>
                   )}
                   <p className="gp-meta">

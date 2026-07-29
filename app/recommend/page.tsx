@@ -443,7 +443,13 @@ function HeroCard({
           <div className="dish-row">
             <Glyph name={dishGlyph(pick.dish.id, pick.cuisine, pick.dish.flavor)} size={24} />
             <span className="dish-name">{pick.dish.name}</span>
-            <span className="price">~${pick.dish.priceSgd.toFixed(2)}</span>
+            {/* A MINED DISH MAY HAVE NO PRICE. Reviews often name the dish and
+                never the cost, and the extractor returns 0 for that rather than
+                guessing — so the row must omit the price instead of printing a
+                confident "~$0.00". */}
+            {pick.dish.priceSgd > 0 && (
+              <span className="price">~${pick.dish.priceSgd.toFixed(2)}</span>
+            )}
           </div>
         ) : (
           /* SAY WHY THERE IS NO DISH. Dish-level picking is the product's whole
@@ -555,7 +561,9 @@ function AltCard({
       {pick.dish && (
         <p className="alt-dish">
           {pick.dish.name}
-          <span className="price">~${pick.dish.priceSgd.toFixed(2)}</span>
+          {pick.dish.priceSgd > 0 && (
+            <span className="price">~${pick.dish.priceSgd.toFixed(2)}</span>
+          )}
         </p>
       )}
 
