@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { neon } from "@neondatabase/serverless";
 import { Dish, Place } from "@/lib/data/seed";
 import { DIMS, FlavorVector, vec } from "@/lib/flavor";
+import { ask, jsonArray, llmConfigured } from "@/lib/llm";
 
 // ═══ TIER 2 OF THE DISH CATALOGUE ═════════════════════════════════════════
 //
@@ -13,7 +13,8 @@ import { DIMS, FlavorVector, vec } from "@/lib/flavor";
 // evaporated outside the CBD.
 //
 // This is the bridge: the dishes people actually rave about are sitting in the
-// review text, so Claude reads the reviews and extracts them.
+// review text, so a language model reads the reviews and extracts them. Which
+// model is lib/llm.ts's problem, not this file's.
 //
 // ── THREE CONSTRAINTS THAT SHAPE THE WHOLE DESIGN ────────────────────────
 //
@@ -25,7 +26,7 @@ import { DIMS, FlavorVector, vec } from "@/lib/flavor";
 //    ONLY for the handful actually being shown.
 //
 // 2. ONE CALL PER PLACE, EVER. Without a cache this is one Details call plus
-//    one Claude call per place per view — slow, and it would bill the same
+//    one model call per place per view — slow, and it would bill the same
 //    extraction over and over for a restaurant whose menu changes yearly.
 //    Cached in Postgres when configured, in memory otherwise.
 //
@@ -34,7 +35,6 @@ import { DIMS, FlavorVector, vec } from "@/lib/flavor";
 //    no reviews — all of them degrade to the restaurant-level card that
 //    already works, and none of them delay it past the timeout.
 
-const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 const url = process.env.DATABASE_URL;
 const sql = url ? neon(url) : null;
 
@@ -166,48 +166,34 @@ function coerce(raw: RawDish, placeId: string, i: number): Dish | null {
 }
 
 async function extract(place: Place, reviews: string[], summary: string | null): Promise<Dish[]> {
-  if (!process.env.ANTHROPIC_API_KEY) return [];
   if (!reviews.length && !summary) return [];
-  try {
-    const client = new Anthropic();
-    const res = await client.messages.create({
-      model: MODEL,
-      max_tokens: 900,
-      system:
-        "You extract signature dishes from restaurant reviews. Return ONLY a JSON array, no prose. " +
-        "Each element: {name, priceSgd, flavor:{" + SCHEMA_NOTE + "}}. " +
-        "Each flavor value is 0..1. heat=chilli/spice, sweet=sweetness, soupy=broth or liquid content, " +
-        "fried=deep-fried or crispy, rich=fat/heaviness, adventure=how unusual it is to a mainstream palate. " +
-        "Include at most 3 dishes, and ONLY dishes actually named by reviewers as worth ordering — " +
-        "never invent a plausible menu item, and never include a dish you are not confident the place serves. " +
-        "priceSgd is a Singapore-dollar estimate; use 0 if reviews give no basis for one. " +
-        "If the reviews name no specific dish, return [].",
-      messages: [
-        {
-          role: "user",
-          content: JSON.stringify({
-            place: place.name,
-            cuisine: place.cuisine,
-            priceLevel: place.priceLevel,
-            editorialSummary: summary,
-            reviews,
-          }),
-        },
-      ],
-    });
-    const block = res.content.find((c) => c.type === "text");
-    const text = block && block.type === "text" ? block.text : "";
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    const parsed = JSON.parse(match[0]) as RawDish[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .slice(0, 3)
-      .map((r, i) => coerce(r, place.id, i))
-      .filter((d): d is Dish => d !== null);
-  } catch {
-    return [];
-  }
+
+  const reply = await ask({
+    maxTokens: 900,
+    system:
+      "You extract signature dishes from restaurant reviews. Return ONLY a JSON array, no prose. " +
+      "Each element: {name, priceSgd, flavor:{" + SCHEMA_NOTE + "}}. " +
+      "Each flavor value is 0..1. heat=chilli/spice, sweet=sweetness, soupy=broth or liquid content, " +
+      "fried=deep-fried or crispy, rich=fat/heaviness, adventure=how unusual it is to a mainstream palate. " +
+      "Include at most 3 dishes, and ONLY dishes actually named by reviewers as worth ordering — " +
+      "never invent a plausible menu item, and never include a dish you are not confident the place serves. " +
+      "priceSgd is a Singapore-dollar estimate; use 0 if reviews give no basis for one. " +
+      "If the reviews name no specific dish, return [].",
+    user: JSON.stringify({
+      place: place.name,
+      cuisine: place.cuisine,
+      priceLevel: place.priceLevel,
+      editorialSummary: summary,
+      reviews,
+    }),
+  });
+
+  const parsed = jsonArray<RawDish>(reply);
+  if (!parsed) return [];
+  return parsed
+    .slice(0, 3)
+    .map((r, i) => coerce(r, place.id, i))
+    .filter((d): d is Dish => d !== null);
 }
 
 /**
@@ -248,7 +234,9 @@ function applyDishes(place: Place, dishes: Dish[]): Place {
     up a page. Anything still outstanding when the budget expires simply stays
     restaurant-level. */
 export async function enrichPicks(places: Place[], budgetMs = 6000): Promise<Place[]> {
-  if (!process.env.ANTHROPIC_API_KEY) return places;
+  // No model configured means no dishes to mine — skip the Google Details
+  // calls too, which are the expensive half of this path.
+  if (!llmConfigured()) return places;
   const work = places.map((p) => withMinedDishes(p).catch(() => p));
   const timeout = new Promise<Place[]>((resolve) => setTimeout(() => resolve(places), budgetMs));
   return Promise.race([Promise.all(work), timeout]);

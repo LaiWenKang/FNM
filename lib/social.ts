@@ -1,5 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { neon } from "@neondatabase/serverless";
+import { ask, jsonObject } from "@/lib/llm";
 
 // ═══ SAVED POSTS → PLACES YOU CAN WALK TO ═════════════════════════════════
 //
@@ -122,38 +122,31 @@ export function extractLocal(caption: string): Extracted {
 
 export async function extractPlace(caption: string): Promise<Extracted> {
   const local = extractLocal(caption);
-  if (!process.env.ANTHROPIC_API_KEY || !caption.trim()) return local;
-  try {
-    const client = new Anthropic();
-    const res = await client.messages.create({
-      model: process.env.CLAUDE_MODEL || "claude-opus-5",
-      max_tokens: 300,
-      system:
-        "Read a social-media food caption and identify the restaurant. Return ONLY JSON: " +
-        '{"placeName":string|null,"dishName":string|null,"areaHint":string|null}. ' +
-        "placeName is the restaurant's name as someone would type it into Maps — not the " +
-        "caption, not a description. dishName is the specific dish featured, if named. " +
-        "areaHint is a neighbourhood, mall or street if mentioned. Captions may be in " +
-        "English, Chinese or a mix. If no actual restaurant is named, return null for " +
-        "placeName rather than guessing from the food type — 'best laksa ever' names no " +
-        "restaurant.",
-      messages: [{ role: "user", content: caption.slice(0, 1200) }],
-    });
-    const block = res.content.find((c) => c.type === "text");
-    const text = block && block.type === "text" ? block.text : "";
-    const m = text.match(/\{[\s\S]*\}/);
-    if (!m) return local;
-    const p = JSON.parse(m[0]) as Record<string, unknown>;
-    const str = (v: unknown): string | null =>
-      typeof v === "string" && v.trim().length > 1 ? v.trim().slice(0, 80) : null;
-    return {
-      placeName: str(p.placeName) ?? local.placeName,
-      dishName: str(p.dishName),
-      areaHint: str(p.areaHint),
-    };
-  } catch {
-    return local;
-  }
+  if (!caption.trim()) return local;
+
+  const reply = await ask({
+    maxTokens: 300,
+    system:
+      "Read a social-media food caption and identify the restaurant. Return ONLY JSON: " +
+      '{"placeName":string|null,"dishName":string|null,"areaHint":string|null}. ' +
+      "placeName is the restaurant's name as someone would type it into Maps — not the " +
+      "caption, not a description. dishName is the specific dish featured, if named. " +
+      "areaHint is a neighbourhood, mall or street if mentioned. Captions may be in " +
+      "English, Chinese or a mix. If no actual restaurant is named, return null for " +
+      "placeName rather than guessing from the food type — 'best laksa ever' names no " +
+      "restaurant.",
+    user: caption.slice(0, 1200),
+  });
+
+  const p = jsonObject<Record<string, unknown>>(reply);
+  if (!p) return local;
+  const str = (v: unknown): string | null =>
+    typeof v === "string" && v.trim().length > 1 ? v.trim().slice(0, 80) : null;
+  return {
+    placeName: str(p.placeName) ?? local.placeName,
+    dishName: str(p.dishName),
+    areaHint: str(p.areaHint),
+  };
 }
 
 /* ── RESOLUTION ───────────────────────────────────────────────────────────
