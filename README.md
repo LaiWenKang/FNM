@@ -103,10 +103,37 @@ user doing the arithmetic could not reconcile.
 | Key | Adds |
 |---|---|
 | `GOOGLE_PLACES_API_KEY` | Live nearby restaurants merged into the candidate pool, with real crowd ratings and opening hours |
-| `ANTHROPIC_API_KEY` | Claude-written "why this pick" explanations |
+| `ANTHROPIC_API_KEY` **or** `GEMINI_API_KEY` | Written "why this pick" explanations, dish mining, smarter craving parsing, caption reading — see below |
 | `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` + `AUTH_SECRET` | Google sign-in |
 | `REQUIRE_AUTH=true` | Makes sign-in mandatory (ignored unless Google keys are set) |
 | `DATABASE_URL` | Postgres — signed-in profiles sync across devices, **and group links become reliable** |
+
+### Which language model, and why you get a choice
+
+Four things use a model: explanations, dish mining from reviews, craving
+parsing, and reading a restaurant name out of a social caption. All four ask a
+small, well-shaped question — a system prompt in, a short answer out — so the
+vendor is a one-line decision in `lib/llm.ts` rather than a dependency baked
+into four files.
+
+| | Set | Cost |
+|---|---|---|
+| **Nothing** | — | Free. Every feature falls back to a local path that ships in the box; the full test suite passes in this mode. |
+| **Gemini** | `GEMINI_API_KEY` | **Free, no card.** Get one at [aistudio.google.com](https://aistudio.google.com) with a Google account. The free tier is 1,500 requests/day and this app uses about four. |
+| **Anthropic** | `ANTHROPIC_API_KEY` | Prepaid credits at [console.anthropic.com](https://console.anthropic.com). Around **$0.15/month** at one person's usage on `claude-haiku-4-5`. |
+
+If both are set, Anthropic wins — it is the paid tier, and the one whose terms
+do not include training on the prompt.
+
+⚠️ **Google may train on free-tier Gemini prompts.** What passes through is a
+typed craving, public restaurant names and review text, and a flavour vector —
+no name, no email, no coordinates. Low stakes, but real, and the way to opt out
+is to set an Anthropic key instead.
+
+Override the model within a provider with `CLAUDE_MODEL` (default
+`claude-haiku-4-5`) or `GEMINI_MODEL` (default `gemini-2.5-flash`). Neither
+needs changing; both defaults are chosen because these are extraction tasks,
+not reasoning ones.
 
 ## Saved from TikTok / Rednote / Douyin
 

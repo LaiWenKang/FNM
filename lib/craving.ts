@@ -1,5 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { cuisineLabel } from "@/lib/cuisine";
+import { ask, jsonObject } from "@/lib/llm";
 import { Place } from "@/lib/data/seed";
 import { DIMS, FlavorVector } from "@/lib/flavor";
 
@@ -25,8 +25,9 @@ import { DIMS, FlavorVector } from "@/lib/flavor";
 //               against dish, place and cuisine names. The literal match does
 //               most of the work: "banana leaf" is in no lexicon and still
 //               finds "Indian Banana Leaf Restaurant".
-//   WITH CLAUDE parses negation, cuisine and vagueness the lexicon cannot —
-//               "not too heavy", "something like laksa but milder".
+//   WITH A KEY  a model parses negation, cuisine and vagueness the lexicon
+//               cannot — "not too heavy", "something like laksa but milder".
+//               Anthropic or Gemini, whichever is configured; see lib/llm.ts.
 
 export interface Craving {
   /** What the user typed, trimmed. Echoed back so the UI can show its work. */
@@ -138,63 +139,57 @@ export function parseCravingLocal(text: string): Craving {
   return { text: clean, terms: [...terms], vector, avoid: [...avoid] };
 }
 
-/** Claude refinement — handles negation, cuisine and vagueness a lexicon can't. */
+/** Model refinement — handles negation, cuisine and vagueness a lexicon can't. */
 export async function parseCraving(text: string): Promise<Craving> {
   const local = parseCravingLocal(text);
-  if (!process.env.ANTHROPIC_API_KEY || !local.text) return local;
-  try {
-    const client = new Anthropic();
-    const res = await client.messages.create({
-      model: process.env.CLAUDE_MODEL || "claude-opus-5",
-      max_tokens: 400,
-      system:
-        "Turn a diner's craving into search intent. Return ONLY JSON, no prose: " +
-        '{"terms":[..],"avoid":[..],"flavor":{' + DIMS.join(",") + '},"priceMax":1-4|null}. ' +
-        "terms: lowercase words to match against restaurant, cuisine and dish names — include " +
-        "synonyms and the local Singapore name where one exists (noodles -> mee, rice -> nasi). " +
-        "avoid: words that must NOT appear, for negations like 'no pork' or 'not spicy'. " +
-        "flavor: only the dimensions the craving actually implies, each 0..1; omit the rest. " +
-        "heat=chilli, sweet=sweetness, soupy=broth, fried=deep-fried, rich=fat/heaviness, " +
-        "adventure=unusualness. priceMax only if they mention budget. Be literal: do not " +
-        "broaden 'ramen' into 'asian food'.",
-      messages: [{ role: "user", content: local.text }],
-    });
-    const block = res.content.find((c) => c.type === "text");
-    const raw = block && block.type === "text" ? block.text : "";
-    const m = raw.match(/\{[\s\S]*\}/);
-    if (!m) return local;
-    const p = JSON.parse(m[0]) as {
-      terms?: unknown;
-      avoid?: unknown;
-      flavor?: Record<string, unknown>;
-      priceMax?: unknown;
-    };
-    const strs = (v: unknown): string[] =>
-      Array.isArray(v)
-        ? v.filter((x): x is string => typeof x === "string").map((x) => x.toLowerCase().slice(0, 24)).slice(0, 12)
-        : [];
-    const vector: Partial<FlavorVector> = {};
-    for (const d of DIMS) {
-      const v = p.flavor?.[d];
-      if (typeof v === "number" && Number.isFinite(v)) vector[d] = Math.max(0, Math.min(1, v));
-    }
-    const terms = strs(p.terms);
-    const price = typeof p.priceMax === "number" && p.priceMax >= 1 && p.priceMax <= 4
-      ? (Math.round(p.priceMax) as 1 | 2 | 3 | 4)
-      : undefined;
-    return {
-      text: local.text,
-      // Union with the local parse: the LLM occasionally drops the literal word
-      // the user typed in favour of a synonym, and the typed word is the one
-      // thing we know for certain they meant.
-      terms: [...new Set([...terms, ...local.terms])],
-      avoid: [...new Set([...strs(p.avoid), ...local.avoid])],
-      vector: Object.keys(vector).length ? vector : local.vector,
-      priceMax: price,
-    };
-  } catch {
-    return local;
+  if (!local.text) return local;
+
+  const reply = await ask({
+    maxTokens: 400,
+    system:
+      "Turn a diner's craving into search intent. Return ONLY JSON, no prose: " +
+      '{"terms":[..],"avoid":[..],"flavor":{' + DIMS.join(",") + '},"priceMax":1-4|null}. ' +
+      "terms: lowercase words to match against restaurant, cuisine and dish names — include " +
+      "synonyms and the local Singapore name where one exists (noodles -> mee, rice -> nasi). " +
+      "avoid: words that must NOT appear, for negations like 'no pork' or 'not spicy'. " +
+      "flavor: only the dimensions the craving actually implies, each 0..1; omit the rest. " +
+      "heat=chilli, sweet=sweetness, soupy=broth, fried=deep-fried, rich=fat/heaviness, " +
+      "adventure=unusualness. priceMax only if they mention budget. Be literal: do not " +
+      "broaden 'ramen' into 'asian food'.",
+    user: local.text,
+  });
+
+  const p = jsonObject<{
+    terms?: unknown;
+    avoid?: unknown;
+    flavor?: Record<string, unknown>;
+    priceMax?: unknown;
+  }>(reply);
+  if (!p) return local;
+
+  const strs = (v: unknown): string[] =>
+    Array.isArray(v)
+      ? v.filter((x): x is string => typeof x === "string").map((x) => x.toLowerCase().slice(0, 24)).slice(0, 12)
+      : [];
+  const vector: Partial<FlavorVector> = {};
+  for (const d of DIMS) {
+    const v = p.flavor?.[d];
+    if (typeof v === "number" && Number.isFinite(v)) vector[d] = Math.max(0, Math.min(1, v));
   }
+  const terms = strs(p.terms);
+  const price = typeof p.priceMax === "number" && p.priceMax >= 1 && p.priceMax <= 4
+    ? (Math.round(p.priceMax) as 1 | 2 | 3 | 4)
+    : undefined;
+  return {
+    text: local.text,
+    // Union with the local parse: the model occasionally drops the literal word
+    // the user typed in favour of a synonym, and the typed word is the one
+    // thing we know for certain they meant.
+    terms: [...new Set([...terms, ...local.terms])],
+    avoid: [...new Set([...strs(p.avoid), ...local.avoid])],
+    vector: Object.keys(vector).length ? vector : local.vector,
+    priceMax: price,
+  };
 }
 
 /* ── MATCHING ─────────────────────────────────────────────────────────────
