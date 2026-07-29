@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless";
-import type { Profile } from "@/lib/profile";
+import type { Profile } from "@/lib/profile-shape";
 
 // Server-side profile storage for signed-in users.
 //

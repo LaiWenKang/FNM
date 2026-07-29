@@ -1,5 +1,5 @@
 import type { MoodGlyphKey } from "@/components/glyphs/moods";
-import { Profile } from "@/lib/profile";
+import type { Profile } from "@/lib/profile-shape";
 
 // "Today's mood" — one-tap session preferences layered on top of the learned
 // taste profile. Moods adjust THIS request only; the underlying profile is

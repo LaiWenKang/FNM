@@ -2,7 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { Context } from "@/lib/context";
 import { Place } from "@/lib/data/seed";
 import { DIMS, FlavorVector, neutralVector } from "@/lib/flavor";
-import { Profile, defaultProfile } from "@/lib/profile";
+import { Profile, defaultProfile } from "@/lib/profile-shape";
 import { ScoredPlace, recommend } from "@/lib/scoring";
 
 // ═══ THE GROUP DECISION ═══════════════════════════════════════════════════
@@ -215,14 +215,18 @@ export function decideForGroup(
     // far or too expensive for one person, it is not a group option.
     if (scores.size !== voters.length) continue;
     const values = [...scores.values()];
-    const meanScore = values.reduce((a, b) => a + b, 0) / values.length;
+    // ROUND BEFORE BLENDING. The card shows the mean and the group score side
+    // by side, so blending the unrounded mean produced two numbers a user
+    // doing the arithmetic could not reconcile — the same class of quiet lie
+    // as bars that do not add up to their own ring.
+    const meanScore = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
     const minScore = Math.min(...values);
     let weakestId: string | null = null;
     for (const [id, v] of scores) if (v === minScore) { weakestId = id; break; }
     picks.push({
       place,
       groupScore: Math.round(MEAN_W * meanScore + MIN_W * minScore),
-      meanScore: Math.round(meanScore),
+      meanScore,
       minScore,
       weakestMemberName: voters.find((m) => m.id === weakestId)?.name ?? null,
       perMember: voters.map((m) => ({
