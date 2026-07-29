@@ -28,13 +28,106 @@ export function similarity(a: FlavorVector, b: FlavorVector): number {
   return 1 - dist / DIMS.length;
 }
 
-/** Move `v` toward (liked) or away from (disliked) `target`. Returns a new vector. */
-export function nudge(v: FlavorVector, target: FlavorVector, liked: boolean, weight: number): FlavorVector {
+/* ── WHAT A DISH ACTUALLY CLAIMS ──────────────────────────────────────────
+   0.5 means "this dish says nothing about that axis", because `vec()` fills
+   every unwritten dimension with it. Omakase is a statement about ADVENTURE;
+   it has no opinion on soupiness. Treating that silence as a claim of
+   "medium" was the single biggest source of bad calibration:
+
+     · LIKING it dragged every unmentioned axis toward the middle. A soup
+       lover sitting at soupy 0.95 who liked omakase came out at 0.815 — the
+       app un-learned something true because of a dish that never mentioned it.
+     · REJECTING it was worse. The push is away from the target, so on an axis
+       the dish never claimed, `v - 0.5` pushes v FURTHER from centre. Saying
+       no amplified whatever bias you already had, out of nothing.
+
+   So a dimension only moves if the dish speaks to it. The threshold is small
+   — anything inside ±0.08 of neutral carries no information worth acting on
+   anyway. */
+export const SPEAKS = 0.08;
+
+export function asserts(target: FlavorVector, d: Dim): boolean {
+  return Math.abs(target[d] - 0.5) >= SPEAKS;
+}
+
+/**
+ * Move `v` toward (liked) or away from (disliked) `target`.
+ *
+ * LIKING AND REJECTING ARE NOT MIRROR IMAGES, and treating them as such was
+ * the second calibration bug. A yes is conjunctive — you accepted the whole
+ * dish, so every axis it claims earns full weight. A no is DISJUNCTIVE: one
+ * thing was wrong, and you never said which. Pushing away equally on all of
+ * them punishes four axes for one axis's crime — rejecting Mala Xiang Guo
+ * moved heat, fried, rich AND adventure, so a soup lover who simply turned
+ * down every dry dish was recorded as a chilli fiend at heat 0.96.
+ *
+ * A REJECTION MOVES EXACTLY ONE AXIS: the one it blames. Blame is how loudly
+ * the dish claims that axis multiplied by how far the claim sits from what you
+ * have already shown you want, so a soup lover turning down a salad is
+ * recorded as "not soup" — even though the salad is loudest about being
+ * un-fried, and even though it is also mild, dry and cheap. Spreading the push
+ * proportionally across every axis instead was still wrong, and subtly: once
+ * `soupy` pins at 1.0 it can absorb no more, but the leftover shares kept
+ * landing on the other axes, so nine rejections of dry food quietly walked a
+ * soup lover's heat from 0.42 up to 0.65 — a taste for chilli assembled
+ * entirely out of dishes they turned down for having no broth in them.
+ *
+ * Early on, while the profile is still neutral, blame reduces to loudness,
+ * which is the right guess when nothing is known yet.
+ */
+export function nudge(
+  v: FlavorVector,
+  target: FlavorVector,
+  liked: boolean,
+  weight: number,
+  /** The axis the diner NAMED. Beats the guess below, because it is not one. */
+  blameOn?: Dim,
+): FlavorVector {
   const out = { ...v };
-  for (const d of DIMS) {
-    const pull = liked ? target[d] - v[d] : v[d] - target[d];
-    out[d] = clamp01(v[d] + pull * weight);
+  if (Math.max(...DIMS.map((d) => Math.abs(target[d] - 0.5))) < SPEAKS) return out;
+
+  if (liked) {
+    for (const d of DIMS) {
+      if (asserts(target, d)) out[d] = clamp01(v[d] + (target[d] - v[d]) * weight);
+    }
+    return out;
   }
+
+  let culprit: Dim | null = blameOn && asserts(target, blameOn) ? blameOn : null;
+  if (!culprit) {
+    let worst = 0;
+    for (const d of DIMS) {
+      if (!asserts(target, d)) continue;
+      const blame = Math.abs(target[d] - 0.5) * Math.abs(v[d] - target[d]);
+      if (blame > worst) {
+        worst = blame;
+        culprit = d;
+      }
+    }
+  }
+  if (!culprit) return out;
+
+  /* AND IT MOVES BY SURPRISE, NOT BY DISTANCE. Pushing away in proportion to
+     `v - target` means the further you already are from a dish, the harder
+     rejecting it shoves you — which is backwards, and it runs away: an axis
+     that drifts becomes the explanation for every later rejection, which
+     drifts it further. Turning down all sixteen cards used to land you at heat
+     0.98, a violent opinion assembled from nothing but refusals.
+
+     Rejecting a dish you look nothing like is unsurprising and teaches almost
+     nothing; rejecting one you look exactly like is the informative case. So
+     the step shrinks as the gap grows, and the axis settles instead of
+     sprinting to the wall.
+
+     SQUARED, chosen by measurement rather than taste. Linear damping still let
+     sixteen refusals reach heat 0.86; squared brings that to 0.57 — near
+     enough to neutral to be the honest answer, which is that someone who liked
+     none of it has told us almost nothing — while a genuine soup lover still
+     lands at soupy 0.81 and a chilli head at heat 0.81. Cubed damps the
+     degenerate case a little further but starts blunting the real ones. */
+  const gap = Math.abs(v[culprit] - target[culprit]);
+  const away = gap === 0 ? (target[culprit] < 0.5 ? 1 : -1) : Math.sign(v[culprit] - target[culprit]);
+  out[culprit] = clamp01(v[culprit] + away * weight * (1 - gap) ** 2);
   return out;
 }
 

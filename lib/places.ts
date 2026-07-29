@@ -1,3 +1,4 @@
+import { cuisineFromGoogle } from "@/lib/cuisine";
 import { Place, SEED_PLACES } from "@/lib/data/seed";
 import { FlavorVector, vec } from "@/lib/flavor";
 
@@ -69,6 +70,31 @@ const TYPE_FLAVOR: Record<string, Partial<FlavorVector>> = {
   deli: { rich: 0.5, adventure: 0.25 },
   bagel_shop: { rich: 0.4, sweet: 0.3 },
   donut_shop: { sweet: 0.9, fried: 0.7, rich: 0.6 },
+  // ── the gaps, and the first one is the expensive gap
+  // Google tags Singapore's hawker centres `food_court`. Without an entry the
+  // most characteristic eating place in the country scored a neutral vector
+  // and was marked flavour-unknown — in a country where it is most of lunch.
+  food_court: { heat: 0.45, rich: 0.55, fried: 0.5, adventure: 0.3 },
+  asian_restaurant: { heat: 0.45, rich: 0.55, adventure: 0.35 },
+  malaysian_restaurant: { heat: 0.65, rich: 0.65, fried: 0.45 },
+  singaporean_restaurant: { heat: 0.5, rich: 0.6, fried: 0.45 },
+  dim_sum_restaurant: { heat: 0.15, rich: 0.5, fried: 0.35, adventure: 0.35 },
+  hot_pot_restaurant: { soupy: 0.9, heat: 0.65, rich: 0.6, adventure: 0.45 },
+  mediterranean_restaurant: { heat: 0.25, rich: 0.5, adventure: 0.35 },
+  african_restaurant: { heat: 0.5, rich: 0.6, adventure: 0.6 },
+  afghani_restaurant: { heat: 0.4, rich: 0.65, adventure: 0.5 },
+  ramen_shop: { soupy: 0.9, rich: 0.75, heat: 0.3 },
+  noodle_shop: { soupy: 0.6, rich: 0.5 },
+  diner: { fried: 0.7, rich: 0.65, sweet: 0.4, adventure: 0.1 },
+  bar_and_grill: { fried: 0.65, rich: 0.7, adventure: 0.2 },
+  wine_bar: { rich: 0.55, adventure: 0.45 },
+  dessert_restaurant: { sweet: 0.92, rich: 0.6, heat: 0.02 },
+  tea_house: { sweet: 0.6, rich: 0.3 },
+  acai_shop: { sweet: 0.65, rich: 0.2, fried: 0.05 },
+  candy_store: { sweet: 0.98, rich: 0.35, heat: 0.02 },
+  confectionery: { sweet: 0.95, rich: 0.55, heat: 0.02 },
+  chocolate_shop: { sweet: 0.92, rich: 0.75, heat: 0.02 },
+  bubble_tea_shop: { sweet: 0.85, rich: 0.45 },
 };
 
 /* ── PLACES NOBODY CAN WALK INTO ──────────────────────────────────────────
@@ -117,13 +143,6 @@ function flavorFromTypes(types: string[]): { flavor: FlavorVector; matched: stri
   const avg: Record<string, number> = {};
   for (const dim of Object.keys(sum)) avg[dim] = sum[dim] / count[dim];
   return { flavor: vec(avg as Partial<FlavorVector>), matched };
-}
-
-/** A human label for the card, derived from the most specific matching type. */
-function labelFromTypes(types: string[], primary?: string): string {
-  const informative = types.filter((t) => !USELESS_TYPES.has(t));
-  const best = (primary && !USELESS_TYPES.has(primary) && primary) || informative[0];
-  return best ?? "restaurant";
 }
 
 interface GoogleOpeningPoint {
@@ -240,7 +259,11 @@ async function fetchGooglePlaces(
         return {
           id: `g-${p.id}`,
           name: p.displayName!.text,
-          cuisine: labelFromTypes(types, p.primaryType),
+          // CANONICAL, not the raw Google type. `japanese_restaurant` matched
+          // nothing a curated place used, so live results shared no category
+          // with the catalogue: the repeat penalty never fired across tiers
+          // and every live place fell through the glyph table.
+          cuisine: cuisineFromGoogle(types, p.primaryType),
           lat: p.location!.latitude,
           lng: p.location!.longitude,
           priceLevel: PRICE_MAP[p.priceLevel ?? ""] ?? 2,

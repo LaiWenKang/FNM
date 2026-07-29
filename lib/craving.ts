@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { cuisineLabel } from "@/lib/cuisine";
 import { Place } from "@/lib/data/seed";
 import { DIMS, FlavorVector } from "@/lib/flavor";
 
@@ -200,7 +201,16 @@ export async function parseCraving(text: string): Promise<Craving> {
    Scored against everything a place is NAMED, because that is what the user
    is picturing: the restaurant, its cuisine, and its dishes. */
 function haystack(place: Place): string {
-  return [place.name, place.cuisine.replace(/_/g, " "), ...place.dishes.map((d) => d.name)]
+  // BOTH the canonical id and its display label, because they read differently
+  // and a user could type either: the id is "fried-chicken", the label is
+  // "Fried Chicken", and "bubble-tea" only matches "bubble tea" once the
+  // separator is gone.
+  return [
+    place.name,
+    place.cuisine.replace(/[-_]/g, " "),
+    cuisineLabel(place.cuisine),
+    ...place.dishes.map((d) => d.name),
+  ]
     .join(" ")
     .toLowerCase();
 }

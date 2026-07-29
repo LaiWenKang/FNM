@@ -1,6 +1,7 @@
 import { Context } from "@/lib/context";
 import { Dish, Place } from "@/lib/data/seed";
 import { Craving, cravingFit } from "@/lib/craving";
+import { cuisineFamily } from "@/lib/cuisine";
 import { FlavorVector, similarity } from "@/lib/flavor";
 import type { Profile } from "@/lib/profile-shape";
 
@@ -92,15 +93,31 @@ function contextFit(place: Place, ctx: Context): { delta: number; reasons: strin
   return { delta, reasons };
 }
 
+/**
+ * COMPARED BY FAMILY, NOT BY LABEL. This used to test `meal.cuisine ===
+ * place.cuisine` on a free-text field, so it only fired on an exact string
+ * match — and the strings did not match even when the food did. Fishball
+ * noodles were "teochew" and minced meat noodles were "teochew-noodles", so
+ * two bowls of Teochew noodles on consecutive days registered as unrelated.
+ * Live Google places were worse: they carried raw type strings like
+ * "japanese_restaurant", which matched no curated place at all, so the penalty
+ * could never fire across the two tiers.
+ *
+ * A same-family repeat now takes a lighter knock than the SAME cuisine, which
+ * is the honest ordering: ramen after sushi is repetitive, but less so than
+ * sushi after sushi.
+ */
 function recencyPenalty(place: Place, profile: Profile, now: number): { delta: number; reasons: string[] } {
   const TWO_DAYS = 2 * 24 * 60 * 60 * 1000;
   const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
   let delta = 0;
   const reasons: string[] = [];
+  const family = cuisineFamily(place.cuisine);
   for (const meal of profile.recent) {
     const age = now - meal.at;
     if (meal.placeId === place.id && age < FIVE_DAYS) delta -= 0.3;
     else if (meal.cuisine === place.cuisine && age < TWO_DAYS) delta -= 0.12;
+    else if (family !== "other" && cuisineFamily(meal.cuisine) === family && age < TWO_DAYS) delta -= 0.07;
   }
   if (delta === 0 && profile.recent.length > 0) {
     reasons.push("you haven't had this recently");

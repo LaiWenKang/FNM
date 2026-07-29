@@ -178,3 +178,59 @@ describe("hard filters", () => {
     expect(second.best.place.id).not.toBe(first.best.place.id);
   });
 });
+
+describe("the repeat penalty sees through the label", () => {
+  const profileAt = (recent: { placeId: string; cuisine: string; at: number }[]) => ({
+    ...defaultProfile(),
+    maxKm: 50,
+    recent,
+  });
+  const scoreOf = (p: ReturnType<typeof profileAt>, id: string) => {
+    const seen: string[] = [];
+    for (let i = 0; i < SEED_PLACES.length; i += 1) {
+      const rec = recommend(p, SEED_PLACES, CTX, ORIGIN, seen);
+      if (!rec) break;
+      for (const s of [rec.best, rec.safer, rec.adventurous]) {
+        if (s && !seen.includes(s.place.id)) {
+          if (s.place.id === id) return s.matchScore;
+          seen.push(s.place.id);
+        }
+      }
+    }
+    return null;
+  };
+
+  it("damps a place whose FAMILY you ate yesterday, across the two tiers", () => {
+    // A curated place says "japanese"; a live Google one said
+    // "japanese_restaurant". Exact-string comparison could never connect them,
+    // so the app would happily send you for Japanese two days running.
+    const sushi = SEED_PLACES.find((p) => p.cuisine === "japanese")!;
+    const fresh = scoreOf(profileAt([]), sushi.id);
+    const afterRamen = scoreOf(
+      // "ramen" is a different cuisine in the SAME family as "japanese".
+      profileAt([{ placeId: "somewhere-else", cuisine: "ramen", at: Date.now() - 3 * 60 * 60 * 1000 }]),
+      sushi.id,
+    );
+    expect(fresh).not.toBeNull();
+    expect(afterRamen).not.toBeNull();
+    expect(afterRamen!).toBeLessThan(fresh!);
+  });
+
+  it("hits the SAME cuisine harder than merely the same family", () => {
+    const sushi = SEED_PLACES.find((p) => p.cuisine === "japanese")!;
+    const hoursAgo = Date.now() - 3 * 60 * 60 * 1000;
+    const sameFamily = scoreOf(profileAt([{ placeId: "x", cuisine: "ramen", at: hoursAgo }]), sushi.id);
+    const sameCuisine = scoreOf(profileAt([{ placeId: "x", cuisine: "japanese", at: hoursAgo }]), sushi.id);
+    expect(sameCuisine!).toBeLessThan(sameFamily!);
+  });
+
+  it("does not treat two unrelated cuisines as a repeat", () => {
+    const sushi = SEED_PLACES.find((p) => p.cuisine === "japanese")!;
+    const fresh = scoreOf(profileAt([]), sushi.id);
+    const afterThai = scoreOf(
+      profileAt([{ placeId: "x", cuisine: "thai", at: Date.now() - 3 * 60 * 60 * 1000 }]),
+      sushi.id,
+    );
+    expect(afterThai).toBe(fresh);
+  });
+});
