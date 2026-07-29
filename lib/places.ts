@@ -71,6 +71,30 @@ const TYPE_FLAVOR: Record<string, Partial<FlavorVector>> = {
   donut_shop: { sweet: 0.9, fried: 0.7, rich: 0.6 },
 };
 
+/* ── PLACES NOBODY CAN WALK INTO ──────────────────────────────────────────
+   Production returned "InstaChef at Grande Vista (Restricted Access)" as the
+   TOP PICK: a caterer inside a private development, with zero ratings. Google
+   tags it a restaurant because it is one; it is simply not one this user can
+   enter. Recommending it is a total failure of the product's only job.
+
+   Name-matched rather than type-matched because Google has no "is this open to
+   the public" field — but operators reliably say so in the name, precisely so
+   that people do not turn up. Kept deliberately narrow: these are phrases that
+   only appear when access really is restricted. */
+const INACCESSIBLE = [
+  /\(\s*restricted\s+access\s*\)/i,
+  /\brestricted\s+access\b/i,
+  /\bstaff\s+(only|canteen)\b/i,
+  /\bemployees?\s+only\b/i,
+  /\bprivate\s+(club|members?)\b/i,
+  /\bmembers?\s+only\b/i,
+  /\bcrew\s+(mess|canteen)\b/i,
+];
+
+function isReachable(name: string): boolean {
+  return !INACCESSIBLE.some((re) => re.test(name));
+}
+
 /** Types that say nothing about flavour and must never seed a vector. */
 const USELESS_TYPES = new Set(["restaurant", "food", "point_of_interest", "establishment", "store"]);
 
@@ -202,7 +226,13 @@ async function fetchGooglePlaces(
     if (!res.ok) return [];
     const data = (await res.json()) as { places?: GooglePlace[] };
     return (data.places ?? [])
-      .filter((p) => p.location && p.displayName && p.currentOpeningHours?.openNow !== false)
+      .filter(
+        (p) =>
+          p.location &&
+          p.displayName &&
+          p.currentOpeningHours?.openNow !== false &&
+          isReachable(p.displayName.text),
+      )
       .map((p) => {
         const types = p.types ?? [];
         const { flavor, matched } = flavorFromTypes(types);

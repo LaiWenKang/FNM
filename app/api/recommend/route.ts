@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildContext } from "@/lib/context";
+import { enrichPicks } from "@/lib/dishes";
 import { explain } from "@/lib/explain";
 import { applyMoods, isValidMood } from "@/lib/mood";
 import { getCandidatePlaces } from "@/lib/places";
 import { readProfile } from "@/lib/profile";
-import { recommend, ScoredPlace } from "@/lib/scoring";
+import { pickBestDish, recommend, ScoredPlace } from "@/lib/scoring";
 
 // GET /api/recommend?lat=..&lng=..&exclude=id1,id2
 // Returns 1 best pick + safer + adventurous alternatives, with explanations.
@@ -99,6 +100,25 @@ export async function GET(req: NextRequest) {
       { error: "Everything seems closed right now — even the fallbacks. Try again shortly.", context: ctx },
       { status: 404 },
     );
+  }
+
+  /* TIER 2 — MINE DISHES FOR THE PICKS ACTUALLY BEING SHOWN.
+     Deliberately AFTER ranking, not before: enriching all 20 candidates would
+     cost 20 Places Details calls in the priciest SKU plus 20 LLM calls, to use
+     three of them. Ranking first cuts that to at most three, and the cache
+     usually makes it zero. The place's own flavour vector is sharpened by the
+     mined dishes and cached, so the NEXT request for it ranks on real menu
+     data rather than a type estimate — the catalogue improves as it is used. */
+  const shown = [rec.best, rec.safer, rec.adventurous].filter(
+    (s): s is ScoredPlace => s !== null,
+  );
+  const enriched = await enrichPicks(shown.map((s) => s.place));
+  for (let i = 0; i < shown.length; i += 1) {
+    const place = enriched[i];
+    if (place && place.dishes.length && !shown[i].bestDish) {
+      shown[i].place = place;
+      shown[i].bestDish = pickBestDish(place, profile.vector);
+    }
   }
 
   // One LLM call for the headline pick keeps latency low; alternates use the

@@ -19,7 +19,31 @@ Runs with **zero API keys**: a curated Singapore CBD place catalog is built in, 
 | Tier | Source | What it knows |
 |---|---|---|
 | **Curated** | built in | Dish level — a named dish, its price, and a flavour vector per dish. |
-| **Live** | Google Places | Restaurant level. A flavour *estimate* averaged from the place's Google types, plus a real crowd rating. `dishes` is empty and the card says so rather than inventing a dish nobody ordered. |
+| **Live** | Google Places | Restaurant level. A flavour *estimate* averaged from the place's Google types, plus a real crowd rating. |
+| **Mined** | Google reviews → Claude | Dish level, for live places. Claude reads the review text and extracts the dishes people actually name as worth ordering, with a flavour vector each. Needs `ANTHROPIC_API_KEY`. |
+
+Without an Anthropic key a live place stays restaurant-level and the card says
+so, rather than inventing a dish nobody ordered.
+
+### How dish mining stays cheap
+
+Three constraints shape it:
+
+1. **Reviews are the expensive Places SKU.** Putting `reviews` in the *nearby
+   search* field mask would bill atmosphere data for all 20 results on every
+   request, to use at most three. So the nearby search stays cheap and reviews
+   are fetched per place, only for the picks actually shown.
+2. **Enrichment runs AFTER ranking**, not before — at most three places instead
+   of twenty.
+3. **One call per place, ever.** Results are cached for six weeks in a Postgres
+   `place_dishes` table (or memory without `DATABASE_URL`), including *empty*
+   results: a place whose reviews name no dish will still name none tomorrow.
+
+A place's aggregate flavour vector is replaced by the mean of its mined dishes
+and cached, so the *next* request for it ranks on real menu data rather than a
+type estimate — the catalogue sharpens as it is used. Every failure path
+returns the place unchanged; a slow LLM, a rate limit or a bad key degrades to
+the restaurant-level card and never blocks a recommendation.
 
 Live places also carry `flavorKnown` and `hoursKnown` flags, so the UI can tell
 an estimate from a reading and never prints a closing time it does not actually
