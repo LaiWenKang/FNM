@@ -5119,6 +5119,19 @@ body:has(.sheet-layer) .tab-bar {
   line-height: 1.45;
 }
 
+/* WHOSE TURN IT IS. Deliberately quieter than .group-warn — a rotation is
+   good news for somebody and neutral news for everyone else, so it reads as a
+   note rather than a warning. */
+.group-turn {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background: var(--data-soft);
+  color: var(--data);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
 .group-join,
 .group-dead {
   display: flex;

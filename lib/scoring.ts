@@ -2,7 +2,7 @@ import { Context } from "@/lib/context";
 import { Dish, Place } from "@/lib/data/seed";
 import { Craving, cravingFit } from "@/lib/craving";
 import { cuisineFamily } from "@/lib/cuisine";
-import { FlavorVector, similarity } from "@/lib/flavor";
+import { FlavorVector, palateFit, similarity } from "@/lib/flavor";
 import type { Profile } from "@/lib/profile-shape";
 
 // The recommendation pipeline from PLAN.md:
@@ -193,28 +193,45 @@ function breakDown(
     breakdown.craving +
     breakdown.saved;
 
-  if (raw > 99) {
-    const keys = ["palate", "distance", "weather", "budget", "novelty", "quality", "craving", "saved"] as const;
+  const keys = ["palate", "distance", "weather", "budget", "novelty", "quality", "craving", "saved"] as const;
+
+  /** Force the bars to sum to `goal` exactly, by scaling one side of the ledger. */
+  const fitTo = (goal: number, side: "positive" | "negative") => {
     const negatives = keys.reduce((t, k) => t + Math.min(0, breakdown[k]), 0);
     const positives = raw - negatives;
-    const room = 99 - negatives;
-    let running = 0;
-    for (const k of keys) {
-      if (breakdown[k] > 0) {
-        breakdown[k] = Math.round((breakdown[k] / positives) * room);
-        running += breakdown[k];
+    if (side === "positive" && positives > 0) {
+      const room = goal - negatives;
+      for (const k of keys) {
+        if (breakdown[k] > 0) breakdown[k] = Math.round((breakdown[k] / positives) * room);
+      }
+    } else if (side === "negative" && negatives < 0) {
+      // Shrink the penalties instead of the credits: at the bottom of the range
+      // it is the penalties that have overshot what the ring can draw.
+      const room = Math.min(0, goal - positives);
+      for (const k of keys) {
+        if (breakdown[k] < 0) breakdown[k] = Math.round((breakdown[k] / negatives) * room);
       }
     }
     // Rounding can drift a point or two; put it on the largest bar so the
     // displayed bars sum to the displayed ring EXACTLY.
-    const drift = 99 - (running + negatives);
+    const drift = goal - keys.reduce((t, k) => t + breakdown[k], 0);
     if (drift !== 0) {
-      const biggest = keys.reduce((a, b) => (breakdown[b] > breakdown[a] ? b : a));
+      const biggest = keys.reduce((a, b) => (Math.abs(breakdown[b]) > Math.abs(breakdown[a]) ? b : a));
       breakdown[biggest] += drift;
     }
-    return { breakdown, matchScore: 99 };
-  }
-  return { breakdown, matchScore: clamp(raw, 1, 99) };
+    return { breakdown, matchScore: goal };
+  };
+
+  /* THE RING CANNOT LIE AT EITHER END. The overflow case was fixed when the
+     craving term arrived; the FLOOR was left as a clamp, and a clamp is the
+     same quiet lie in the other direction — a pick whose terms summed to −1
+     displayed a 1 with bars that added up to −1 beside it. Nothing reached
+     that low until the palate term stopped handing out a free ~28 points to
+     everything, which is exactly the kind of latent bug a real change
+     uncovers. */
+  if (raw > 99) return fitTo(99, "positive");
+  if (raw < 1) return fitTo(1, "negative");
+  return { breakdown, matchScore: raw };
 }
 
 /**
@@ -282,7 +299,7 @@ export function recommend(
     if (distanceKm > profile.maxKm) continue;
     if (place.priceLevel > profile.priceMax) continue;
 
-    const flavorMatch = similarity(profile.vector, place.flavor);
+    const flavorMatch = palateFit(profile.vector, place.flavor);
     const cf = contextFit(place, ctx);
     const rp = recencyPenalty(place, profile, now);
     const cr = cravingFit(place, craving);

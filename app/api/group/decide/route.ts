@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildContext } from "@/lib/context";
 import { decideForGroup, groupVector, loadGroup, normalizeCode, saveGroup } from "@/lib/group";
+import { debts, fairnessDurable, recordMeal } from "@/lib/fairness";
 import { getCandidatePlaces } from "@/lib/places";
 import { dishGlyph } from "@/lib/glyphs";
 import { similarity } from "@/lib/flavor";
@@ -30,7 +31,14 @@ export async function GET(req: NextRequest) {
   const searchKm = Math.max(...voters.map((m) => m.maxKm));
   const places = await getCandidatePlaces(group.lat, group.lng, searchKm, ctx.hourSg);
 
-  const picks = decideForGroup(group, places, ctx);
+  // WHOSE TURN IS IT. Members who have been served worst in this crew's recent
+  // locked-in meals get a louder vote — bounded, so a rotation tilts close
+  // calls rather than handing anyone a veto. Without DATABASE_URL the ledger
+  // cannot persist across serverless instances, so this is empty and the blend
+  // is the plain average it has always been; `fairnessDurable` says so rather
+  // than letting the group believe it is being looked after when it is not.
+  const owed = await debts(voters.map((m) => m.id));
+  const picks = decideForGroup(group, places, ctx, owed);
   if (!picks.length) {
     return NextResponse.json(
       {
@@ -74,19 +82,58 @@ export async function GET(req: NextRequest) {
     context: { hour: ctx.hourSg, raining: ctx.raining, mealPeriod: ctx.mealPeriod },
     groupVector: gv,
     voters: voters.length,
+    fairness: {
+      durable: fairnessDurable,
+      // Named so the UI can say WHY a close call went the way it did.
+      leaning: voters
+        .map((m) => ({ name: m.name, owed: Math.round(owed[m.id] ?? 0) }))
+        .filter((m) => m.owed >= 2)
+        .sort((a, b) => b.owed - a.owed)
+        .slice(0, 2),
+    },
     waiting: group.members.length - voters.length,
     decidedPlaceId: group.decidedPlaceId,
     picks: top,
   });
 }
 
-/** POST /api/group/decide — lock the group's answer so latecomers see it. */
+/**
+ * POST /api/group/decide — lock the group's answer so latecomers see it.
+ *
+ * This is also the moment the fairness ledger learns something. A meal that
+ * was merely LOOKED at says nothing; a meal the group committed to is the one
+ * somebody actually ate, so only a lock-in is recorded — and it is recorded
+ * with each member's score for the place they settled on, which is what makes
+ * "you got the short end last time" a fact rather than a feeling.
+ */
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as { code?: string; placeId?: string };
   const code = normalizeCode(body.code ?? "");
   const group = await loadGroup(code);
   if (!group) return NextResponse.json({ error: "That group has expired." }, { status: 404 });
-  group.decidedPlaceId = typeof body.placeId === "string" ? body.placeId.slice(0, 80) : null;
+
+  const placeId = typeof body.placeId === "string" ? body.placeId.slice(0, 80) : null;
+  const alreadyDecided = group.decidedPlaceId;
+  group.decidedPlaceId = placeId;
   await saveGroup(group);
+
+  // Only on the FIRST lock-in for a given place, so re-opening the link or
+  // double-tapping cannot bill somebody twice for the same lunch.
+  if (placeId && placeId !== alreadyDecided) {
+    try {
+      const ctx = await buildContext(group.lat, group.lng, group.hour ?? undefined);
+      const voters = group.members.filter((m) => m.seeded);
+      const searchKm = voters.length ? Math.max(...voters.map((m) => m.maxKm)) : 2;
+      const places = await getCandidatePlaces(group.lat, group.lng, searchKm, ctx.hourSg);
+      const chosen = decideForGroup(group, places, ctx).find((p) => p.place.id === placeId);
+      if (chosen) {
+        await recordMeal(chosen.perMember.map((m) => ({ memberId: m.id, score: m.score })));
+      }
+    } catch {
+      // The ledger is an optimisation, never a gate: failing to record a meal
+      // must not stop the group from locking one in.
+    }
+  }
+
   return NextResponse.json({ ok: true, decidedPlaceId: group.decidedPlaceId });
 }

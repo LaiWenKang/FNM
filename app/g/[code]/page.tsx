@@ -64,6 +64,8 @@ interface Decision {
   decidedPlaceId: string | null;
   error?: string;
   context?: { hour: number; raining: boolean };
+  /** Who is owed a turn, and whether the ledger survives at all. */
+  fairness?: { durable: boolean; leaning: { name: string; owed: number }[] };
 }
 
 export default function GroupPage({ params }: { params: Promise<{ code: string }> }) {
@@ -269,6 +271,15 @@ export default function GroupPage({ params }: { params: Promise<{ code: string }
                   palate, so they had no say.
                 </p>
               )}
+              {/* WHOSE TURN IT IS, SAID OUT LOUD. A rotation nobody can see is
+                  indistinguishable from the app being random, and the social
+                  value of taking turns is mostly in everyone KNOWING. */}
+              {decision.fairness?.leaning.length ? (
+                <p className="group-turn">
+                  {decision.fairness.leaning.map((m) => m.name).join(" and ")} got the short end of
+                  recent lunches, so their taste counts for a little more this time.
+                </p>
+              ) : null}
               {decision.picks.map((p, i) => (
                 <article key={p.id} className={`group-pick mat ${i === 0 ? "mat-thick lead" : "mat-regular"}`}>
                   <div className="gp-head">

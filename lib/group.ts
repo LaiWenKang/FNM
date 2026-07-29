@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { Context } from "@/lib/context";
+import { weightFor } from "@/lib/fairness";
 import { Place } from "@/lib/data/seed";
 import { DIMS, FlavorVector, neutralVector } from "@/lib/flavor";
 import { Profile, defaultProfile } from "@/lib/profile-shape";
@@ -154,6 +155,7 @@ export const MIN_W = 0.4;
 export interface GroupPick {
   place: Place;
   groupScore: number;
+  /** Weighted by what each member is OWED from past meals — see lib/fairness. */
   meanScore: number;
   minScore: number;
   /** The member the pick serves worst, so the UI can be honest about it. */
@@ -186,6 +188,13 @@ export function decideForGroup(
   group: Group,
   places: Place[],
   ctx: Context,
+  /**
+   * What each member is owed from previous meals, by member id. Absent or
+   * empty means every voice counts the same, which is the correct behaviour
+   * for a group's first decision and the only behaviour available without
+   * DATABASE_URL — see lib/fairness.ts.
+   */
+  debts: Record<string, number> = {},
 ): GroupPick[] {
   const voters = group.members.filter((m) => m.seeded);
   if (!voters.length) return [];
@@ -219,7 +228,19 @@ export function decideForGroup(
     // by side, so blending the unrounded mean produced two numbers a user
     // doing the arithmetic could not reconcile — the same class of quiet lie
     // as bars that do not add up to their own ring.
-    const meanScore = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+    //
+    // The mean is WEIGHTED by what each member is owed. With no history every
+    // weight is 1 and this is the plain average it has always been; once the
+    // same crew has eaten together a few times, whoever keeps drawing the short
+    // straw gets a louder vote until they stop drawing it.
+    let weighted = 0;
+    let totalWeight = 0;
+    for (const m of voters) {
+      const w = weightFor(debts[m.id] ?? 0);
+      weighted += w * (scores.get(m.id) ?? 0);
+      totalWeight += w;
+    }
+    const meanScore = Math.round(weighted / totalWeight);
     const minScore = Math.min(...values);
     let weakestId: string | null = null;
     for (const [id, v] of scores) if (v === minScore) { weakestId = id; break; }
