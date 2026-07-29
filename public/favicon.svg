@@ -1,12 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="FNM">
   <title>FNM</title>
-  <!-- AT 16px A FACE IS MUSH AND A MARK IS NOT. The tab icon drops the husky
-       and shows his blaze alone — the same 60° needle, now the whole tile. -->
+  <!--
+    THE FAVICON IS THE SAME HUSKY, NOT A DIFFERENT MARK. It used to show the
+    blaze alone, on the theory that at 16px a face is mush and a mark is not.
+    That theory was wrong in practice: the blaze on its own reads as an ARROW,
+    which is the icon language of a maps app — so in the one place the brand had
+    to be unmistakable, it pointed at somebody else's product.
+
+    Same geometry and the same transform as icon.svg, divided by 16. Only the
+    mouth is dropped: at this size a 0.7px stroke is a smudge, and the eyes and
+    nose carry the face without it.
+  -->
   <defs>
-    <linearGradient id="f" x1="0" y1="0" x2=".7" y2="1">
-      <stop offset="0" stop-color="#FFA23D"/><stop offset="1" stop-color="#F0341F"/>
+    <linearGradient id="f" x1="0" y1="0" x2=".72" y2="1">
+      <stop offset="0" stop-color="#FFA23D"/><stop offset=".55" stop-color="#FF6A2A"/><stop offset="1" stop-color="#F0341F"/>
     </linearGradient>
   </defs>
   <rect width="32" height="32" rx="7" fill="url(#f)"/>
-  <path fill="#FFF6EC" d="M16 4 L24.5 19 C22.7 19.1 21 19.9 20.5 22.1 C19.9 25.7 19.4 29 18.8 31.5 C18.5 32.8 13.5 32.8 13.2 31.5 C12.6 29 12.1 25.7 11.5 22.1 C11 19.9 9.3 19.1 7.5 19 Z"/>
+  <g transform="translate(16 17.125) scale(0.2819) translate(-60 -66)">
+    <g fill="#20141B">
+      <path d="M31 47 C28 38 30 27 34 21 C36.5 17.5 40.5 18.5 42 23 L50 42 C51.4 46 48.6 49.6 45 48.4 Z"/>
+      <path d="M89 47 C92 38 90 27 86 21 C83.5 17.5 79.5 18.5 78 23 L70 42 C68.6 46 71.4 49.6 75 48.4 Z"/>
+    </g>
+    <g fill="#E0563A">
+      <path d="M35 44 C33 37 34.4 29 37.2 24.6 C38.6 22.4 41 23 41.9 26 L47 40 Z"/>
+      <path d="M85 44 C87 37 85.6 29 82.8 24.6 C81.4 22.4 79 23 78.1 26 L73 40 Z"/>
+    </g>
+    <circle cx="60" cy="66" r="38" fill="#FFF6EC"/>
+    <path fill="#20141B" d="M22.1 64 A38 38 0 0 1 97.9 64 C94 64 86 60 74 54 C68 50.4 64 48 60 48 C56 48 52 50.4 46 54 C34 60 26 64 22.1 64 Z"/>
+    <path fill="#FFF6EC" d="M60 30 L70.4 48 C66 47.4 63 48.6 60 51 C57 48.6 54 47.4 49.6 48 Z"/>
+    <g fill="#20141B">
+      <ellipse cx="46" cy="63" rx="5.6" ry="6.4"/><ellipse cx="74" cy="63" rx="5.6" ry="6.4"/>
+      <path d="M60 75 C63.8 75 66.6 76.8 66.6 79.4 C66.6 82.3 63 84.6 60 84.6 C57 84.6 53.4 82.3 53.4 79.4 C53.4 76.8 56.2 75 60 75 Z"/>
+    </g>
+  </g>
 </svg>
