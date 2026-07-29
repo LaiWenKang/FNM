@@ -1,12 +1,12 @@
 {
-  "name": "FNM — Food Near Me",
+  "name": "FNM \u2014 Food Near Me",
   "short_name": "FNM",
   "description": "A near-zero-input food decision engine.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#07070B",
-  "theme_color": "#0B0A10",
+  "theme_color": "#FF6A2A",
   "icons": [
     {
       "src": "/icon.svg",
