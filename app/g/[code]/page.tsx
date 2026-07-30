@@ -61,6 +61,8 @@ interface Decision {
   picks: Pick[];
   voters: number;
   waiting: number;
+  /** False when nobody in the group has swiped — the pick stands on context. */
+  palateKnown?: boolean;
   decidedPlaceId: string | null;
   error?: string;
   context?: { hour: number; raining: boolean };
@@ -245,14 +247,18 @@ export default function GroupPage({ params }: { params: Promise<{ code: string }
           </section>
 
           {!decision ? (
-            <button
-              className="big-btn"
-              type="button"
-              disabled={busy || seeded === 0}
-              onClick={() => void decide()}
-            >
+            /* THE BUTTON USED TO DISABLE ITSELF AND READ "Nobody has a palate
+               yet", which made the ordinary first run — a link shared at noon
+               with three colleagues who have never opened the app — a dead end
+               with no way forward. A group with no palates is still a group
+               standing somewhere at lunchtime, and that is enough to answer. */
+            <button className="big-btn" type="button" disabled={busy} onClick={() => void decide()}>
               <TargetIcon size={18} strokeWidth={2} />
-              {busy ? "Working…" : seeded === 0 ? "Nobody has a palate yet" : `Decide for ${seeded}`}
+              {busy
+                ? "Working…"
+                : seeded === 0
+                  ? `Find somewhere for ${lobby.members.length}`
+                  : `Decide for ${seeded}`}
             </button>
           ) : decision.error ? (
             <div className="group-dead mat mat-regular">
@@ -264,13 +270,25 @@ export default function GroupPage({ params }: { params: Promise<{ code: string }
             </div>
           ) : (
             <section className="group-result">
-              {decision.waiting > 0 && (
+              {/* TWO DIFFERENT SITUATIONS THAT MUST NOT SHARE A SENTENCE.
+                  "Some of you had no say" is a warning worth acting on; "none
+                  of us has a palate yet" is a statement about what this pick
+                  is standing on, and saying somebody was overruled when nobody
+                  was would be the group screen inventing a grievance. */}
+              {decision.palateKnown === false ? (
+                <p className="group-warn">
+                  Nobody here has set a palate yet, so this is the best fit for where you all are,
+                  what&rsquo;s open, and what everyone can afford — everybody&rsquo;s distance and
+                  budget limits still count. Swipe once each to make it about taste.
+                </p>
+              ) : decision.waiting > 0 ? (
                 <p className="group-warn">
                   Decided for <span className="data-num">{decision.voters}</span> —{" "}
                   <span className="data-num">{decision.waiting}</span> still haven&rsquo;t shown a
-                  palate, so they had no say.
+                  palate, so they had no say on flavour (their distance and budget limits still
+                  counted).
                 </p>
-              )}
+              ) : null}
               {/* WHOSE TURN IT IS, SAID OUT LOUD. A rotation nobody can see is
                   indistinguishable from the app being random, and the social
                   value of taking turns is mostly in everyone KNOWING. */}

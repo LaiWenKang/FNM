@@ -2,14 +2,15 @@
   "name": "fnm",
   "version": "0.1.0",
   "private": true,
-  "description": "FNM (Food Near Me) — a near-zero-input food decision engine",
+  "description": "FNM (Food Near Me) \u2014 a near-zero-input food decision engine",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "icons": "node scripts/icons.mjs"
+    "icons": "node scripts/icons.mjs",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
@@ -24,6 +25,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitest/coverage-v8": "^3.2.7",
     "typescript": "^5.7.0",
     "vitest": "^3.2.7"
   }

@@ -7,5 +7,22 @@ import path from "node:path";
 // WIRING rather than the maths. See test/README for what that means for scope.
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, ".") } },
-  test: { environment: "node", include: ["test/**/*.test.ts"] },
+  test: {
+    environment: "node",
+    include: ["test/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["lib/**/*.ts"],
+      // Data tables and generated art, not logic: covering them measures
+      // nothing and would hide the modules that actually need attention.
+      exclude: ["lib/data/**", "lib/togoLines.ts"],
+      reporter: ["text-summary", "text"],
+      /* A FLOOR, NOT A TARGET. Set just under the numbers the suite actually
+         reaches, so the build fails when a change ADDS untested code rather
+         than when someone writes one test fewer than yesterday. Coverage is
+         not the goal — these exist so the seven modules that once sat at zero
+         percent, all of them in the request path, cannot drift back. */
+      thresholds: { statements: 95, branches: 88, functions: 97, lines: 95 },
+    },
+  },
 });

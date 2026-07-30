@@ -17,19 +17,20 @@ export async function GET(req: NextRequest) {
   const group = await loadGroup(code);
   if (!group) return NextResponse.json({ error: "That group has expired." }, { status: 404 });
 
-  const voters = group.members.filter((m) => m.seeded);
-  if (!voters.length) {
-    return NextResponse.json(
-      { error: "Nobody in this group has shown their taste yet.", members: group.members.length },
-      { status: 409 },
-    );
-  }
+  /* NO LONGER A DEAD END. A group where nobody has swiped is the ordinary
+     first run, not an error state, and refusing to answer it was the single
+     most likely first experience an invited colleague could have. The pick now
+     stands on distance, opening hours, budget and rating; `palateKnown` tells
+     the screen to say so instead of implying a taste match. */
+  const seeded = group.members.filter((m) => m.seeded);
+  const palateKnown = seeded.length > 0;
+  const voters = palateKnown ? seeded : group.members;
 
   const ctx = await buildContext(group.lat, group.lng, group.hour ?? undefined);
   // The widest ceiling in the group decides how far to LOOK; the strictest one
   // decides what actually qualifies (see decideForGroup). Fetching to the
   // widest keeps the pool honest without loosening anybody's limit.
-  const searchKm = Math.max(...voters.map((m) => m.maxKm));
+  const searchKm = Math.max(...group.members.map((m) => m.maxKm));
   const places = await getCandidatePlaces(group.lat, group.lng, searchKm, ctx.hourSg);
 
   // WHOSE TURN IS IT. Members who have been served worst in this crew's recent
@@ -82,7 +83,10 @@ export async function GET(req: NextRequest) {
     label: group.label,
     context: { hour: ctx.hourSg, raining: ctx.raining, mealPeriod: ctx.mealPeriod },
     groupVector: gv,
-    voters: voters.length,
+    // Same contract as the solo card: the UI must be able to tell a reading
+    // from a placeholder, and never draw a taste polygon nobody has set.
+    palateKnown,
+    voters: palateKnown ? voters.length : 0,
     fairness: {
       durable: fairnessDurable,
       // Named so the UI can say WHY a close call went the way it did.
@@ -92,7 +96,7 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.owed - a.owed)
         .slice(0, 2),
     },
-    waiting: group.members.length - voters.length,
+    waiting: palateKnown ? group.members.length - voters.length : group.members.length,
     decidedPlaceId: group.decidedPlaceId,
     picks: top,
   });
