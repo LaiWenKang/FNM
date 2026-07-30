@@ -7,7 +7,9 @@ import type { Place } from "@/lib/data/seed";
 // success path has to be defensible, because a fabricated dish name on a card
 // is the app inventing a menu.
 
-const ask = vi.hoisted(() => vi.fn(async () => null as string | null));
+const ask = vi.hoisted(() =>
+  vi.fn(async (_opts: { system: string; user: string; maxTokens: number }) => null as string | null),
+);
 const llmConfigured = vi.hoisted(() => vi.fn(() => true));
 
 vi.mock("@/lib/llm", async () => {
