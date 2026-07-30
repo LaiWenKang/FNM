@@ -49,6 +49,13 @@ export interface WhyGraphicProps {
   clause: string;
   vector?: FlavorVector | null;
   compare?: FlavorVector | null;
+  /* FALSE BEFORE THE DINER HAS SAID ANYTHING. The palate bar is the only term
+     on this card that can be drawn from no evidence at all — the others come
+     from a map, a clock, a price and a crowd rating. Rendering "+27 Palate"
+     next to those, in the same weight, is the card claiming a reading it does
+     not have, on the one screen whose entire pitch is that the arithmetic is
+     shown. */
+  palateKnown?: boolean;
   gid?: string;
 }
 
@@ -59,6 +66,7 @@ export default function WhyGraphic({
   clause,
   vector,
   compare,
+  palateKnown = true,
   gid = "why",
 }: WhyGraphicProps) {
   // A permanent 0 bar reads as "scored badly" rather than "not applicable", so
@@ -101,9 +109,12 @@ export default function WhyGraphic({
                 key={row.key}
                 data-sign={v < 0 ? "neg" : "pos"}
                 data-zero={v === 0 ? "1" : undefined}
+                data-unset={row.key === "palate" && !palateKnown ? "1" : undefined}
                 style={{ "--v": Math.abs(v) / denom, "--i": i } as CSSProperties}
               >
-                <span className="why-row-label">{row.label}</span>
+                <span className="why-row-label">
+                  {row.key === "palate" && !palateKnown ? "Palate · not set" : row.label}
+                </span>
                 <span className="why-track">
                   <span className="why-fill" />
                 </span>
@@ -123,7 +134,7 @@ export default function WhyGraphic({
                 results carry no dish data, and a legend naming a series that
                 was never plotted reads as a rendering fault. */}
             <span className="why-radar-key">
-              <i className="k-you" /> You
+              <i className="k-you" /> {palateKnown ? "You" : "You · not set"}
               {compare && (
                 <>
                   <i className="k-dish" /> Dish

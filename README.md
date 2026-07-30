@@ -50,6 +50,42 @@ Live places also carry `flavorKnown` and `hoursKnown` flags, so the UI can tell
 an estimate from a reading and never prints a closing time it does not actually
 have.
 
+## Your first pick, before it knows anything
+
+You can eat without calibrating. There is a **Skip — just feed me** exit on the
+swipe deck, and the pick screen works from the first tap — sixteen questions
+before your first lunch is the opposite of near-zero input, and every swipe is
+saved as you go, so stopping after four is four cards' worth of calibration
+rather than none.
+
+What was wrong was what the score *claimed* on the way there. An uncalibrated
+palate is the neutral vector — every axis at 0.5 — and the palate term happily
+scored places against it, handing out a mean of **33 of its 54 points with a
+34-point spread** across the catalogue. That spread is the problem: it isn't an
+absence of information, it's *wrong* information. It ranks by closeness to the
+exact midpoint of every axis, so it systematically favoured the blandest thing
+on the street on behalf of someone who had expressed nothing at all. The lead
+reason on the card, meanwhile, was hardcoded to *"matches your taste"* — the one
+claim the app could not back, as the first sentence a new diner ever read.
+
+Now, before you've said anything, the palate term is a **constant**: the
+midpoint of its own range, identical for every candidate. It cannot tilt the
+ranking, because there is nothing to tilt it with — distance, opening hours,
+price and crowd rating decide, and those are real evidence. It holds its
+magnitude rather than dropping to zero, because a first pick judged on where you
+are and what's open is a genuinely good recommendation, and scoring it 27 points
+below the identical pick tomorrow would be its own kind of lie.
+
+The card says so: the bar is drawn hatched and grey, labelled `PALATE · NOT
+SET`, and it still sums into the ring exactly like every other term. Same
+contract as `flavorKnown` and `hoursKnown` — the UI must be able to tell a
+reading from a placeholder.
+
+**A mood tap or a typed craving counts as having told us.** Both write real
+intent into the vector, so a first-run user who taps SPICY gets the real palate
+term immediately; telling them it was unknown would be the app ignoring what
+they just said.
+
 ## The learning loop
 
 Sixteen onboarding swipes bootstrap your palate. After that:

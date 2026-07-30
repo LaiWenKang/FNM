@@ -143,6 +143,7 @@ function breakDown(
   place: Place,
   profile: Profile,
   cravingScore: number,
+  palateKnown = true,
 ): { breakdown: ScoreBreakdown; matchScore: number } {
   const breakdown: ScoreBreakdown = {
     // 62 -> 54 to make room for quality without inflating the total, so the
@@ -151,9 +152,15 @@ function breakDown(
     distance: Math.round(clamp(18 - distanceKm * 15, -8, 18)),
     weather: Math.round(clamp(ctxDelta * 82, -15, 14)),
     budget: Math.round(clamp((profile.priceMax - place.priceLevel) * 2.4 + 1, -7, 8)),
+    /* The repeat penalty is real evidence — it comes from meals actually
+       eaten. The adventure bonus beside it is palate-derived, so before
+       calibration it takes the same flat midpoint as the palate term: a
+       smaller version of the same bug, worth ~4 points of phantom ranking. */
     novelty: Math.round(
       clamp(recencyDelta * 100, -30, 0) +
-        clamp(4 * (1 - Math.abs(place.flavor.adventure - profile.vector.adventure)), 0, 4),
+        (palateKnown
+          ? clamp(4 * (1 - Math.abs(place.flavor.adventure - profile.vector.adventure)), 0, 4)
+          : 2),
     ),
     quality: qualityTerm(place),
     /* A CRAVING OUTRANKS THE LEARNED PALATE. Someone who typed "ramen" told us
@@ -279,6 +286,30 @@ export function pickBestDish(place: Place, taste: FlavorVector): Dish | null {
   return best;
 }
 
+/* ── THE FIRST PICK, BEFORE THE APP KNOWS ANYTHING ────────────────────────
+   A brand-new diner can already reach a recommendation without swiping, and
+   that is right: making someone answer sixteen questions before their first
+   lunch is the opposite of "near-zero input". What was wrong was what the
+   score CLAIMED on the way.
+
+   An uncalibrated palate is the neutral vector, every axis at 0.5 — and
+   `palateFit` happily scores places against it, handing out a mean of 33 of
+   its 54 points across the seed catalogue with a 34-POINT SPREAD between the
+   highest and lowest. That spread is the problem. It is not "no information",
+   it is WRONG information: it ranks by closeness to the exact midpoint of
+   every axis, so it systematically favours the blandest thing on the street
+   and penalises anything with a strong character, on behalf of a person who
+   has expressed nothing at all.
+
+   So when the palate is unknown, the term becomes a CONSTANT — the midpoint of
+   its own range, identical for every candidate. It cannot tilt the ranking,
+   because there is nothing to tilt it with; the other terms, which are real
+   evidence, decide. And it holds its magnitude rather than dropping to zero,
+   because a first pick judged on where you are, what is open, what it costs
+   and what it is rated is a genuinely good recommendation, and scoring it 27
+   points lower than the identical pick tomorrow would be its own kind of lie. */
+export const NO_OPINION = 0.5;
+
 export function recommend(
   profile: Profile,
   places: Place[],
@@ -286,6 +317,9 @@ export function recommend(
   origin: { lat: number; lng: number },
   excludeIds: string[] = [],
   craving: Craving | null = null,
+  /** False before the diner has told us anything. Defaults true: every
+      existing caller passes a calibrated profile. */
+  palateKnown = true,
 ): Recommendation | null {
   const now = Date.now();
   const excluded = new Set(excludeIds);
@@ -299,7 +333,7 @@ export function recommend(
     if (distanceKm > profile.maxKm) continue;
     if (place.priceLevel > profile.priceMax) continue;
 
-    const flavorMatch = palateFit(profile.vector, place.flavor);
+    const flavorMatch = palateKnown ? palateFit(profile.vector, place.flavor) : NO_OPINION;
     const cf = contextFit(place, ctx);
     const rp = recencyPenalty(place, profile, now);
     const cr = cravingFit(place, craving);
@@ -309,10 +343,20 @@ export function recommend(
     // ONE NUMBER. The why-sentence is derived from the SAME value the ring
     // draws, so the card can never show 92 and say 89% four lines apart.
     const { breakdown, matchScore } = breakDown(
-      flavorMatch, distanceKm, cf.delta, rp.delta, place, profile, cr.score,
+      flavorMatch, distanceKm, cf.delta, rp.delta, place, profile, cr.score, palateKnown,
     );
 
-    const reasons = [`matches your taste (${matchScore}% match)`, ...cf.reasons, ...rp.reasons];
+    /* "MATCHES YOUR TASTE" TO SOMEONE WHO HAS NOT TOLD US THEIR TASTE. The
+       lead reason was hardcoded, so the very first sentence a new diner ever
+       read was the one claim the app could not back. Before calibration it
+       says what the pick is ACTUALLY standing on. */
+    const reasons = [
+      palateKnown
+        ? `matches your taste (${matchScore}% match)`
+        : `best bet nearby right now (${matchScore}% match)`,
+      ...cf.reasons,
+      ...rp.reasons,
+    ];
     if (typeof place.rating === "number" && (place.ratingCount ?? 0) >= 20) {
       reasons.push(`rated ${place.rating.toFixed(1)} by ${place.ratingCount} people`);
     }

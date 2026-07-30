@@ -58,6 +58,8 @@ interface RecommendResponse {
   canReset?: boolean;
   craving: { text: string; hit: string | null } | null;
   swipeCount: number;
+  /** False until the diner has swiped, picked a mood, or typed a craving. */
+  palateKnown?: boolean;
   vector: FlavorVector;
   best: Pick;
   safer: Pick | null;
@@ -364,6 +366,7 @@ export default function Recommend() {
             pick={data.best}
             ctx={data.context}
             vector={data.vector}
+            palateKnown={data.palateKnown !== false}
             session={session}
             onGo={() => void choose(data.best, "best")}
             onPass={() => setReasonOpen(true)}
@@ -444,6 +447,7 @@ function HeroCard({
   pick,
   ctx,
   vector,
+  palateKnown,
   session,
   onGo,
   onPass,
@@ -451,6 +455,7 @@ function HeroCard({
   pick: Pick;
   ctx: RecommendResponse["context"];
   vector: FlavorVector;
+  palateKnown: boolean;
   session: number;
   onGo: () => void;
   onPass: () => void;
@@ -528,6 +533,7 @@ function HeroCard({
           clause={resultClause({ raining: ctx.raining, hour: ctx.hour, index: session })}
           vector={vector}
           compare={pick.dish?.flavor}
+          palateKnown={palateKnown}
           gid="whyA"
         />
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { CALIBRATION_DECK } from "@/lib/calibration";
@@ -124,6 +125,18 @@ export default function Onboarding() {
         beat={beat}
         onAnswer={(liked) => void answer(liked)}
       />
+
+      {/* THE WAY OUT, which did not exist. Sixteen cards with no exit is a gate,
+          and a gate in front of lunch contradicts the one promise this app
+          makes. Every swipe already counts on its own — the profile is saved
+          per card, not at the end — so leaving after four is not abandoning
+          calibration, it is doing four cards' worth of it and eating.
+
+          Deliberately quiet and deliberately below the deck: the cards are
+          still the recommended path, and this is an exit, not a competing CTA. */}
+      <Link className="hud-chip hud-link onboard-skip" href="/recommend">
+        {index === 0 ? "Skip — just feed me" : `Stop here · ${index} in`}
+      </Link>
     </main>
   );
 }
