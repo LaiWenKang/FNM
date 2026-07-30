@@ -285,6 +285,51 @@ promises stays put. With no `DATABASE_URL` it returns a 503 that says so —
 a page of nulls would be indistinguishable from "nobody used the app this
 month", which is the most expensive way for this endpoint to be wrong.
 
+## Knowing when something is broken
+
+Everything external here degrades gracefully. The model, Google Places and the
+database each sit behind a `catch` that falls back to a local path that works
+fine, which is the right design — nobody should lose their lunch because a
+vendor is having an afternoon.
+
+It also meant the app could not tell you it was broken. `lib/llm.ts` admitted as
+much in its own comment: *a dead API key looks exactly like never having set
+one.* `lib/places.ts` had the same hole one line long — `if (!res.ok) return []`
+— so a 403 from a key restricted to the wrong API rendered as "there are no
+restaurants near you", and the app quietly served the seed catalogue looking
+perfectly healthy. There were **zero** logging calls in the codebase.
+
+**Configured and working are different questions.** A status page that reads an
+env var and reports `GEMINI_API_KEY: set ✓` is confidently wrong the day after
+the key is revoked. So health is recorded from real call outcomes, and a
+subsystem nobody has called yet reports `unknown` — never `healthy`.
+
+The same `GET /api/stats` carries a `health` block per subsystem:
+
+| Verdict | Meaning |
+|---|---|
+| `off` | No key set. Working as intended — **not** a fault, and not flagged as one |
+| `healthy` | Configured, calls succeeding |
+| `degraded` | Configured, some calls failing |
+| `failing` | Configured and nothing is getting through — **the one that needs a human** |
+| `unknown` | Configured, but nothing has been asked of it yet |
+
+Faults are classified into the categories that call for different reactions:
+`auth` (regenerate the key), `rate-limit` (wait), `quota` (spent until tomorrow,
+or add a card), `timeout`, `upstream` (the vendor is down), `bad-response` and
+`unknown`. Quota is checked *before* the status code, because Google returns 429
+for both a burst limit and an exhausted free tier — and on the free tier this
+README recommends, "you are done until tomorrow" is the likeliest real failure.
+
+Recorded in two places, because neither alone is enough: a `console.error` line
+prefixed `[fnm]` (durable, in the platform log, but you need a laptop to read
+it) and a row in an `incidents` table, throttled to one per subsystem per fault
+per minute — a dead key fails on every request, and writing a row each time
+turns an outage into a second, self-inflicted one. The table matters on
+serverless specifically: the instance answering your status request is usually
+not the instance that hit the dead key, so without it a cold box reports a
+serene `unknown` while the rest of the fleet fails on the same credential.
+
 ## Deploy
 
 Push to GitHub → import the repo in [Vercel](https://vercel.com) → add the optional env vars → deploy. The PWA is live at your Vercel URL; share the link and friends can add it to their home screen.

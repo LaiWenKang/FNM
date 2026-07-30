@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
+import { classify, noteFault, noteOk } from "@/lib/health";
 
 // ═══ ONE QUESTION, WHICHEVER MODEL IS PAID FOR ════════════════════════════
 //
@@ -59,18 +60,37 @@ export interface Ask {
  *
  * Returns null rather than throwing on EVERY failure — no key, a refusal, a
  * timeout, a bad response, a vendor outage. Each caller already has a local
- * fallback and a `catch` around it; a null keeps that path intact and means a
- * dead API key looks exactly like never having set one.
+ * fallback and a `catch` around it, and a null keeps that path intact.
+ *
+ * The null is still the whole answer to the CALLER. What changed is that it is
+ * no longer the whole answer to the OPERATOR: this used to swallow the error
+ * with a shrug, so a dead API key looked exactly like never having set one.
+ * Now the reason is classified and recorded on the way past, and the caller's
+ * fallback behaviour is completely unaffected.
  */
 export async function ask({ system, user, maxTokens }: Ask): Promise<string | null> {
   const provider = llmProvider();
+  if (!provider) return null; // Not a fault — the zero-key path is supported.
   try {
-    if (provider === "anthropic") return await askAnthropic(system, user, maxTokens);
-    if (provider === "gemini") return await askGemini(system, user, maxTokens);
-  } catch {
-    /* fall through — the caller's local path is the answer */
+    const text =
+      provider === "anthropic"
+        ? await askAnthropic(system, user, maxTokens)
+        : await askGemini(system, user, maxTokens);
+    /* AN EMPTY 200 IS A FAILURE, and one this app has actually shipped: Flash
+       spending the entire token ceiling on thinking returned a successful
+       response containing nothing. Counting that as a success would have made
+       the status page report "healthy" through the exact bug it exists to
+       catch. */
+    if (text === null || text.trim() === "") {
+      noteFault("llm", "bad-response", `${provider} returned no usable text`);
+      return null;
+    }
+    noteOk("llm");
+    return text;
+  } catch (e) {
+    noteFault("llm", classify(e), `${provider}: ${e instanceof Error ? e.message : String(e)}`);
+    return null;
   }
-  return null;
 }
 
 async function askAnthropic(system: string, user: string, maxTokens: number): Promise<string | null> {
