@@ -79,15 +79,47 @@ describe("looking a place up", () => {
     expect(new Set(got.map((g) => g.address)).size).toBe(2);
   });
 
-  it("restricts the search to Singapore", async () => {
-    /* RESTRICT, not bias. Lunch is somewhere you can reach before it gets
-       cold, so a same-named building in another country is never the answer —
-       and offering one would be worse than offering nothing. */
+  it("restricts the search to Singapore, as a RECTANGLE", async () => {
+    /* RESTRICT, not bias: lunch is somewhere you can reach before it gets cold,
+       so a same-named building in another country is never the answer.
+
+       THE SHAPE IS NOT A STYLE CHOICE, and this assertion earns its keep. The
+       first cut passed a circle, which Places Text Search accepts only for
+       `locationBias` — `locationRestriction` takes a rectangle and rejects
+       anything else. Google turned every call down, so lookups came back empty
+       while still reporting themselves configured, and the original version of
+       this test passed throughout because it checked that a restriction
+       EXISTED rather than that it was one Google would accept. Caught by
+       running it against the real API, not by review. */
     const spy = googleReturns([place("Somewhere")]);
     await lookupPlaces("Micron");
     const body = JSON.parse(spy.mock.calls[0][1].body as string);
-    expect(body.locationRestriction).toBeDefined();
     expect(body.locationBias).toBeUndefined();
+    expect(body.locationRestriction.circle).toBeUndefined();
+    expect(body.locationRestriction.rectangle).toEqual({
+      low: { latitude: 1.13, longitude: 103.6 },
+      high: { latitude: 1.48, longitude: 104.1 },
+    });
+  });
+
+  it("draws a box that actually contains Singapore", async () => {
+    // A transposed or too-tight box would silently exclude half the island —
+    // the same class of empty-but-configured failure, one step subtler.
+    const spy = googleReturns([place("Somewhere")]);
+    await lookupPlaces("Micron");
+    const { low, high } = JSON.parse(spy.mock.calls[0][1].body as string).locationRestriction.rectangle;
+    for (const [lat, lng] of [
+      [1.2841, 103.8515], // Raffles Place
+      [1.4294, 103.8353], // Yishun
+      [1.3536, 103.9445], // Tampines
+      [1.3644, 103.9915], // Changi Airport
+      [1.3404, 103.7090], // Jurong West
+    ]) {
+      expect(lat, `lat ${lat}`).toBeGreaterThan(low.latitude);
+      expect(lat, `lat ${lat}`).toBeLessThan(high.latitude);
+      expect(lng, `lng ${lng}`).toBeGreaterThan(low.longitude);
+      expect(lng, `lng ${lng}`).toBeLessThan(high.longitude);
+    }
   });
 
   it("asks for the narrowest field mask that answers the question", async () => {

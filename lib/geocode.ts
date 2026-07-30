@@ -33,9 +33,16 @@ export interface Located {
   lng: number;
 }
 
-/** Roughly Singapore. A lunch plan is never in another country. */
-const SG = { lat: 1.3521, lng: 103.8198 };
-const SG_RADIUS_M = 30000;
+/* SINGAPORE AS A RECTANGLE, and the shape is not a style choice. Places Text
+   Search accepts a circle ONLY for `locationBias`; `locationRestriction` takes
+   a rectangle and rejects anything else. The first cut passed a circle here,
+   which Google turned down — so every lookup came back empty while reporting
+   itself configured, and the unit tests happily asserted the wrong shape
+   because they were checking my own request rather than Google's answer. */
+const SG_BOUNDS = {
+  low: { latitude: 1.13, longitude: 103.6 },
+  high: { latitude: 1.48, longitude: 104.1 },
+};
 
 export const geocodeConfigured = (): boolean => Boolean(process.env.GOOGLE_PLACES_API_KEY);
 
@@ -66,9 +73,7 @@ export async function lookupPlaces(query: string, limit = 5): Promise<Located[]>
            or ride to before it gets cold; a same-named building in another
            country is never the answer, and offering one would be worse than
            offering nothing. */
-        locationRestriction: {
-          circle: { center: { latitude: SG.lat, longitude: SG.lng }, radius: SG_RADIUS_M },
-        },
+        locationRestriction: { rectangle: SG_BOUNDS },
       }),
     });
 
