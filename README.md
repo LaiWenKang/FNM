@@ -95,23 +95,42 @@ table holds 49 Singapore planning areas; only 8 were selectable, so the app
 could correctly *label* you in Tampines from a GPS fix and then refuse to let
 you say you would be there at one o'clock.
 
-There is now a search field. It resolves in two stages, cheapest first:
+There is now a search field, and it behaves like a search field — suggestions
+narrow **as you type**, from two characters, in one list. Two sources feed it:
 
 1. **The area table**, instantly and for free. All 49 are reachable, matching
    ignores case, spaces and punctuation (`chuakang` finds Choa Chu Kang), and a
    prefix beats a mid-word hit so `bugis` gives you Bugis.
-2. **Google Places**, only when the table has nothing, only from three
-   characters, and only once you stop typing. No hardcoded list can hold
-   "Micron", "Changi Business Park" or "one-north" — offices, campuses, malls
-   and MRT exits number in the tens of thousands, and that is where lunch
-   decisions actually get made. Results show their road, because "Micron" is
-   more than one building and picking the wrong one sends you across the island.
+2. **Google Places Autocomplete**, for everything a 49-row table cannot hold.
+   "Micron", "Changi Business Park", "one-north" — offices, campuses, malls and
+   MRT exits number in the tens of thousands, and that is where lunch decisions
+   actually get made.
 
-The second stage needs `GOOGLE_PLACES_API_KEY`. Without it the sheet says so
-plainly rather than implying the place does not exist — "this deployment can
-only match Singapore area names" is a different sentence from "nothing in
-Singapore is called that", and conflating them tells somebody their office
-isn't real when the truth is a missing key.
+Both land in the **same list, in the same shape**. A box that renders chips for
+one kind of answer and rows for another is two controls wearing one costume.
+
+Each row carries a second line, because "Micron" is three different buildings
+in Singapore and the road is the only thing that tells them apart.
+
+### Why autocomplete rather than text search
+
+The first cut used Places **Text Search**, which answers "find this thing" once
+you have finished describing it — the wrong verb for a field somebody is typing
+into. It also cost more, which is the counter-intuitive part:
+
+Autocomplete is billed **per session**, not per request. Every keystroke from
+the first letter to the moment you pick a result shares one session token and
+bills once, and the coordinates are fetched only for the one place you chose.
+Text search per keystroke would have been the expensive way to get a worse
+feel. The session token is minted on the client and passed through unchanged to
+both calls — generating one per request would silently bill every keystroke
+separately.
+
+This needs `GOOGLE_PLACES_API_KEY`. Without it the sheet says so plainly rather
+than implying the place does not exist — "this deployment can only match
+Singapore area names" is a different sentence from "nothing in Singapore is
+called that", and conflating them tells somebody their office isn't real when
+the truth is a missing key.
 
 Unlike the saved-post resolver, this search is **not** filtered to food. There
 the filter stops a caption resolving to a shopping mall; here the mall is the
