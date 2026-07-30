@@ -1,6 +1,7 @@
 import { cuisineFromGoogle } from "@/lib/cuisine";
 import { Place, SEED_PLACES } from "@/lib/data/seed";
 import { FlavorVector, vec } from "@/lib/flavor";
+import { classify, noteFault, noteOk } from "@/lib/health";
 
 // Candidate pool = curated catalog (tier 1) + live Google Places (tier 2).
 //
@@ -242,8 +243,23 @@ async function fetchGooglePlaces(
         },
       }),
     });
-    if (!res.ok) return [];
+    /* ONE LINE, TWO COMPLETELY DIFFERENT MEANINGS. This used to be a bare
+       `if (!res.ok) return []`, which made a 403 from a key restricted to the
+       wrong API — the single most likely way to misconfigure this — render as
+       "there are no restaurants near you". The app then quietly served the
+       seed catalogue and looked like it was working. */
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      /* THE BODY IS PASSED IN, NOT JUST THE STATUS. Google answers an invalid
+         Places key with 400 — not 401 or 403 — so classifying on the code
+         alone filed the single most likely misconfiguration in this app under
+         "unknown", while the identical message from the model path was
+         correctly read as an auth failure. The reason is in the prose. */
+      noteFault("places", classify(body, res.status), `${res.status} ${body}`);
+      return [];
+    }
     const data = (await res.json()) as { places?: GooglePlace[] };
+    noteOk("places");
     return (data.places ?? [])
       .filter(
         (p) =>
@@ -284,7 +300,11 @@ async function fetchGooglePlaces(
           hoursKnown,
         } satisfies Place;
       });
-  } catch {
+  } catch (e) {
+    // Nearly always the 4-second AbortSignal above. Worth distinguishing from
+    // a rejection: one means the network is slow, the other means the key is
+    // dead, and they call for opposite reactions.
+    noteFault("places", classify(e), e instanceof Error ? e.message : String(e));
     return [];
   }
 }

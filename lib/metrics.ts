@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import { classify, noteFault, noteOk } from "@/lib/health";
 import { memberIdFrom } from "@/lib/member";
 
 // ═══ THE SIX NUMBERS IN PLAN.md, MADE REAL ════════════════════════════════
@@ -99,8 +100,13 @@ export async function track(
       INSERT INTO events (device_id, event, props)
       VALUES (${id}, ${event}, ${JSON.stringify(props)}::jsonb)
     `;
-  } catch {
-    /* a lost event is not worth a failed request */
+    noteOk("db");
+  } catch (e) {
+    /* Still swallowed — a lost event is not worth a failed request. But no
+       longer INVISIBLE: a database that has stopped accepting writes takes the
+       metrics down with it, and "the numbers are all zero" would otherwise be
+       indistinguishable from a quiet week. */
+    noteFault("db", classify(e), e instanceof Error ? e.message : String(e));
   }
 }
 
