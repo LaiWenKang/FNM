@@ -950,6 +950,39 @@ main {
 
 /* WHERE: a fixed two-column grid with the live control as a full-width leading
    row. Equal cells, no rag, nothing orphaned. */
+/* THE SEARCH FIELD ABOVE THE CHIPS. Same glass as the rest of the sheet, and
+   16px type — anything smaller and iOS zooms the whole page the moment the
+   field takes focus, which on a sheet means the controls jump out of reach. */
+.where-search {
+  width: 100%;
+  margin-bottom: var(--s2);
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.where-search::placeholder {
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+.where-search:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Safari draws its own clear affordance on type="search"; it does not match
+   anything else in here. */
+.where-search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .where-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

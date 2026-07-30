@@ -77,8 +77,37 @@ export const AREAS: Area[] = [
   { id: "choa-chu-kang", label: "Choa Chu Kang", lat: 1.3854, lng: 103.7443 },
 ];
 
-/** The short list offered in the Change sheet. */
+/** The short list offered in the Change sheet as one-tap chips. */
 export const PICKER_AREAS = AREAS.filter((a) => a.picker);
+
+/* ── SEARCH ───────────────────────────────────────────────────────────────
+   EIGHT OF FORTY-NINE WERE REACHABLE. The Change sheet offered eight CBD
+   chips, so the app could LABEL you correctly in Yishun, Tampines, Jurong or
+   Woodlands from a GPS fix, but you could not CHOOSE any of them — and the one
+   thing you most want to set by hand is where you will be at lunchtime, not
+   where you are standing now. Meanwhile "When" had a segmented control AND an
+   exact-hour stepper. The two inputs the whole recommendation is computed from
+   were not being treated as equals.
+
+   Matching strips spaces and punctuation on both sides, so "chuakang",
+   "choa chu kang" and "Choa-Chu-Kang" all find the same place, and a prefix
+   beats a substring so typing "bu" offers Bugis before Bukit Batok. */
+const squash = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+export function searchAreas(query: string, limit = 8): Area[] {
+  const q = squash(query);
+  if (!q) return [];
+  const scored: { area: Area; rank: number }[] = [];
+  for (const a of AREAS) {
+    const hay = squash(a.label);
+    const at = hay.indexOf(q);
+    if (at === -1) continue;
+    // Prefix first, then earliest match, then shortest name — so an exact
+    // short label never sits below a long one that merely contains it.
+    scored.push({ area: a, rank: at * 100 + hay.length });
+  }
+  return scored.sort((x, y) => x.rank - y.rank).slice(0, limit).map((s) => s.area);
+}
 
 export const DEFAULT_AREA = AREAS[0];
 
