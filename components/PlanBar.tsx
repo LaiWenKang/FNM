@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PICKER_AREAS, searchAreas } from "@/lib/areas";
-import type { Located } from "@/lib/geocode";
+import type { Suggestion } from "@/lib/geocode";
 import {
   MOVED_KM,
   Plan,
@@ -64,18 +64,21 @@ export default function PlanBar({ onChange }: PlanBarProps) {
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [where, setWhere] = useState("");
-  /* THE TABLE CANNOT HOLD A WORKPLACE. Typing "Micron" — a real place where
-     real people eat lunch every day — used to answer "No area called Micron",
-     which is the app telling somebody that where they are is not a valid place
-     to be. Offices, campuses, business parks, malls and MRT exits number in the
-     tens of thousands; no hardcoded list reaches them, so when the local
-     lookup comes up empty the question goes to Google.
-
-     Only then, only from three characters, and only once the typing stops —
-     the common case ("orchard", "bugis") never touches the network. */
-  const [found, setFound] = useState<Located[]>([]);
+  /* SUGGESTIONS WHILE TYPING, the way a search box is supposed to work. The
+     local area table answers instantly and for free; Google's autocomplete
+     fills in everything a forty-nine-row table cannot — offices, campuses,
+     malls, MRT exits — and both land in ONE list rather than the box behaving
+     two different ways depending on what you typed. */
+  const [found, setFound] = useState<Suggestion[]>([]);
   const [seeking, setSeeking] = useState(false);
   const [noKey, setNoKey] = useState(false);
+  const [picking, setPicking] = useState<string | null>(null);
+  /* ONE TOKEN PER SEARCH, minted here and retired on selection. Autocomplete
+     is billed per SESSION, so every keystroke from the first letter to the
+     choice shares this and bills once; a fresh token per request would charge
+     for each keystroke separately. */
+  const session = useRef<string>("");
+  if (!session.current && typeof crypto !== "undefined") session.current = crypto.randomUUID();
   const [status, setStatus] = useState<Status>("rest");
   const notify = useRef(onChange);
   notify.current = onChange;
@@ -83,30 +86,63 @@ export default function PlanBar({ onChange }: PlanBarProps) {
 
   useEffect(() => {
     const q = where.trim();
-    if (q.length < 3 || searchAreas(q).length > 0) {
+    if (q.length < 2) {
       setFound([]);
       setSeeking(false);
       return;
     }
     setSeeking(true);
     const ctrl = new AbortController();
+    /* 180ms, not the 350 a "search on submit" box wants. This has to feel like
+       the list is narrowing as you type; the abort on every keystroke is what
+       keeps that from becoming a queue of stale responses arriving out of
+       order and flickering the wrong answers in. */
     const t = window.setTimeout(async () => {
       try {
-        const res = await fetch(`/api/where?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
-        const json = (await res.json()) as { configured?: boolean; results?: Located[] };
+        const res = await fetch(
+          `/api/where?q=${encodeURIComponent(q)}&s=${encodeURIComponent(session.current)}`,
+          { signal: ctrl.signal },
+        );
+        const json = (await res.json()) as { configured?: boolean; suggestions?: Suggestion[] };
         setNoKey(json.configured === false);
-        setFound(json.results ?? []);
+        setFound(json.suggestions ?? []);
       } catch {
         /* aborted or offline — the message below is the fallback */
       } finally {
         setSeeking(false);
       }
-    }, 350);
+    }, 180);
     return () => {
       window.clearTimeout(t);
       ctrl.abort();
     };
   }, [where]);
+
+  /** Exchange a chosen suggestion for coordinates, then pin it. */
+  async function choosePlace(s: Suggestion) {
+    if (!plan) return;
+    setPicking(s.id);
+    try {
+      const res = await fetch(
+        `/api/where?id=${encodeURIComponent(s.id)}&s=${encodeURIComponent(session.current)}`,
+      );
+      const json = (await res.json()) as { place?: { lat: number; lng: number; label: string } | null };
+      if (!json.place) {
+        setGeoError("Couldn't pin that one — try another result.");
+        return;
+      }
+      apply(planFromPlace(json.place.lat, json.place.lng, json.place.label, plan));
+      setWhere("");
+      setFound([]);
+      // The session ended with the selection; the next search starts a new one.
+      session.current = crypto.randomUUID();
+      hold("override", 400);
+    } catch {
+      setGeoError("Couldn't pin that one — try another result.");
+    } finally {
+      setPicking(null);
+    }
+  }
 
   /** He registers the disagreement, then relents. Never longer than half a second. */
   function hold(next: Status, ms: number) {
@@ -242,32 +278,30 @@ export default function PlanBar({ onChange }: PlanBarProps) {
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Where and when" sub="Inputs to the pick">
         <p className="eyebrow">Where</p>
-        {/* A FIXED TWO-COLUMN GRID with the locate control as a full-width
-            leading row. A wrapping pill cloud that rags 1/2/3/3 and orphans the
-            live chip on its own line is the same failure the budget control was
-            rebuilt to avoid; it is not allowed to reappear in the sheet. */}
-        {/* TYPE TO REACH THE OTHER FORTY-ONE. The chips below are eight CBD
-            areas, so the app could LABEL you in Yishun or Tampines from a GPS
-            fix but you could not CHOOSE either — while "When" beneath this had
-            a segmented control AND an exact-hour stepper. The two inputs the
-            pick is computed from were not being treated as equals. */}
+
+        {/* THE FIELD. Areas, offices, malls, MRT exits — one box, suggestions
+            narrowing as you type, which is the only interaction anybody has to
+            be taught. The chips below are a shortcut for the common case, not
+            the only way in. */}
         <input
           className="where-search"
           type="search"
           inputMode="search"
           autoComplete="off"
-          placeholder="Type an area — Tampines, Jurong, Yishun…"
-          aria-label="Search for an area"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="Search an area, office or mall…"
+          aria-label="Search for a place"
           value={where}
           onChange={(e) => setWhere(e.target.value)}
         />
 
-        {/* A FIXED TWO-COLUMN GRID with the locate control as a full-width
-            leading row. A wrapping pill cloud that rags 1/2/3/3 and orphans the
-            live chip on its own line is the same failure the budget control was
-            rebuilt to avoid; it is not allowed to reappear in the sheet. */}
-        <div className="where-grid">
-          {!where.trim() && (
+        {/* NOTHING TYPED — the one-tap path. A fixed two-column grid with the
+            locate control as a full-width leading row; a wrapping pill cloud
+            that rags 1/2/3/3 and orphans the live chip on its own line is the
+            same failure the budget control was rebuilt to avoid. */}
+        {!where.trim() && (
+          <div className="where-grid">
             <button
               type="button"
               className={`chip locate-chip${auto ? " on" : ""}`}
@@ -277,56 +311,75 @@ export default function PlanBar({ onChange }: PlanBarProps) {
               <LocateIcon size={14} strokeWidth={1.9} />
               {locating ? "Locating…" : auto ? "Following my location" : "Use my location"}
             </button>
-          )}
-          {(where.trim() ? searchAreas(where) : PICKER_AREAS).map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              className={`chip ${!auto && plan.label === a.label ? "on" : ""}`}
-              onClick={() => {
-                apply(planFromArea(a.id, plan));
-                setWhere("");
-                hold("override", 400);
-              }}
-            >
-              {a.label}
-            </button>
-          ))}
-        </div>
-        {/* REAL PLACES, when the table has nothing. Listed separately from the
-            area chips and with their addresses, because "Micron" is two
-            different buildings and picking the wrong one sends you across the
-            island for lunch. */}
-        {where.trim() && searchAreas(where).length === 0 && found.length > 0 && (
+            {PICKER_AREAS.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                className={`chip ${!auto && plan.label === a.label ? "on" : ""}`}
+                onClick={() => {
+                  apply(planFromArea(a.id, plan));
+                  hold("override", 400);
+                }}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* TYPING — ONE LIST, narrowing as you go. Areas and real places sit in
+            the same column in the same shape, because a box that renders chips
+            for one kind of answer and rows for another is two controls wearing
+            one costume. Areas come first: they are free, instant, and the
+            likelier intent when somebody types "bugis". */}
+        {where.trim() && (
           <ul className="where-found">
-            {found.map((f) => (
-              <li key={`${f.lat},${f.lng}`}>
+            {searchAreas(where).map((a) => (
+              <li key={a.id}>
                 <button
                   type="button"
                   className="where-found-btn"
                   onClick={() => {
-                    apply(planFromPlace(f.lat, f.lng, f.label, plan));
+                    apply(planFromArea(a.id, plan));
                     setWhere("");
                     setFound([]);
                     hold("override", 400);
                   }}
                 >
-                  <span className="wf-name">{f.label}</span>
-                  {f.address && <span className="wf-addr">{f.address}</span>}
+                  <span className="wf-name">{a.label}</span>
+                  <span className="wf-addr">Area</span>
+                </button>
+              </li>
+            ))}
+            {found.map((f) => (
+              <li key={f.id}>
+                <button
+                  type="button"
+                  className="where-found-btn"
+                  disabled={picking !== null}
+                  onClick={() => void choosePlace(f)}
+                >
+                  <span className="wf-name">{f.main}</span>
+                  {/* The secondary line is why this is a list and not a chip:
+                      "Micron" is three buildings, and the road is the only
+                      thing that tells them apart. */}
+                  {f.secondary && (
+                    <span className="wf-addr">{picking === f.id ? "Pinning…" : f.secondary}</span>
+                  )}
                 </button>
               </li>
             ))}
           </ul>
         )}
 
-        {/* SAYING SO BEATS AN EMPTY GRID, and the three cases need three
-            different sentences: still looking, cannot look at all, and looked
-            and found nothing. Collapsing them would tell somebody their office
-            does not exist when the truth is that no key is configured. */}
-        {where.trim().length >= 3 && searchAreas(where).length === 0 && found.length === 0 && (
+        {/* SAYING SO BEATS AN EMPTY LIST, and the cases need different
+            sentences: still looking, cannot look at all, and looked and found
+            nothing. Collapsing them would tell somebody their office does not
+            exist when the truth is that no key is configured. */}
+        {where.trim().length >= 2 && searchAreas(where).length === 0 && found.length === 0 && (
           <p className="plan-error">
             {seeking
-              ? "Looking…"
+              ? "Searching…"
               : noKey
                 ? `No area called “${where.trim()}”. This deployment can only match Singapore area names.`
                 : `Nothing in Singapore called “${where.trim()}”. Try the building, mall or MRT name.`}
