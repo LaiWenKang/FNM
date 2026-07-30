@@ -26,6 +26,7 @@ export type TogoState =
   | "locationDenied"
   | "excluded"
   | "calibrated"
+  | "howWasIt"
   | "erase";
 
 type Triplet = readonly [string, string, string];
@@ -64,6 +65,8 @@ export const TOGO_LINES: Record<TogoState, Triplet> = {
   ],
   // THE ONE EXCLAMATION MARK IN THE PRODUCT. Nowhere else, ever.
   calibrated: ["Now I can lead!", "Now I can lead!", "Now I can lead!"],
+  // The one thing he cannot work out by watching. He has to ask.
+  howWasIt: ["Did it land?", "Worth the walk?", "So — was I right?"],
   erase: [
     "This wipes the route. I start lost.",
     "This deletes what I know of you.",
