@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AREAS, DEFAULT_AREA, PICKER_AREAS, labelForCoords, nearestArea } from "@/lib/areas";
+import { AREAS, DEFAULT_AREA, PICKER_AREAS, labelForCoords, nearestArea, searchAreas } from "@/lib/areas";
 import {
   MOVED_KM,
   Plan,
@@ -55,6 +55,83 @@ describe("the area table", () => {
       expect(a.lat).toBeLessThan(1.48);
       expect(a.lng).toBeGreaterThan(103.6);
       expect(a.lng).toBeLessThan(104.1);
+    }
+  });
+});
+
+describe("finding an area by typing", () => {
+  /* EIGHT OF FORTY-NINE WERE REACHABLE. The Change sheet offered eight CBD
+     chips, so the app could LABEL you in Yishun or Tampines from a GPS fix but
+     you could not CHOOSE either — and the thing you most want to set by hand is
+     where you will be at lunchtime, not where you are standing now. */
+
+  it("reaches an area that has no chip", () => {
+    for (const name of ["Yishun", "Tampines", "Jurong East", "Woodlands", "Bedok", "Changi Airport"]) {
+      expect(searchAreas(name).map((a) => a.label)).toContain(name);
+    }
+  });
+
+  it("can reach EVERY area in the table", () => {
+    // The point of the field is that nothing in the list is unreachable.
+    for (const a of AREAS) {
+      expect(searchAreas(a.label).map((x) => x.id), `unreachable: ${a.label}`).toContain(a.id);
+    }
+  });
+
+  it("ignores case, spaces and punctuation on both sides", () => {
+    // Nobody types "Choa Chu Kang" with the spacing the table happens to use.
+    for (const q of ["choa chu kang", "ChoaChuKang", "choa-chu-kang", "  CHOA CHU KANG  "]) {
+      expect(searchAreas(q)[0]?.label, q).toBe("Choa Chu Kang");
+    }
+  });
+
+  it("matches on a fragment, not just the start", () => {
+    expect(searchAreas("kang").map((a) => a.label)).toEqual(
+      expect.arrayContaining(["Yio Chu Kang", "Choa Chu Kang"]),
+    );
+  });
+
+  it("puts a prefix match above a mid-word one", () => {
+    // Typing "bu" should offer Bugis before Bukit Batok, not alphabetically.
+    expect(searchAreas("bugis")[0].label).toBe("Bugis");
+    expect(searchAreas("tampines")[0].label).toBe("Tampines");
+  });
+
+  it("prefers the shorter label when both match at the same place", () => {
+    // "Bukit" is a prefix of three areas; the exact one a user typed in full
+    // must not sit under a longer neighbour.
+    expect(searchAreas("bukit timah")[0].label).toBe("Bukit Timah");
+  });
+
+  it("returns nothing for an empty query, so the chips stay put", () => {
+    expect(searchAreas("")).toEqual([]);
+    expect(searchAreas("   ")).toEqual([]);
+  });
+
+  it("returns nothing rather than a wrong guess for a place that is not here", () => {
+    /* An area picker that silently offers the nearest spelling would send
+       somebody to the wrong side of the island. Empty is the honest answer,
+       and the sheet says so in words. */
+    expect(searchAreas("London")).toEqual([]);
+    expect(searchAreas("zzzz")).toEqual([]);
+  });
+
+  it("caps the list so the sheet cannot become a scroll", () => {
+    // A one-letter query matches most of the island.
+    expect(searchAreas("a").length).toBeLessThanOrEqual(8);
+    expect(searchAreas("a", 3)).toHaveLength(3);
+  });
+
+  it("never returns duplicates", () => {
+    const got = searchAreas("bukit");
+    expect(new Set(got.map((a) => a.id)).size).toBe(got.length);
+  });
+
+  it("returns areas that can actually be selected", () => {
+    // Every result has to survive the round trip through planFromArea, or the
+    // chip is decorative.
+    for (const a of searchAreas("tampines")) {
+      expect(planFromArea(a.id, defaultPlan()).label).toBe(a.label);
     }
   });
 });

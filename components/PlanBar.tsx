@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PICKER_AREAS } from "@/lib/areas";
+import { PICKER_AREAS, searchAreas } from "@/lib/areas";
 import {
   MOVED_KM,
   Plan,
@@ -61,6 +61,7 @@ export default function PlanBar({ onChange }: PlanBarProps) {
   const [open, setOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [where, setWhere] = useState("");
   const [status, setStatus] = useState<Status>("rest");
   const notify = useRef(onChange);
   notify.current = onChange;
@@ -204,23 +205,46 @@ export default function PlanBar({ onChange }: PlanBarProps) {
             leading row. A wrapping pill cloud that rags 1/2/3/3 and orphans the
             live chip on its own line is the same failure the budget control was
             rebuilt to avoid; it is not allowed to reappear in the sheet. */}
+        {/* TYPE TO REACH THE OTHER FORTY-ONE. The chips below are eight CBD
+            areas, so the app could LABEL you in Yishun or Tampines from a GPS
+            fix but you could not CHOOSE either — while "When" beneath this had
+            a segmented control AND an exact-hour stepper. The two inputs the
+            pick is computed from were not being treated as equals. */}
+        <input
+          className="where-search"
+          type="search"
+          inputMode="search"
+          autoComplete="off"
+          placeholder="Type an area — Tampines, Jurong, Yishun…"
+          aria-label="Search for an area"
+          value={where}
+          onChange={(e) => setWhere(e.target.value)}
+        />
+
+        {/* A FIXED TWO-COLUMN GRID with the locate control as a full-width
+            leading row. A wrapping pill cloud that rags 1/2/3/3 and orphans the
+            live chip on its own line is the same failure the budget control was
+            rebuilt to avoid; it is not allowed to reappear in the sheet. */}
         <div className="where-grid">
-          <button
-            type="button"
-            className={`chip locate-chip${auto ? " on" : ""}`}
-            onClick={useMyLocation}
-            disabled={locating}
-          >
-            <LocateIcon size={14} strokeWidth={1.9} />
-            {locating ? "Locating…" : auto ? "Following my location" : "Use my location"}
-          </button>
-          {PICKER_AREAS.map((a) => (
+          {!where.trim() && (
+            <button
+              type="button"
+              className={`chip locate-chip${auto ? " on" : ""}`}
+              onClick={useMyLocation}
+              disabled={locating}
+            >
+              <LocateIcon size={14} strokeWidth={1.9} />
+              {locating ? "Locating…" : auto ? "Following my location" : "Use my location"}
+            </button>
+          )}
+          {(where.trim() ? searchAreas(where) : PICKER_AREAS).map((a) => (
             <button
               key={a.id}
               type="button"
               className={`chip ${!auto && plan.label === a.label ? "on" : ""}`}
               onClick={() => {
                 apply(planFromArea(a.id, plan));
+                setWhere("");
                 hold("override", 400);
               }}
             >
@@ -228,6 +252,13 @@ export default function PlanBar({ onChange }: PlanBarProps) {
             </button>
           ))}
         </div>
+        {/* SAYING SO BEATS AN EMPTY GRID. A search that silently returns
+            nothing reads as a broken control rather than as "no such area". */}
+        {where.trim() && searchAreas(where).length === 0 && (
+          <p className="plan-error">
+            No area called &ldquo;{where.trim()}&rdquo;. Try a nearby MRT or town name.
+          </p>
+        )}
         {geoError && <p className="plan-error">{geoError}</p>}
 
         <p className="eyebrow">When</p>
