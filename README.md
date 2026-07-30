@@ -86,6 +86,37 @@ intent into the vector, so a first-run user who taps SPICY gets the real palate
 term immediately; telling them it was unknown would be the app ignoring what
 they just said.
 
+## Saying where you are
+
+The plan bar carries the two inputs every recommendation is computed from, and
+for a long time they were not treated as equals: **When** had a segmented
+control *and* an exact-hour stepper, while **Where** had eight chips. The area
+table holds 49 Singapore planning areas; only 8 were selectable, so the app
+could correctly *label* you in Tampines from a GPS fix and then refuse to let
+you say you would be there at one o'clock.
+
+There is now a search field. It resolves in two stages, cheapest first:
+
+1. **The area table**, instantly and for free. All 49 are reachable, matching
+   ignores case, spaces and punctuation (`chuakang` finds Choa Chu Kang), and a
+   prefix beats a mid-word hit so `bugis` gives you Bugis.
+2. **Google Places**, only when the table has nothing, only from three
+   characters, and only once you stop typing. No hardcoded list can hold
+   "Micron", "Changi Business Park" or "one-north" — offices, campuses, malls
+   and MRT exits number in the tens of thousands, and that is where lunch
+   decisions actually get made. Results show their road, because "Micron" is
+   more than one building and picking the wrong one sends you across the island.
+
+The second stage needs `GOOGLE_PLACES_API_KEY`. Without it the sheet says so
+plainly rather than implying the place does not exist — "this deployment can
+only match Singapore area names" is a different sentence from "nothing in
+Singapore is called that", and conflating them tells somebody their office
+isn't real when the truth is a missing key.
+
+Unlike the saved-post resolver, this search is **not** filtered to food. There
+the filter stops a caption resolving to a shopping mall; here the mall is the
+answer, because it is where you will be standing.
+
 ## The learning loop
 
 Sixteen onboarding swipes bootstrap your palate. After that:
@@ -138,7 +169,7 @@ user doing the arithmetic could not reconcile.
 
 | Key | Adds |
 |---|---|
-| `GOOGLE_PLACES_API_KEY` | Live nearby restaurants merged into the candidate pool, with real crowd ratings and opening hours |
+| `GOOGLE_PLACES_API_KEY` | Live nearby restaurants merged into the candidate pool, with real crowd ratings and opening hours — **and** the ability to plan for a workplace or building by name, not just one of 49 area names |
 | `ANTHROPIC_API_KEY` **or** `GEMINI_API_KEY` | Written "why this pick" explanations, dish mining, smarter craving parsing, caption reading — see below |
 | `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` + `AUTH_SECRET` | Google sign-in |
 | `REQUIRE_AUTH=true` | Makes sign-in mandatory (ignored unless Google keys are set) |

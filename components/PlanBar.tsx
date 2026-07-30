@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PICKER_AREAS, searchAreas } from "@/lib/areas";
+import type { Located } from "@/lib/geocode";
 import {
   MOVED_KM,
   Plan,
@@ -12,6 +13,7 @@ import {
   mealFor,
   planFromArea,
   planFromCoords,
+  planFromPlace,
   planWithHour,
   savePlan,
 } from "@/lib/plan";
@@ -62,10 +64,49 @@ export default function PlanBar({ onChange }: PlanBarProps) {
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [where, setWhere] = useState("");
+  /* THE TABLE CANNOT HOLD A WORKPLACE. Typing "Micron" — a real place where
+     real people eat lunch every day — used to answer "No area called Micron",
+     which is the app telling somebody that where they are is not a valid place
+     to be. Offices, campuses, business parks, malls and MRT exits number in the
+     tens of thousands; no hardcoded list reaches them, so when the local
+     lookup comes up empty the question goes to Google.
+
+     Only then, only from three characters, and only once the typing stops —
+     the common case ("orchard", "bugis") never touches the network. */
+  const [found, setFound] = useState<Located[]>([]);
+  const [seeking, setSeeking] = useState(false);
+  const [noKey, setNoKey] = useState(false);
   const [status, setStatus] = useState<Status>("rest");
   const notify = useRef(onChange);
   notify.current = onChange;
   const relent = useRef<number | null>(null);
+
+  useEffect(() => {
+    const q = where.trim();
+    if (q.length < 3 || searchAreas(q).length > 0) {
+      setFound([]);
+      setSeeking(false);
+      return;
+    }
+    setSeeking(true);
+    const ctrl = new AbortController();
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/where?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+        const json = (await res.json()) as { configured?: boolean; results?: Located[] };
+        setNoKey(json.configured === false);
+        setFound(json.results ?? []);
+      } catch {
+        /* aborted or offline — the message below is the fallback */
+      } finally {
+        setSeeking(false);
+      }
+    }, 350);
+    return () => {
+      window.clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [where]);
 
   /** He registers the disagreement, then relents. Never longer than half a second. */
   function hold(next: Status, ms: number) {
@@ -252,11 +293,43 @@ export default function PlanBar({ onChange }: PlanBarProps) {
             </button>
           ))}
         </div>
-        {/* SAYING SO BEATS AN EMPTY GRID. A search that silently returns
-            nothing reads as a broken control rather than as "no such area". */}
-        {where.trim() && searchAreas(where).length === 0 && (
+        {/* REAL PLACES, when the table has nothing. Listed separately from the
+            area chips and with their addresses, because "Micron" is two
+            different buildings and picking the wrong one sends you across the
+            island for lunch. */}
+        {where.trim() && searchAreas(where).length === 0 && found.length > 0 && (
+          <ul className="where-found">
+            {found.map((f) => (
+              <li key={`${f.lat},${f.lng}`}>
+                <button
+                  type="button"
+                  className="where-found-btn"
+                  onClick={() => {
+                    apply(planFromPlace(f.lat, f.lng, f.label, plan));
+                    setWhere("");
+                    setFound([]);
+                    hold("override", 400);
+                  }}
+                >
+                  <span className="wf-name">{f.label}</span>
+                  {f.address && <span className="wf-addr">{f.address}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* SAYING SO BEATS AN EMPTY GRID, and the three cases need three
+            different sentences: still looking, cannot look at all, and looked
+            and found nothing. Collapsing them would tell somebody their office
+            does not exist when the truth is that no key is configured. */}
+        {where.trim().length >= 3 && searchAreas(where).length === 0 && found.length === 0 && (
           <p className="plan-error">
-            No area called &ldquo;{where.trim()}&rdquo;. Try a nearby MRT or town name.
+            {seeking
+              ? "Looking…"
+              : noKey
+                ? `No area called “${where.trim()}”. This deployment can only match Singapore area names.`
+                : `Nothing in Singapore called “${where.trim()}”. Try the building, mall or MRT name.`}
           </p>
         )}
         {geoError && <p className="plan-error">{geoError}</p>}
