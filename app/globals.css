@@ -2715,6 +2715,27 @@ body:has(.sheet-layer) .tab-bar {
   background: var(--ink-3);
 }
 
+/* A PLACEHOLDER TERM, which is a different thing from a zero one. The bar
+   carries a real value — it is the midpoint every candidate gets before the
+   app knows anything — but it is not a MEASUREMENT, and drawing it in the same
+   ember as the terms that came from a map and a clock would be the card
+   claiming a reading it does not have. Hatched and drained of colour: present,
+   accounted for in the sum, and visibly not evidence. */
+.why-row[data-unset="1"] .why-fill {
+  animation: none;
+  transform: scaleX(var(--v, 0));
+  background: repeating-linear-gradient(
+    45deg,
+    var(--ink-3) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.why-row[data-unset="1"] .why-row-label,
+.why-row[data-unset="1"] .why-val {
+  color: var(--ink-3);
+}
+
 .why-track {
   height: 6px;
   border-radius: var(--r-pill);
@@ -5660,4 +5681,12 @@ body:has(.sheet-layer) .tab-bar {
   background: transparent;
   color: var(--ink-2);
   cursor: pointer;
+}
+
+/* THE ONBOARDING EXIT. Centred under the deck, low contrast, generous tap
+   target — findable when you want it, never competing with the cards. */
+.onboard-skip {
+  display: inline-flex;
+  margin: 18px auto 0;
+  opacity: 0.72;
 }

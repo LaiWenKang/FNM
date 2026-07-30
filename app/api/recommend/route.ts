@@ -123,6 +123,13 @@ export async function GET(req: NextRequest) {
     { maxKm: 120, priceMax: 4, note: "nothing open near you — these are the closest matches we have" },
   ];
 
+  /* HAS THE DINER TOLD US ANYTHING YET? Not the same question as "have they
+     swiped". A mood is a tap that means "lighter" or "nearer"; a craving is a
+     sentence they typed. Both write real intent into the vector, so a first-run
+     user who taps SPICY and gets told the palate is unknown would be watching
+     the app ignore what they just said. Any one of the three counts. */
+  const palateKnown = profile.swipeCount > 0 || moods.length > 0 || craving !== null;
+
   let rec = null;
   let note: string | null = null;
   for (const step of relaxSteps) {
@@ -133,6 +140,7 @@ export async function GET(req: NextRequest) {
       { lat, lng },
       exclude,
       craving,
+      palateKnown,
     );
     if (rec) {
       note = step.note;
@@ -209,6 +217,9 @@ export async function GET(req: NextRequest) {
     note,
     craving: craving ? { text: craving.text, hit: rec.best.cravingHit ?? null } : null,
     swipeCount: profile.swipeCount,
+    // Same contract as flavorKnown and hoursKnown: the UI must be able to tell
+    // a reading from a placeholder, and label the palate bar accordingly.
+    palateKnown,
     // The session-effective palate (moods applied) — the ember polygon the dish
     // vector is drawn against on the hero card.
     vector: profile.vector,
