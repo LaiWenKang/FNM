@@ -198,7 +198,7 @@ export async function GET(req: NextRequest) {
 
   // One LLM call for the headline pick keeps latency low; alternates use the
   // structured template.
-  const bestExplanation = await explain(rec.best, profile, ctx);
+  const bestExplanation = await explain(rec.best, profile, ctx, palateKnown);
 
   void track(req, "served");
 

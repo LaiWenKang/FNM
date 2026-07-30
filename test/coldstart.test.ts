@@ -4,6 +4,7 @@ import { SEED_PLACES } from "@/lib/data/seed";
 import { neutralVector, palateFit, vec } from "@/lib/flavor";
 import { defaultProfile } from "@/lib/profile-shape";
 import { recommend } from "@/lib/scoring";
+import { explain } from "@/lib/explain";
 
 // THE FIRST PICK, BEFORE THE APP KNOWS ANYTHING.
 //
@@ -71,6 +72,25 @@ describe("a pick before calibration", () => {
     const rec = recommend(cold, SEED_PLACES, CTX, ORIGIN, [], null, false)!;
     expect(rec.best.reasons[0]).not.toContain("your taste");
     expect(rec.best.reasons[0]).toContain("%");
+  });
+
+  it("does not claim a palate in the headline sentence either", async () => {
+    /* CAUGHT ON THE PREVIEW DEPLOY, after the bar was already fixed. The
+       explanation is generated separately and overrode the reason line, so the
+       card still read "51% match for your BALANCED palate" — describeTaste
+       reads the neutral vector as "balanced" and the sentence stated it as a
+       finding. Worse than the bar it sits under, because it is prose, and
+       prose sounds certain. */
+    const rec = recommend(cold, SEED_PLACES, CTX, ORIGIN, [], null, false)!;
+    const line = await explain(rec.best, cold, CTX, false);
+    expect(line).not.toContain("palate");
+    expect(line).toMatch(/\d+% match/);
+  });
+
+  it("still names the palate once there is one", async () => {
+    const warm = { ...defaultProfile(), maxKm: 50, swipeCount: 16, vector: vec({ heat: 0.9 }) };
+    const rec = recommend(warm, SEED_PLACES, CTX, ORIGIN)!;
+    expect(await explain(rec.best, warm, CTX, true)).toContain("palate");
   });
 
   it("lets real evidence decide instead", () => {
