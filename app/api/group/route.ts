@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Group, MAX_MEMBERS, groupsDurable, loadGroup, newCode, normalizeCode, saveGroup } from "@/lib/group";
 import { labelForCoords } from "@/lib/areas";
+import { track } from "@/lib/metrics";
 import { readProfile } from "@/lib/profile";
 import { memberIdFrom, setMemberCookie } from "@/lib/member";
 
@@ -42,6 +43,8 @@ export async function POST(req: NextRequest) {
     decidedPlaceId: null,
   };
   await saveGroup(group);
+
+  void track(req, "group_created");
 
   const res = NextResponse.json({ code: group.code, durable: groupsDurable, memberId: id });
   if (isNew) setMemberCookie(res, id);

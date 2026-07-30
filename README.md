@@ -107,6 +107,7 @@ user doing the arithmetic could not reconcile.
 | `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` + `AUTH_SECRET` | Google sign-in |
 | `REQUIRE_AUTH=true` | Makes sign-in mandatory (ignored unless Google keys are set) |
 | `DATABASE_URL` | Postgres — signed-in profiles sync across devices, **and group links become reliable** |
+| `STATS_TOKEN` | Unlocks `GET /api/stats` (see [Measuring whether it works](#measuring-whether-it-works)). Without it the route 404s. |
 
 ### Which language model, and why you get a choice
 
@@ -236,10 +237,53 @@ group screen says so before you send the link.
 | Signed in with `DATABASE_URL` set | One row in a Postgres `profiles` table (created automatically), keyed by the Google account id, so the profile follows the user across devices. Use Neon or Supabase in the Singapore region. |
 | Group members | An opaque random device id in an httpOnly cookie — **not** an account, and it carries no personal data. The display name is whatever you type when joining and never leaves that group. Deliberately separate from sign-in, because making six people authenticate before lunch defeats the point of a forwardable link. |
 
+| Usage events | With `DATABASE_URL` set, an `events` table holding an opaque device id, an event name, a timestamp and a few small numbers. **No third party.** Without it, nothing is recorded at all. |
+
 Stored per user: the six-dimension flavour vector, swipe count, distance and
 budget settings, and recent meals (for the "don't repeat" penalty). Never
 stored: contacts, payment details, or a location history — the plan bar's
 location is used for the request and not retained.
+
+## Measuring whether it works
+
+The plan names six success metrics. None of them was measurable — there was no
+instrumentation of any kind, so the product could have been working beautifully
+or failing quietly and there was no way to tell which. Every decision about what
+to build next was being made on taste alone.
+
+**Deliberately not an analytics SDK.** The privacy note above promises that a
+signed-out profile never leaves the device. Shipping behavioural data to a
+vendor the moment we wanted a retention chart would have contradicted that on
+the first day it mattered, so the events go in the Postgres database that is
+already there. Nothing leaves the deployment.
+
+Nine events are recorded — `served`, `picked`, `rejected`, `dead_end`, `rated`,
+`calibrated`, and three group ones. Each carries an opaque device id (the same
+random cookie the group links use, which identifies a browser and not a person),
+the event name, a timestamp, and at most a slot name, a duration, a verdict or a
+member count. There is no way to work backwards from that table to who somebody
+is, and a metrics write is never awaited by a request that matters — a lost
+event is worth less than a lunch recommendation.
+
+Read them back with `GET /api/stats?token=…&days=28`:
+
+| Number | What a bad value means |
+|---|---|
+| Decisions per active user per week | The primary metric — the app is not part of the routine |
+| Median decision seconds | The premise is broken; this app exists to end the scroll |
+| Pick rate | The recommendations are not good enough to act on |
+| Top-pick share | The *ranking* is wrong — people are picking, but not the one we led with |
+| Dead-end rate | The failure signal: everything nearby got turned down |
+| Four-week retention | It solved one lunch and not the habit |
+| Group completion rate | Groups start and then get abandoned |
+| Verdict tally | How the meals actually turned out, which is the only signal that survives contact with the food |
+
+The endpoint is **closed by default**: with no `STATS_TOKEN` it returns the same
+404 as a typo'd URL. Pick rates and dead-end counts are the shape of the
+business, and the device-id column is exactly the field the privacy note
+promises stays put. With no `DATABASE_URL` it returns a 503 that says so —
+a page of nulls would be indistinguishable from "nobody used the app this
+month", which is the most expensive way for this endpoint to be wrong.
 
 ## Deploy
 

@@ -3,6 +3,7 @@ import { buildContext } from "@/lib/context";
 import { decideForGroup, groupVector, loadGroup, normalizeCode, saveGroup } from "@/lib/group";
 import { debts, fairnessDurable, recordMeal } from "@/lib/fairness";
 import { getCandidatePlaces } from "@/lib/places";
+import { track } from "@/lib/metrics";
 import { dishGlyph } from "@/lib/glyphs";
 import { similarity } from "@/lib/flavor";
 
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
   // Only on the FIRST lock-in for a given place, so re-opening the link or
   // double-tapping cannot bill somebody twice for the same lunch.
   if (placeId && placeId !== alreadyDecided) {
+    void track(req, "group_decided", { members: group.members.length });
     try {
       const ctx = await buildContext(group.lat, group.lng, group.hour ?? undefined);
       const voters = group.members.filter((m) => m.seeded);

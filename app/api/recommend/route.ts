@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildContext } from "@/lib/context";
+import { track } from "@/lib/metrics";
 import { Craving, parseCraving } from "@/lib/craving";
 import { enrichPicks } from "@/lib/dishes";
 import { explain } from "@/lib/explain";
@@ -146,6 +147,9 @@ export async function GET(req: NextRequest) {
        down) and gives advice that cannot work (waiting changes nothing). The
        same dead-end complaint from field testing, in a new disguise. */
     const refusedEverything = exclude.length > 0;
+    // THE FAILURE SIGNAL PLAN.md ASKS FOR. Not awaited: a metrics write must
+    // never sit between a hungry user and their answer, even a failed one.
+    if (refusedEverything) void track(req, "dead_end");
     return NextResponse.json(
       {
         error: refusedEverything
@@ -187,6 +191,8 @@ export async function GET(req: NextRequest) {
   // One LLM call for the headline pick keeps latency low; alternates use the
   // structured template.
   const bestExplanation = await explain(rec.best, profile, ctx);
+
+  void track(req, "served");
 
   return NextResponse.json({
     // Echo back exactly what the pick was computed from, so the UI can show the

@@ -217,12 +217,18 @@ export default function Recommend() {
     }
   }, [data, decided]);
 
-  async function choose(pick: Pick) {
-    setDecidedInSec(Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)));
+  async function choose(pick: Pick, slot: "best" | "safer" | "adventurous") {
+    const elapsed = Date.now() - startedAt.current;
+    setDecidedInSec(Math.max(1, Math.round(elapsed / 1000)));
     setDecided(pick);
     // SEND THE FLAVOUR, not just the id. Without it the server can record the
     // meal but cannot learn from it, which is how the app came to stop learning
     // anything after onboarding.
+    //
+    // The slot and the elapsed time ride along for the same reason. This screen
+    // was already timing the decision to print "decided in 9s" — it just threw
+    // the number away afterwards, so the one metric the whole product is named
+    // after was being measured and discarded on every single pick.
     await fetch("/api/pick", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -230,6 +236,8 @@ export default function Recommend() {
         placeId: pick.placeId,
         cuisine: pick.cuisine,
         dishFlavor: pick.dish?.flavor ?? null,
+        slot,
+        decisionMs: elapsed,
       }),
     }).catch(() => {});
   }
@@ -357,7 +365,7 @@ export default function Recommend() {
             ctx={data.context}
             vector={data.vector}
             session={session}
-            onGo={() => void choose(data.best)}
+            onGo={() => void choose(data.best, "best")}
             onPass={() => setReasonOpen(true)}
           />
 
@@ -377,14 +385,14 @@ export default function Recommend() {
             </span>
           </div>
           <div className="alt-rail">
-            {data.safer && <AltCard pick={data.safer} kind="safer" session={session} onPick={() => void choose(data.safer!)} />}
+            {data.safer && <AltCard pick={data.safer} kind="safer" session={session} onPick={() => void choose(data.safer!, "safer")} />}
             {data.adventurous && (
               <AltCard
                 pick={data.adventurous}
                 kind="brave"
                 session={session}
                 origin={data.context}
-                onPick={() => void choose(data.adventurous!)}
+                onPick={() => void choose(data.adventurous!, "adventurous")}
               />
             )}
           </div>
