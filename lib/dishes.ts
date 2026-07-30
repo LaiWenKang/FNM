@@ -48,6 +48,14 @@ interface CacheEntry {
 }
 const memory = new Map<string, CacheEntry>();
 
+/** Drop the in-process cache. Tests only — mirrors clearHealth() and
+    clearMemoryLedger(), which exist for the same reason: a module-level cache
+    that cannot be reset makes every test after the first one read the
+    previous one's answer. */
+export function clearDishCache(): void {
+  memory.clear();
+}
+
 let ready: Promise<void> | null = null;
 function ensureSchema(): Promise<void> {
   if (!sql) return Promise.resolve();

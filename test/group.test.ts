@@ -137,9 +137,86 @@ describe("who counts as a voter", () => {
     }
   });
 
-  it("returns nothing when nobody has a palate, rather than guessing", () => {
+  it("still answers when NOBODY has a palate", () => {
+    /* THIS TEST USED TO ASSERT THE OPPOSITE, and the old assertion was the bug.
+       Returning nothing here was defended as "not guessing", but a group where
+       nobody has swiped is the ordinary first run — one person shares a link at
+       noon and three colleagues tap it — and the group screen turned the empty
+       result into a dead end whose primary button read "Nobody has a palate
+       yet". Refusing to answer is not humility when you know where everybody is
+       standing, what is open, and what they can spend. */
     const g = group([member("a", "A", {}, { seeded: false })]);
-    expect(decideForGroup(g, SEED_PLACES, CTX)).toHaveLength(0);
+    const picks = decideForGroup(g, SEED_PLACES, CTX);
+    expect(picks.length).toBeGreaterThan(0);
+  });
+
+  it("gives everybody an equal score when nobody has a palate", () => {
+    // With the palate flat and one set of ceilings, two members cannot
+    // legitimately disagree about a place — so nobody may be named the weakest
+    // link on the strength of a preference they never expressed.
+    const g = group([
+      member("a", "A", {}, { seeded: false }),
+      member("b", "B", {}, { seeded: false }),
+    ]);
+    const picks = decideForGroup(g, SEED_PLACES, CTX);
+    expect(picks.length).toBeGreaterThan(0);
+    for (const p of picks) {
+      expect(p.meanScore).toBe(p.minScore);
+      expect(new Set(p.perMember.map((m) => m.score)).size).toBe(1);
+    }
+  });
+
+  it("names nobody as the stretch when everyone agrees", () => {
+    /* CAUGHT BY LOOKING AT THE SCREEN, not the JSON. With every member on the
+       same score the card still rendered "Alpha is the stretch here — 54 for
+       them", picking whoever came first in the map and telling the group they
+       were the holdout. An invented grievance aimed at a real person, on the
+       strength of a preference they never expressed. */
+    const g = group([
+      member("a", "A", {}, { seeded: false }),
+      member("b", "B", {}, { seeded: false }),
+    ]);
+    for (const p of decideForGroup(g, SEED_PLACES, CTX)) {
+      expect(p.weakestMemberName).toBeNull();
+    }
+  });
+
+  it("still names the stretch when there IS one", () => {
+    // The warning is valuable when it is true — it is how a group knows who to
+    // check in with before locking something in.
+    const g = group([
+      member("a", "Chilli", { heat: 0.95, adventure: 0.9 }),
+      member("b", "Plain", { heat: 0.05, adventure: 0.05 }),
+    ]);
+    const picks = decideForGroup(g, SEED_PLACES, CTX);
+    expect(picks.some((p) => p.weakestMemberName !== null)).toBe(true);
+  });
+
+  it("counts an uncalibrated member's BUDGET even though it ignores their taste", () => {
+    /* THE SECOND BUG, which the dead end was hiding. A budget is not a taste —
+       it is just as true for somebody who has never swiped — but the ceilings
+       were taken across VOTERS only, so an uncalibrated colleague on a hawker
+       budget could be sent somewhere they cannot pay. Constraints count;
+       opinions have to be earned. */
+    const g = group([
+      member("a", "Rich", { heat: 0.9 }, { priceMax: 4 }),
+      member("b", "Broke", {}, { seeded: false, priceMax: 1 }),
+    ]);
+    const picks = decideForGroup(g, SEED_PLACES, CTX);
+    for (const p of picks) {
+      expect(p.place.priceLevel).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("counts an uncalibrated member's DISTANCE limit too", () => {
+    const g = group([
+      member("a", "Walker", { heat: 0.9 }, { maxKm: 50 }),
+      member("b", "Lazy", {}, { seeded: false, maxKm: 0.3 }),
+    ]);
+    const wide = decideForGroup(group([member("a", "Walker", { heat: 0.9 }, { maxKm: 50 })]), SEED_PLACES, CTX);
+    const narrow = decideForGroup(g, SEED_PLACES, CTX);
+    // The tight limit has to bite, or it was never really a limit.
+    expect(narrow.length).toBeLessThan(wide.length);
   });
 
   it("keeps unseeded members out of the group vector too", () => {

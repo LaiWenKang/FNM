@@ -7,5 +7,16 @@ import path from "node:path";
 // WIRING rather than the maths. See test/README for what that means for scope.
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, ".") } },
-  test: { environment: "node", include: ["test/**/*.test.ts"] },
+  test: {
+    environment: "node",
+    include: ["test/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["lib/**/*.ts"],
+      // Data tables and generated art, not logic: covering them measures
+      // nothing and would hide the modules that actually need attention.
+      exclude: ["lib/data/**", "lib/togoLines.ts"],
+      reporter: ["text-summary", "text"],
+    },
+  },
 });

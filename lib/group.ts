@@ -196,21 +196,43 @@ export function decideForGroup(
    */
   debts: Record<string, number> = {},
 ): GroupPick[] {
-  const voters = group.members.filter((m) => m.seeded);
+  const seeded = group.members.filter((m) => m.seeded);
+
+  /* NOBODY HAS SWIPED YET, WHICH IS THE NORMAL FIRST RUN — one person shares a
+     link at noon and three colleagues tap it. This used to return [], and the
+     group screen turned that into a dead end whose primary button read
+     "Nobody has a palate yet". That is the same failure the solo path had, and
+     it lands on exactly the audience least willing to forgive it.
+
+     So the whole group votes, with the palate flat for everyone. The pick then
+     stands on what IS known — who is closest, what is open, what everybody can
+     afford, what the crowd rates — which is a genuinely useful answer to "where
+     should the four of us eat" and the honest one. */
+  const palateKnown = seeded.length > 0;
+  const voters = palateKnown ? seeded : group.members;
   if (!voters.length) return [];
 
   const base = defaultProfile();
   const origin = { lat: group.lat, lng: group.lng };
 
-  // The strictest ceilings in the group become everyone's ceilings.
-  const maxKm = Math.min(...voters.map((m) => m.maxKm));
-  const priceMax = Math.min(...voters.map((m) => m.priceMax)) as 1 | 2 | 3 | 4;
+  /* THE STRICTEST CEILINGS COME FROM EVERYONE, NOT JUST THE VOTERS, and this
+     is the second bug the first one was hiding. A budget and a walking limit
+     are NOT tastes — they are constraints, and they are just as true for
+     somebody who has never swiped. Taking the minimum across voters only meant
+     an uncalibrated colleague on a $2 hawker budget could be quietly sent to a
+     $$$$ restaurant, because the app had decided they had no say at all.
+
+     They still get no say over FLAVOUR — a neutral vector is not a preference,
+     and folding it in would drag every candidate toward the bland centroid.
+     Constraints count; opinions have to be earned. */
+  const maxKm = Math.min(...group.members.map((m) => m.maxKm));
+  const priceMax = Math.min(...group.members.map((m) => m.priceMax)) as 1 | 2 | 3 | 4;
 
   // One pass per member over the same candidate pool, keyed by place id.
   const byPlace = new Map<string, { place: Place; scores: Map<string, number> }>();
   for (const m of voters) {
     const profile = { ...memberProfile(m, base), maxKm, priceMax };
-    const scored = scoreAll(profile, places, ctx, origin);
+    const scored = scoreAll(profile, places, ctx, origin, palateKnown);
     for (const s of scored) {
       const entry = byPlace.get(s.place.id) ?? { place: s.place, scores: new Map() };
       entry.scores.set(m.id, s.matchScore);
@@ -242,8 +264,17 @@ export function decideForGroup(
     }
     const meanScore = Math.round(weighted / totalWeight);
     const minScore = Math.min(...values);
+    /* THERE IS NO WEAKEST LINK WHEN NOBODY DISAGREES. The card renders
+       "<name> is the stretch here", and with every member on the same score —
+       which is exactly what happens before anyone has calibrated — that
+       sentence picked whoever happened to be first in the map and told the
+       group they were the holdout. An invented grievance, aimed at a real
+       person, on the strength of a preference they never expressed. */
+    const maxScore = Math.max(...values);
     let weakestId: string | null = null;
-    for (const [id, v] of scores) if (v === minScore) { weakestId = id; break; }
+    if (minScore !== maxScore) {
+      for (const [id, v] of scores) if (v === minScore) { weakestId = id; break; }
+    }
     picks.push({
       place,
       groupScore: Math.round(MEAN_W * meanScore + MIN_W * minScore),
@@ -272,13 +303,14 @@ function scoreAll(
   places: Place[],
   ctx: Context,
   origin: { lat: number; lng: number },
+  palateKnown = true,
 ): ScoredPlace[] {
   const out: ScoredPlace[] = [];
   const exclude: string[] = [];
   // Bounded by the candidate pool, and the pool is capped at 20 live results
   // plus the curated catalogue.
   for (let i = 0; i < places.length; i += 1) {
-    const rec = recommend(profile, places, ctx, origin, exclude);
+    const rec = recommend(profile, places, ctx, origin, exclude, null, palateKnown);
     if (!rec) break;
     for (const s of [rec.best, rec.safer, rec.adventurous]) {
       if (s && !exclude.includes(s.place.id)) {
