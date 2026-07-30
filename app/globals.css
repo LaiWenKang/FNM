@@ -1590,6 +1590,92 @@ body:has(.sheet-layer) .tab-bar {
   --card-i: 2;
 }
 
+/* ===== HOW WAS IT — the one question asked AFTER the meal ==================
+   Same 40px-leading-column grammar as .guide so the two strips read as one
+   family, but the answers need a full row of their own: three options on a
+   390px screen cannot share the line with the copy without every tap target
+   dropping under 44px. ===== */
+
+.howwasit {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s3) var(--s4);
+  margin-top: var(--s5);
+  padding: var(--s4);
+  border-radius: var(--r-lg);
+  --card-i: 1;
+  animation: rise var(--dur-3) var(--ease-out) both;
+  animation-delay: calc(min(var(--card-i, 0), 6) * 70ms);
+}
+
+.hwi-copy {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.hwi-say {
+  margin: 0;
+  font-size: 14px;
+}
+
+.hwi-sub {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* Full width under both columns — see the note above about tap targets. */
+.hwi-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.hwi-btn {
+  min-height: 44px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+
+.hwi-btn:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* "Again" carries the accent because it is the answer with the most
+   information in it — and the one the diner is most often reaching for. */
+.hwi-yes {
+  border-color: var(--accent);
+  color: var(--accent-tint);
+  background: var(--accent-soft);
+}
+
+.hwi-btn:disabled {
+  opacity: 0.5;
+}
+
+.hwi-skip {
+  grid-column: 1 / -1;
+  justify-self: center;
+  padding: var(--s2);
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .guide-togo {
   grid-column: 1;
   /* he sits ON the strip's left edge rather than being cropped by it */

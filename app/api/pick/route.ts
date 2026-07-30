@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DIMS, FlavorVector, nudge, vec } from "@/lib/flavor";
 import { readProfile, writeProfile } from "@/lib/profile";
+import { ASK_AFTER_MS, ASK_UNTIL_MS, type Verdict } from "@/lib/profile-shape";
 
 // ═══ THE LEARNING LOOP ════════════════════════════════════════════════════
 //
@@ -58,16 +59,79 @@ export async function POST(req: NextRequest) {
   }
 
   const profile = await readProfile(req);
-  profile.recent.push({ placeId, cuisine, at: Date.now() });
 
   // The dish actually chosen beats the restaurant's aggregate: "Wingstop" says
   // less about you than "the Mango Habanero" does.
   const flavor = readVector(body?.dishFlavor) ?? readVector(body?.placeFlavor);
+  // Stored on the meal, not just used and discarded, so that when the diner is
+  // asked "how was it?" hours later there is something concrete to learn from.
+  profile.recent.push({ placeId, cuisine, at: Date.now(), ...(flavor ? { flavor } : {}) });
   if (flavor) profile.vector = nudge(profile.vector, flavor, true, ACCEPT_WEIGHT);
 
   const res = NextResponse.json({ ok: true, vector: profile.vector });
   await writeProfile(res, profile);
   return res;
+}
+
+/* ── HOW WAS IT ───────────────────────────────────────────────────────────
+   EVERY OTHER SIGNAL IN THIS APP IS A PREDICTION. A swipe says what you think
+   you like; a pick says what looked best at 12:15 among three options. Neither
+   knows how the food actually was, and until now nothing did — the app watched
+   you walk in and never asked what happened next.
+
+   A verdict is the only evidence that survives contact with the meal, so it
+   outweighs the pick that preceded it: AGAIN is worth more than the 0.10 that
+   choosing it earned, because wanting it a second time is the thing choosing
+   it was only a guess at.
+
+   "Fine" is deliberately worth nothing. It is the honest middle — the meal was
+   unremarkable — and inventing a nudge from it would manufacture a preference
+   out of a shrug. It is still recorded, because "asked and answered neutrally"
+   is different from "never asked". */
+const VERDICT_WEIGHT: Record<Verdict, number> = { again: 0.16, fine: 0, no: 0.1 };
+
+/** PATCH — the verdict on a meal already eaten. */
+export async function PATCH(req: NextRequest) {
+  const body = await req.json().catch(() => null);
+  const placeId = body?.placeId as string | undefined;
+  const verdict = body?.verdict as Verdict | undefined;
+  if (!placeId || (verdict !== "again" && verdict !== "fine" && verdict !== "no")) {
+    return NextResponse.json({ error: "placeId and a verdict are required" }, { status: 400 });
+  }
+
+  const profile = await readProfile(req);
+  // The most recent visit to that place — someone can eat somewhere twice.
+  const meal = [...profile.recent].reverse().find((m) => m.placeId === placeId);
+  if (!meal) return NextResponse.json({ error: "No such meal to rate." }, { status: 404 });
+  // ANSWERING TWICE MUST NOT COUNT TWICE. Re-opening the card or double-tapping
+  // would otherwise let one meal move the palate as far as three.
+  if (meal.verdict) {
+    return NextResponse.json({ ok: true, vector: profile.vector, alreadyRated: true });
+  }
+  meal.verdict = verdict;
+
+  const weight = VERDICT_WEIGHT[verdict];
+  if (meal.flavor && weight > 0) {
+    profile.vector = nudge(profile.vector, meal.flavor, verdict === "again", weight);
+  }
+
+  const res = NextResponse.json({ ok: true, vector: profile.vector });
+  await writeProfile(res, profile);
+  return res;
+}
+
+/** GET — a meal eaten recently that has not been rated yet, if there is one. */
+export async function GET(req: NextRequest) {
+  const profile = await readProfile(req);
+  const now = Date.now();
+  // A window with two edges. Too soon and they are still eating; too late and
+  // they cannot remember, and a guessed answer is worse than no answer.
+  const pending = [...profile.recent]
+    .reverse()
+    .find((m) => !m.verdict && now - m.at > ASK_AFTER_MS && now - m.at < ASK_UNTIL_MS);
+  return NextResponse.json({
+    pending: pending ? { placeId: pending.placeId, cuisine: pending.cuisine, at: pending.at } : null,
+  });
 }
 
 /** DELETE — "not feeling it". A refusal is data too, and it was being dropped. */

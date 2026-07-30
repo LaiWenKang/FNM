@@ -93,3 +93,53 @@ describe("glyphs resolve for both tiers", () => {
     }
   });
 });
+
+describe("the drawing matches the dish, not just the restaurant", () => {
+  // Only the 14 curated dishes have ids in DISH_GLYPH. Every MINED dish gets a
+  // generated id that matches nothing, so the chain fell through to the
+  // CUISINE — a property of the restaurant, not of the plate. A Korean place
+  // drew a barbecue grill whether you were sent for bulgogi or for a bowl of
+  // stew, and the `jjigae` drawing never rendered once.
+  const mined = (name: string, cuisine: string, flavor = { soupy: 0.5, fried: 0.5, rich: 0.5 }) =>
+    dishGlyph("g-abc123-d0", cuisine, flavor, name);
+
+  it("draws the dish the diner is actually being sent for", () => {
+    expect(mined("Kimchi Jjigae", "korean")).toBe("jjigae");
+    expect(mined("Bulgogi Set", "korean")).toBe("kbbq");
+    // Same restaurant, same cuisine, two different plates, two drawings.
+  });
+
+  it("stops drawing a steamer basket for fried chicken", () => {
+    expect(mined("Salted Egg Chicken", "chinese")).toBe("fried-chicken");
+    expect(mined("Har Gow", "chinese")).toBe("dim-sum");
+  });
+
+  it("reads past the modifiers dish names arrive with", () => {
+    expect(mined("Mango Habanero Wings", "american")).toBe("wings");
+    expect(mined("Bak Chor Mee (dry, extra vinegar)", "teochew")).toBe("bak-chor-mee");
+  });
+
+  it("puts the specific before the general", () => {
+    // Almost everything is served with rice, so bare "rice" must lose to a
+    // dish name that says what the plate actually is.
+    expect(mined("Hainanese Chicken Rice", "hainanese")).toBe("chicken-rice");
+    expect(mined("Nasi Lemak", "malay")).toBe("chicken-rice");
+    expect(mined("Kaya Toast Set", "kopitiam")).toBe("kaya-toast");
+    expect(mined("Sliced Fish Soup", "teochew")).toBe("fish-soup");
+  });
+
+  it("still falls back to the cuisine when the name says nothing", () => {
+    expect(mined("Chef's Special", "korean")).toBe(CUISINE_GLYPH.korean);
+  });
+
+  it("never returns undefined, whatever the name", () => {
+    for (const n of ["", "???", "Chef's Special", "x"]) {
+      expect(dishGlyph(null, null, null, n)).toBeTruthy();
+    }
+  });
+
+  it("keeps a hand-curated id winning over its own name", () => {
+    // The curated table is the most specific signal of all — a human chose it.
+    expect(dishGlyph("yk-kopi", "kopitiam", null, "Kopi-O Kosong")).toBe("kopi");
+  });
+});

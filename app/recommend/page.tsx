@@ -260,7 +260,7 @@ export default function Recommend() {
           name={title}
           area={area}
           dish={decided.dish}
-          glyph={dishGlyph(decided.dish?.id, decided.cuisine, decided.dish?.flavor)}
+          glyph={dishGlyph(decided.dish?.id, decided.cuisine, decided.dish?.flavor, decided.dish?.name)}
           walkMinutes={decided.walkMinutes}
           matchScore={decided.matchScore}
           decidedInSec={decidedInSec}
@@ -460,7 +460,7 @@ function HeroCard({
         mealPeriod={ctx.mealPeriod}
         raining={ctx.raining}
         sheltered={pick.sheltered}
-        glyph={dishGlyph(pick.dish?.id, pick.cuisine, pick.dish?.flavor)}
+        glyph={dishGlyph(pick.dish?.id, pick.cuisine, pick.dish?.flavor, pick.dish?.name)}
         closesLabel={closes?.text ?? null}
         closingSoon={closes?.soon}
       />
@@ -483,7 +483,7 @@ function HeroCard({
 
         {pick.dish ? (
           <div className="dish-row">
-            <Glyph name={dishGlyph(pick.dish.id, pick.cuisine, pick.dish.flavor)} size={24} />
+            <Glyph name={dishGlyph(pick.dish.id, pick.cuisine, pick.dish.flavor, pick.dish.name)} size={24} />
             <span className="dish-name">{pick.dish.name}</span>
             {/* A MINED DISH MAY HAVE NO PRICE. Reviews often name the dish and
                 never the cost, and the extractor returns 0 for that rather than
@@ -589,7 +589,7 @@ function AltCard({
 
       <div className="alt-mid">
         <Glyph
-          name={dishGlyph(pick.dish?.id, pick.cuisine, pick.dish?.flavor)}
+          name={dishGlyph(pick.dish?.id, pick.cuisine, pick.dish?.flavor, pick.dish?.name)}
           size={32}
           // The two alternatives differ by NERVE, and the app's own scale for
           // nerve is the score ramp: cool for the known road, plum for the

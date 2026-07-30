@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
       minScore: p.minScore,
       weakestMemberName: p.weakestMemberName,
       perMember: p.perMember,
-      dish: dish ? { name: dish.name, priceSgd: dish.priceSgd, glyph: dishGlyph(dish.id, p.place.cuisine, dish.flavor) } : null,
+      dish: dish ? { name: dish.name, priceSgd: dish.priceSgd, glyph: dishGlyph(dish.id, p.place.cuisine, dish.flavor, dish.name) } : null,
     };
   });
 

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import BrandRow from "@/components/BrandRow";
 import MoodCard from "@/components/MoodCard";
 import PlanBar from "@/components/PlanBar";
+import HowWasIt from "@/components/HowWasIt";
 import TasteRadar from "@/components/TasteRadar";
 import Togo from "@/components/Togo";
 import { StoreIcon, TargetIcon } from "@/components/icons";
@@ -66,6 +67,11 @@ export default function Home() {
       </section>
 
       <PlanBar />
+
+      {/* ABOVE the mood card, because it is about a meal already eaten and the
+          rest of this screen is about the next one. Renders nothing at all
+          unless there is an unrated meal inside the ask window. */}
+      <HowWasIt />
 
       {/* THE CALIBRATE PROMPT sits ABOVE the main CTA, not below it. A 130px
           bust placed after the mood card fell past the fold on a 390×844
