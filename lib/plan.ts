@@ -75,6 +75,24 @@ export function planFromCoords(lat: number, lng: number, base: Plan): Plan {
   return { ...base, lat, lng, label: labelForCoords(lat, lng), locationMode: "auto" };
 }
 
+/**
+ * A place found by searching, rather than one of the preset areas: same
+ * pinning behaviour, but the label is the place's own name.
+ *
+ * The label is carried explicitly instead of being derived from the
+ * coordinates, because `labelForCoords` would answer "Woodlands" for a
+ * building the user typed "Micron" to find — technically true, and not what
+ * they asked for. What somebody typed is what the plan bar should read back.
+ */
+export function planFromPlace(
+  lat: number,
+  lng: number,
+  label: string,
+  base: Plan,
+): Plan {
+  return { ...base, lat, lng, label: label.slice(0, 40), locationMode: "manual" };
+}
+
 /** An explicit area choice: pinned, so GPS stops overriding it. */
 export function planFromArea(areaId: string, base: Plan): Plan {
   const area = AREAS.find((a) => a.id === areaId) ?? DEFAULT_AREA;

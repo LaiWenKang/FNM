@@ -983,6 +983,49 @@ main {
   appearance: none;
 }
 
+/* FOUND PLACES — a list, not chips. A workplace name plus its road is two
+   lines of information, and two lines do not fit a pill; forcing them into one
+   would truncate exactly the part that tells two branches of the same name
+   apart. */
+.where-found {
+  list-style: none;
+  margin: 0 0 var(--s2);
+  padding: 0;
+  display: grid;
+  gap: var(--s1);
+}
+
+.where-found-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-md, 14px);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+  cursor: pointer;
+}
+
+.where-found-btn:active {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.wf-name {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.wf-addr {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
 .where-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
