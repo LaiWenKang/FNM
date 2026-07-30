@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { swipeWeight } from "@/lib/calibration";
+import { CALIBRATION_LENGTH, swipeWeight } from "@/lib/calibration";
 import { SWIPE_CARDS } from "@/lib/data/seed";
 import { nudge } from "@/lib/flavor";
+import { track } from "@/lib/metrics";
 import { readProfile, writeProfile } from "@/lib/profile";
 
 // Records one bootstrap swipe and nudges the taste vector. Early swipes move
@@ -25,6 +26,10 @@ export async function POST(req: NextRequest) {
   const profile = await readProfile(req);
   profile.vector = nudge(profile.vector, card.flavor, liked, swipeWeight(profile.swipeCount, liked));
   profile.swipeCount += 1;
+
+  // Fires once, on the swipe that completes the deck — the onboarding
+  // funnel's bottom step.
+  if (profile.swipeCount === CALIBRATION_LENGTH) void track(req, "calibrated");
 
   const res = NextResponse.json({ swipeCount: profile.swipeCount, vector: profile.vector });
   await writeProfile(res, profile);

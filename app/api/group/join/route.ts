@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MAX_MEMBERS, loadGroup, normalizeCode, saveGroup } from "@/lib/group";
 import { SWIPE_CARDS } from "@/lib/data/seed";
 import { DIMS, neutralVector } from "@/lib/flavor";
+import { track } from "@/lib/metrics";
 import { readProfile } from "@/lib/profile";
 import { memberIdFrom, setMemberCookie } from "@/lib/member";
 
@@ -99,6 +100,7 @@ export async function POST(req: NextRequest) {
     });
   }
   await saveGroup(group);
+  if (!existing) void track(req, "group_joined", { members: group.members.length });
 
   const res = NextResponse.json({
     ok: true,
