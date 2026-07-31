@@ -57,15 +57,16 @@ Four rules keep it honest and cheap:
   was already ordered wrong.
 - **A circuit breaker, and a canary in front of it.** If the model has been
   asked three times on this instance and never once answered, enrichment stops
-  asking — a revoked key does not fail for free. But the breaker only helps
-  *after* failures are recorded, and on a cold instance the first request fans
-  out a dozen calls in parallel before any of them has failed. Measured against
-  a deployment with a dead key, that cost **4.9 seconds** on the first request.
-  So the first place is asked alone, and if it comes back empty *and* the model
-  has now failed, the rest are abandoned. A null from a *working* model just
-  means an unrecognisable name, so the breaker — not the null — is what
-  decides. Everything resets when the instance recycles, so a key fixed at noon
-  comes back on its own.
+  asking — a revoked key does not fail for free. But the breaker can only act
+  on failures already recorded, and on a cold instance the first request would
+  fan out a dozen calls in parallel before any of them had failed. So the first
+  place is asked alone; if it comes back empty *and* the model has now failed,
+  the rest are abandoned. A dead credential therefore costs **one** doomed
+  round-trip per instance rather than a dozen — in wasted quota and log noise
+  more than in wall-clock, since the calls run in parallel. A null from a
+  *working* model just means an unrecognisable name, so the breaker — not the
+  null — is what decides. Everything resets when the instance recycles, so a
+  key fixed at noon comes back on its own.
 
 Without an Anthropic key a live place stays restaurant-level and the card says
 so, rather than inventing a dish nobody ordered.

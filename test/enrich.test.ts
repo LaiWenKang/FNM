@@ -270,8 +270,8 @@ describe("not paying for a dead key on every request", () => {
     /* THE BREAKER ALONE IS NOT ENOUGH ON A COLD INSTANCE. It only helps after
        failures have been recorded, and the first request fans out a dozen
        calls in parallel — nothing has failed yet when they are all already in
-       flight. Measured against a deployment with a dead key, that cost 4.9
-       SECONDS on the first request. So the first place is asked alone. */
+       flight. So the first place is asked alone, and a dead credential costs
+       one doomed round-trip per instance instead of a dozen. */
     /* The mock records the fault as the real ask() does — that recording IS
        the mechanism, so a mock that skipped it would test nothing. */
     ask.mockImplementation(async () => {

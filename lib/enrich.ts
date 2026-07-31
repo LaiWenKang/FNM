@@ -236,15 +236,15 @@ export async function enrichGenerics(places: Place[], budgetMs = 4000): Promise<
   /* ONE CANARY BEFORE THE FLOCK. The breaker above only helps AFTER three
      failures have been recorded, which on a cold instance is too late: the
      very first request fans out a dozen calls in parallel, so nothing has
-     failed yet when they are all already in flight. Measured against a
-     deployment with a dead key, that cost 4.9 SECONDS on the first request
-     before the breaker took over.
-     
+     failed yet when they are all already in flight.
+
      So the first place is asked alone. If it comes back empty AND the model
      has now failed enough to trip the breaker, the rest are abandoned — a
-     dead credential costs one round-trip per instance instead of a dozen. A
-     null from a WORKING model (an unrecognisable name) is not a reason to
-     stop, which is why the breaker, not the null, is what decides. */
+     dead credential costs one round-trip per instance instead of a dozen —
+     paid mostly in wasted quota and log noise rather than wall-clock, since
+     the fan-out is parallel. A null from a WORKING model (an unrecognisable
+     name) is not a reason to stop, which is why the breaker, not the null, is
+     what decides. */
   const run = (async () => {
     const [first, ...rest] = targets;
     const firstResult = await enrichmentFor(first.p).catch(() => null);
