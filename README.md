@@ -55,11 +55,17 @@ Four rules keep it honest and cheap:
   candidate pool *before* ranking rather than over three picks after it — the
   bug is in the ranking, so fixing it afterwards would only relabel a list that
   was already ordered wrong.
-- **A circuit breaker in front.** If the model has been asked three times on
-  this instance and never once answered, the enrichment stops asking. A revoked
-  key does not fail for free: without this, a dozen doomed round-trips would be
-  queued, waited on and logged on every single recommendation. It resets when
-  the instance recycles, so a key fixed at noon comes back on its own.
+- **A circuit breaker, and a canary in front of it.** If the model has been
+  asked three times on this instance and never once answered, enrichment stops
+  asking — a revoked key does not fail for free. But the breaker only helps
+  *after* failures are recorded, and on a cold instance the first request fans
+  out a dozen calls in parallel before any of them has failed. Measured against
+  a deployment with a dead key, that cost **4.9 seconds** on the first request.
+  So the first place is asked alone, and if it comes back empty *and* the model
+  has now failed, the rest are abandoned. A null from a *working* model just
+  means an unrecognisable name, so the breaker — not the null — is what
+  decides. Everything resets when the instance recycles, so a key fixed at noon
+  comes back on its own.
 
 Without an Anthropic key a live place stays restaurant-level and the card says
 so, rather than inventing a dish nobody ordered.

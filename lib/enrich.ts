@@ -232,14 +232,42 @@ export async function enrichGenerics(places: Place[], budgetMs = 4000): Promise<
   if (!targets.length) return places;
 
   const out = [...places];
-  const work = targets.map(async ({ p, i }) => {
-    const e = await enrichmentFor(p).catch(() => null);
-    out[i] = withEnrichment(p, e);
-  });
 
-  await Promise.race([
-    Promise.all(work),
-    new Promise((resolve) => setTimeout(resolve, budgetMs)),
-  ]);
+  /* ONE CANARY BEFORE THE FLOCK. The breaker above only helps AFTER three
+     failures have been recorded, which on a cold instance is too late: the
+     very first request fans out a dozen calls in parallel, so nothing has
+     failed yet when they are all already in flight. Measured against a
+     deployment with a dead key, that cost 4.9 SECONDS on the first request
+     before the breaker took over.
+     
+     So the first place is asked alone. If it comes back empty AND the model
+     has now failed enough to trip the breaker, the rest are abandoned — a
+     dead credential costs one round-trip per instance instead of a dozen. A
+     null from a WORKING model (an unrecognisable name) is not a reason to
+     stop, which is why the breaker, not the null, is what decides. */
+  const run = (async () => {
+    const [first, ...rest] = targets;
+    const firstResult = await enrichmentFor(first.p).catch(() => null);
+    out[first.i] = withEnrichment(first.p, firstResult);
+    /* ONE failure is enough HERE, unlike the guard at the top. The default
+       threshold is deliberately sceptical because a lone timeout proves
+       nothing — but this decision is whether to multiply that failure by
+       eleven, and the asymmetry runs the other way: being wrong costs this
+       request its enrichment and nothing more, since the next one asks again. */
+    if (!firstResult && isFailing("llm", 1)) return;
+
+    await Promise.all(
+      rest.map(async ({ p, i }) => {
+        const e = await enrichmentFor(p).catch(() => null);
+        out[i] = withEnrichment(p, e);
+      }),
+    );
+  })();
+
+  /* THE BUDGET COVERS THE CANARY TOO. An earlier cut awaited the first call
+     before starting the clock, which meant a model that hung rather than
+     failed would block the whole recommendation indefinitely — the budget
+     existing precisely to stop that. Caught by the timeout test. */
+  await Promise.race([run, new Promise((resolve) => setTimeout(resolve, budgetMs))]);
   return out;
 }

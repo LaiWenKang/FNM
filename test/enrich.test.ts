@@ -266,6 +266,41 @@ describe("not paying for a dead key on every request", () => {
     expect(ask).toHaveBeenCalled();
   });
 
+  it("abandons the fan-out after ONE doomed call, not after a dozen", async () => {
+    /* THE BREAKER ALONE IS NOT ENOUGH ON A COLD INSTANCE. It only helps after
+       failures have been recorded, and the first request fans out a dozen
+       calls in parallel — nothing has failed yet when they are all already in
+       flight. Measured against a deployment with a dead key, that cost 4.9
+       SECONDS on the first request. So the first place is asked alone. */
+    /* The mock records the fault as the real ask() does — that recording IS
+       the mechanism, so a mock that skipped it would test nothing. */
+    ask.mockImplementation(async () => {
+      noteFault("llm", "auth", "dead key");
+      return null;
+    });
+    const many = Array.from({ length: 12 }, (_, i) => place({ id: `g-${i}`, name: `Place ${i}` }));
+    const out = await enrichGenerics(many, 5000);
+    expect(ask.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(out).toHaveLength(12);
+    expect(out.every((p) => p.flavorKnown === false)).toBe(true);
+  });
+
+  it("does NOT abandon the rest when a WORKING model simply cannot place the first name", async () => {
+    /* A null from a healthy model means "I do not recognise this one", not
+       "the key is dead". Stopping there would let a single unrecognisable
+       restaurant silently switch off enrichment for everybody behind it —
+       which is why the breaker, not the null, is what decides. */
+    ask
+      .mockResolvedValueOnce(JSON.stringify({ cuisine: "japanese", confident: false }))
+      .mockResolvedValue(JSON.stringify({ cuisine: "teochew", flavor: goodFlavor }));
+    const out = await enrichGenerics(
+      [place({ id: "g-1", name: "Mystery" }), place({ id: "g-2", name: "Qiu Lian Ban Mian" })],
+      5000,
+    );
+    expect(ask).toHaveBeenCalledTimes(2);
+    expect(out[1].cuisine).toBe("teochew");
+  });
+
   it("is not confused by another subsystem's failures", async () => {
     for (let i = 0; i < 10; i += 1) noteFault("places", "auth", "dead places key");
     ask.mockResolvedValue(JSON.stringify({ cuisine: "teochew", flavor: goodFlavor }));
