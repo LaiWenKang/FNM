@@ -151,6 +151,26 @@ export function noteFault(sub: Subsystem, fault: Fault, detail = ""): void {
   void persist(sub, fault, flat, at);
 }
 
+/**
+ * Has this subsystem failed every time it has been asked, on this instance?
+ *
+ * A CIRCUIT BREAKER, and the reason the health tally is worth more than a
+ * dashboard. A revoked model key does not fail cheaply: every optional
+ * enrichment still queues a request, waits for the rejection, and logs it —
+ * so a dead credential quietly taxes every recommendation for work that
+ * cannot possibly succeed.
+ *
+ * Deliberately strict. One failure proves nothing (a timeout happens), and a
+ * subsystem with even a single success is working. Only "asked repeatedly,
+ * never once answered" trips it, and it resets when the instance recycles —
+ * so a key fixed at noon starts being used again within minutes rather than
+ * needing a deploy.
+ */
+export function isFailing(sub: Subsystem, after = 3): boolean {
+  const t = tallies.get(sub);
+  return !!t && t.ok === 0 && t.failed >= after;
+}
+
 /** Reset the instance tally. Tests only. */
 export function clearHealth(): void {
   tallies.clear();

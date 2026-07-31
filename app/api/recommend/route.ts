@@ -3,6 +3,7 @@ import { buildContext } from "@/lib/context";
 import { track } from "@/lib/metrics";
 import { Craving, parseCraving } from "@/lib/craving";
 import { enrichPicks } from "@/lib/dishes";
+import { enrichGenerics } from "@/lib/enrich";
 import { explain } from "@/lib/explain";
 import { applyMoods, isValidMood } from "@/lib/mood";
 import { getCandidatePlaces, placeFromSaved } from "@/lib/places";
@@ -83,7 +84,22 @@ export async function GET(req: NextRequest) {
   // opening periods are matched against the hour the user is actually
   // planning for — not against whatever time the server thinks it is.
   const ctx = await buildContext(lat, lng, hour);
-  const places = await getCandidatePlaces(lat, lng, profile.maxKm, ctx.hourSg);
+  let places = await getCandidatePlaces(lat, lng, profile.maxKm, ctx.hourSg);
+
+  /* BEFORE RANKING, DELIBERATELY — and the opposite call to dish mining below.
+     That one runs AFTER ranking because enriching twenty candidates to show
+     three would waste eighteen calls in Google's priciest SKU. This one fixes
+     the RANKING itself, so running it afterwards would fix only the labels on
+     a list that was already ordered wrong: measured across the island, two
+     thirds of live candidates have no flavour and share the cuisine string
+     "restaurant", which both flattens the palate term and makes them all count
+     as repeats of each other.
+
+     It is affordable here because it costs no Places call at all — the name
+     and types are already in hand — and because the answer is cached per place
+     for six months. The first request in a new neighbourhood pays; every
+     request after it, for anyone, is free. */
+  places = await enrichGenerics(places);
 
   /* THE SAVED LIST JOINS THE POOL. A bookmark folder you never reopen is not a
      feature; the value of saving a post is the app remembering it FOR you and
