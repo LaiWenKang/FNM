@@ -23,6 +23,44 @@ Runs with **zero API keys**: a curated Singapore CBD place catalog is built in, 
 | **Live** | Google Places | Restaurant level. A flavour *estimate* averaged from the place's Google types, plus a real crowd rating. |
 | **Mined** | Google reviews → Claude | Dish level, for live places. Claude reads the review text and extracts the dishes people actually name as worth ordering, with a flavour vector each. Needs `ANTHROPIC_API_KEY`. |
 
+### When the type table runs out, the name is asked instead
+
+Measured against production across eight areas of the island: **nine of fourteen
+live picks had no flavour data**, and the same nine fell through to the generic
+cuisine `"restaurant"`. Google tags a great many Singapore places `restaurant` /
+`food` and nothing more, and a hand-maintained type map cannot read a *name*.
+
+The second consequence was worse than the first. `lib/scoring.ts` compares
+`meal.cuisine === place.cuisine` for the repeat penalty, so every place that
+fell through shared one string — eating Indian on Monday made an unrelated
+Japanese place on Tuesday look like a repeat and take a knock it never earned.
+
+So the table stays in front, and the model is asked only about what it could not
+answer. "Qiu Lian Ban Mian" says Teochew, soupy, mild to anyone who has eaten in
+Singapore and says nothing at all to a type code.
+
+Four rules keep it honest and cheap:
+
+- **A closed vocabulary.** The model picks from the cuisines this app already
+  defines rather than inventing one — a cuisine outside `CUISINES` has no
+  family and no glyph, which is this bug recreated one layer up. The generic
+  bucket is excluded too, so it cannot answer with the non-answer.
+- **An unsure answer is discarded.** The model is asked to set
+  `confident: false` when a name gives no clue, and that reply is dropped. A
+  guessed cuisine does not sit inertly in the record — it feeds the repeat
+  penalty, so a wrong one actively misranks tomorrow's lunch.
+- **Asked once, ever.** Cached per place for six months, nulls included. The
+  first request in a new neighbourhood pays; every request after it, for
+  anyone, is free. That is what makes it affordable to run over the whole
+  candidate pool *before* ranking rather than over three picks after it — the
+  bug is in the ranking, so fixing it afterwards would only relabel a list that
+  was already ordered wrong.
+- **A circuit breaker in front.** If the model has been asked three times on
+  this instance and never once answered, the enrichment stops asking. A revoked
+  key does not fail for free: without this, a dozen doomed round-trips would be
+  queued, waited on and logged on every single recommendation. It resets when
+  the instance recycles, so a key fixed at noon comes back on its own.
+
 Without an Anthropic key a live place stays restaurant-level and the card says
 so, rather than inventing a dish nobody ordered.
 
