@@ -52,6 +52,12 @@ export type Fault =
   | "upstream"
   /** A 200 that could not be used — empty, truncated, unparseable. */
   | "bad-response"
+  /* THE MODEL NAME, NOT THE CREDENTIAL. Found by the status panel on a real
+     deployment: the key was neither rejected nor out of quota, and the fault
+     came back "unknown" — which tells somebody nothing they can act on. A
+     model that does not exist for a given key is a CONFIGURATION mistake with
+     a completely different fix from a dead key, and it deserves its own word. */
+  | "not-found"
   | "unknown";
 
 /**
@@ -77,9 +83,20 @@ export function classify(e: unknown, status?: number): Fault {
 
   if (code === 401 || code === 403) return "auth";
   if (code === 429) return "rate-limit";
+  if (code === 404) return "not-found";
   if (code !== undefined && code >= 500) return "upstream";
 
   if (!msg) return "unknown";
+  // Vendors phrase a missing model several ways and rarely with a 404.
+  if (
+    msg.includes("not found") ||
+    msg.includes("does not exist") ||
+    msg.includes("is not supported") ||
+    msg.includes("unsupported model") ||
+    msg.includes("unknown model")
+  ) {
+    return "not-found";
+  }
   if (msg.includes("rate") && msg.includes("limit")) return "rate-limit";
   if (msg.includes("abort") || msg.includes("timeout") || msg.includes("timed out")) return "timeout";
   if (msg.includes("api key") || msg.includes("api_key") || msg.includes("unauthor") || msg.includes("permission")) {

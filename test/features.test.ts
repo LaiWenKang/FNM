@@ -42,8 +42,22 @@ describe("advice, which is the reason categories exist", () => {
 
   it("has advice for every fault the classifier can produce", () => {
     // A category with no advice is a dead end on the screen.
-    const all: Fault[] = ["auth", "rate-limit", "quota", "timeout", "upstream", "bad-response", "unknown"];
+    const all: Fault[] = [
+      "auth", "rate-limit", "quota", "timeout", "upstream", "bad-response", "not-found", "unknown",
+    ];
     for (const f of all) expect(adviceFor(f), f).toBeTruthy();
+  });
+
+  it("points a model-name mistake at the model name", () => {
+    // Different fix from a dead key entirely, which is why it stopped being
+    // filed under "unknown".
+    expect(adviceFor("not-found")).toMatch(/GEMINI_MODEL|model name/i);
+  });
+
+  it("still points SOMEWHERE even when the cause is unrecognised", () => {
+    /* "We do not know" is a dead end on a screen. The platform log has the
+       vendor's own words under a greppable prefix, so say so. */
+    expect(adviceFor("unknown")).toMatch(/\[fnm\]|log/i);
   });
 
   it("has nothing to say when nothing failed", () => {

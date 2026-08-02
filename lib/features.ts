@@ -41,7 +41,11 @@ const ADVICE: Record<Fault, string> = {
   timeout: "Requests are timing out — usually the network.",
   upstream: "The provider is having an outage. Nothing to fix on this end.",
   "bad-response": "Answers are coming back empty or unreadable.",
-  unknown: "Something is failing and the cause is not one we recognise.",
+  "not-found": "That model name is not available to this key — check GEMINI_MODEL / CLAUDE_MODEL.",
+  /* AN UNRECOGNISED FAULT MUST STILL POINT SOMEWHERE. "We do not know" is a
+     dead end on a screen; the platform log has the vendor's own words under a
+     greppable prefix, which is the next place to look. */
+  unknown: "Failing for a reason we do not recognise — the deployment log has it, prefixed [fnm] llm.",
 };
 
 export function adviceFor(fault: Fault | null): string | null {

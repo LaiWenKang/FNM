@@ -69,7 +69,8 @@ const ADVICE: Record<string, string> = {
   timeout: "Requests are timing out — usually the network.",
   upstream: "The provider is having an outage. Nothing to fix on this end.",
   "bad-response": "Answers are coming back empty or unreadable.",
-  unknown: "Something is failing and the cause is not one we recognise.",
+  "not-found": "That model name is not available to this key — check GEMINI_MODEL / CLAUDE_MODEL.",
+  unknown: "Failing for a reason we do not recognise — the deployment log has it, prefixed [fnm] llm.",
 };
 
 const VERDICT_WORD: Record<string, string> = {
