@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
+import { geminiModel } from "@/lib/gemini-model";
 import { classify, noteFault, noteOk } from "@/lib/health";
 
 // ═══ ONE QUESTION, WHICHEVER MODEL IS PAID FOR ════════════════════════════
@@ -108,8 +109,15 @@ async function askAnthropic(system: string, user: string, maxTokens: number): Pr
 }
 
 async function askGemini(system: string, user: string, maxTokens: number): Promise<string | null> {
+  /* DISCOVERED, NOT HARDCODED. The pinned default was "gemini-2.5-flash", and
+     on the real deployment that model was NOT FOUND for the key in use — so
+     every model-backed feature was switched off by a stale constant while the
+     key itself was perfectly good. See lib/gemini-model.ts: an explicit
+     GEMINI_MODEL still wins, and the literal below is only the last resort if
+     discovery itself fails. */
+  const model = (await geminiModel()) ?? "gemini-2.0-flash";
   const res = await new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }).models.generateContent({
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    model,
     contents: user,
     config: {
       systemInstruction: system,
