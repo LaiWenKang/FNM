@@ -5766,3 +5766,59 @@ body:has(.sheet-layer) .tab-bar {
   margin: 18px auto 0;
   opacity: 0.72;
 }
+
+/* ── WHAT'S SWITCHED ON ───────────────────────────────────────────────────
+   A status list, not a dashboard. Each row is a capability, its state, and —
+   only when there is something to do about it — one line saying what. The
+   state word carries the colour; a row that is simply "not set up" must not
+   read as an alarm, because for most installs it is the correct state. */
+.feature-list {
+  list-style: none;
+  margin: var(--s2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s2);
+}
+
+.feature-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.feature-label {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.feature-state {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.feature-row[data-state="healthy"] .feature-state {
+  color: var(--data);
+}
+
+.feature-row[data-state="failing"] .feature-state,
+.feature-row[data-state="degraded"] .feature-state {
+  color: var(--accent, #ff7a45);
+}
+
+.feature-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.feature-note:empty {
+  display: none;
+}

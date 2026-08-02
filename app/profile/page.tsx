@@ -40,6 +40,15 @@ interface Account {
   googleConfigured: boolean;
 }
 
+interface Feature {
+  label: string;
+  fallback: string;
+  configured: boolean;
+  verdict: "off" | "healthy" | "degraded" | "failing" | "unknown";
+  fault: string | null;
+  provider?: string;
+}
+
 interface Settings {
   maxKm: number;
   priceMax: number;
@@ -47,7 +56,29 @@ interface Settings {
   recentCount: number;
   tasteDescription?: string;
   account?: Account;
+  features?: Feature[];
 }
+
+/* WHAT TO DO ABOUT EACH FAULT — the reason the categories exist at all. A red
+   light that does not say "regenerate the key" or "wait until tomorrow" is
+   just anxiety. */
+const ADVICE: Record<string, string> = {
+  auth: "The key was rejected — regenerate it and update the deployment.",
+  quota: "The free allowance is spent. It resets daily; adding billing lifts it.",
+  "rate-limit": "Too many requests just now. This clears on its own.",
+  timeout: "Requests are timing out — usually the network.",
+  upstream: "The provider is having an outage. Nothing to fix on this end.",
+  "bad-response": "Answers are coming back empty or unreadable.",
+  unknown: "Something is failing and the cause is not one we recognise.",
+};
+
+const VERDICT_WORD: Record<string, string> = {
+  off: "not set up",
+  healthy: "working",
+  degraded: "patchy",
+  failing: "not working",
+  unknown: "idle",
+};
 
 export default function ProfilePage() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -266,6 +297,45 @@ export default function ProfilePage() {
               We never store contacts, payments, or a location history.
             </p>
           </div>
+
+          {/* WHAT IS SWITCHED ON — and, when something is configured but broken,
+              WHY. Every optional capability in this app fails softly by design:
+              the pick still arrives, just thinner. That is the right behaviour
+              and it is also why a dead key can sit unnoticed for weeks. The
+              health report knows; it was simply gated behind a token, an
+              environment variable and a redeploy, which is a chore standing
+              between somebody and the answer to "why did this go quiet".
+
+              Carries no metrics — pick rates and device ids stay behind
+              STATS_TOKEN. Just: is it on, is it working, and which kind of
+              failure. */}
+          {settings.features && settings.features.length > 0 && (
+            <div className="setting-card mat mat-regular" style={{ ["--card-i" as string]: 5 }}>
+              <p className="module-head">
+                <ShieldIcon size={16} />
+                What&rsquo;s switched on
+              </p>
+              <ul className="feature-list">
+                {settings.features.map((f) => (
+                  <li key={f.label} className="feature-row" data-state={f.verdict}>
+                    <span className="feature-top">
+                      <span className="feature-label">{f.label}</span>
+                      <span className="feature-state">{VERDICT_WORD[f.verdict] ?? f.verdict}</span>
+                    </span>
+                    {/* NEVER A BARE RED LIGHT. Say what is lost, and when it is
+                        broken rather than merely absent, say what to do. */}
+                    <span className="feature-note">
+                      {f.verdict === "failing" || f.verdict === "degraded"
+                        ? (f.fault && ADVICE[f.fault]) ?? f.fallback
+                        : f.verdict === "off"
+                          ? f.fallback
+                          : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* DEMOTED to a text row, which is where a destructive setting belongs,
               with honest consequence framing beside it. Never guilt-tripping —

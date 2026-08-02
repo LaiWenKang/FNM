@@ -418,6 +418,29 @@ month", which is the most expensive way for this endpoint to be wrong.
 
 ## Knowing when something is broken
 
+Open **You**. There is a *What's switched on* panel listing each optional
+capability, whether it is working, and — when it is configured but broken — one
+line saying what to do about it:
+
+> **Written reasons and dish details** · NOT WORKING
+> The key was rejected — regenerate it and update the deployment.
+
+That panel exists because the honest failure reporting below was, at first,
+reachable only through `GET /api/stats` behind `STATS_TOKEN`. That is the right
+gate for pick rates and device ids and the wrong one for *"why has this app
+stopped writing me sentences"* — answering it took an environment variable, a
+redeploy, and squinting at JSON on a phone. A revoked key stayed undiagnosed not
+because the app did not know, but because knowing was behind a chore.
+
+The panel carries **no metrics**: no pick rates, no counts, no device ids, and
+never the vendor's own error text (which can quote fragments of a request back).
+Only *is it configured, is it working, and which kind of failure* — because a
+red light that cannot tell "your key is dead" from "you are going too fast" is
+just anxiety with a colour. And a capability that is simply **off** says what
+you are missing rather than glowing red, since for most installs off is correct.
+
+
+
 Everything external here degrades gracefully. The model, Google Places and the
 database each sit behind a `catch` that falls back to a local path that works
 fine, which is the right design — nobody should lose their lunch because a
