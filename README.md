@@ -263,7 +263,7 @@ no name, no email, no coordinates. Low stakes, but real, and the way to opt out
 is to set an Anthropic key instead.
 
 Override the model within a provider with `CLAUDE_MODEL` (default
-`claude-haiku-4-5`) or `GEMINI_MODEL` (default `gemini-2.5-flash`). Neither
+`claude-haiku-4-5`) or `GEMINI_MODEL`. Neither
 needs changing; both defaults are chosen because these are extraction tasks,
 not reasoning ones.
 
@@ -416,7 +416,49 @@ promises stays put. With no `DATABASE_URL` it returns a 503 that says so —
 a page of nulls would be indistinguishable from "nobody used the app this
 month", which is the most expensive way for this endpoint to be wrong.
 
+### The Gemini model is discovered, not hardcoded
+
+`GEMINI_MODEL` has no default. It used to be the literal string
+`gemini-2.5-flash`, written once and left — and on the real deployment that
+model came back **not found** for the key in use. The key was fine, the quota
+was fine, and every model-backed feature was switched off by a stale constant.
+It took building the status panel below to notice.
+
+That is the third time this codebase has hit the same shape: a hand-maintained
+table that reality moved out from under. Forty-nine areas could not name an
+office. A type map could not name two thirds of the restaurants Google
+returned. A pinned model name could not survive its vendor's release cycle.
+
+So the model is now **discovered**: Google publishes the list a given key may
+call, and the app asks once per instance, filters to models that can actually
+generate content, and takes the cheapest flash-class one. Setting
+`GEMINI_MODEL` explicitly still wins — naming a model is a decision, and
+quietly overruling it would be a worse bug than the one this fixes.
+
 ## Knowing when something is broken
+
+Open **You**. There is a *What's switched on* panel listing each optional
+capability, whether it is working, and — when it is configured but broken — one
+line saying what to do about it:
+
+> **Written reasons and dish details** · NOT WORKING
+> The key was rejected — regenerate it and update the deployment.
+
+That panel exists because the honest failure reporting below was, at first,
+reachable only through `GET /api/stats` behind `STATS_TOKEN`. That is the right
+gate for pick rates and device ids and the wrong one for *"why has this app
+stopped writing me sentences"* — answering it took an environment variable, a
+redeploy, and squinting at JSON on a phone. A revoked key stayed undiagnosed not
+because the app did not know, but because knowing was behind a chore.
+
+The panel carries **no metrics**: no pick rates, no counts, no device ids, and
+never the vendor's own error text (which can quote fragments of a request back).
+Only *is it configured, is it working, and which kind of failure* — because a
+red light that cannot tell "your key is dead" from "you are going too fast" is
+just anxiety with a colour. And a capability that is simply **off** says what
+you are missing rather than glowing red, since for most installs off is correct.
+
+
 
 Everything external here degrades gracefully. The model, Google Places and the
 database each sit behind a `catch` that falls back to a local path that works

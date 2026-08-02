@@ -76,6 +76,17 @@ describe("telling failures apart", () => {
     expect(classify("Billing has not been enabled for this project", 400)).toBe("quota");
   });
 
+  it("names a missing MODEL separately from a dead key", () => {
+    /* FOUND BY THE STATUS PANEL ON A REAL DEPLOYMENT. The key was neither
+       rejected nor out of quota and the fault came back "unknown", which tells
+       somebody nothing they can act on. A model that does not exist for a
+       given key is a CONFIGURATION mistake with a completely different fix. */
+    expect(classify(null, 404)).toBe("not-found");
+    expect(classify(new Error("models/gemini-9-ultra is not found for API version v1beta"))).toBe("not-found");
+    expect(classify(new Error("The model `x` does not exist"))).toBe("not-found");
+    expect(classify(new Error("Unsupported model: y"))).toBe("not-found");
+  });
+
   it("admits when it does not know", () => {
     // A wrong category is worse than an honest "unknown" — it sends someone to
     // regenerate a key that was never the problem.

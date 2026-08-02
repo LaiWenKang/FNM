@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, authRequired, googleConfigured } from "@/auth";
 import { dbConfigured } from "@/lib/db";
+import { featureStatus } from "@/lib/features";
 import { describeTaste } from "@/lib/flavor";
 import { defaultProfile, eraseProfile, readProfile, writeProfile } from "@/lib/profile";
 
@@ -8,7 +9,13 @@ import { defaultProfile, eraseProfile, readProfile, writeProfile } from "@/lib/p
 // POST -> update settings { maxKm?, priceMax? } or { reset: true }
 
 export async function GET(req: NextRequest) {
-  const [profile, session] = await Promise.all([readProfile(req), auth().catch(() => null)]);
+  const [profile, session, features] = await Promise.all([
+    readProfile(req),
+    auth().catch(() => null),
+    // Never fatal: the settings screen is worth showing even if the health
+    // report itself is the thing that is broken.
+    featureStatus().catch(() => []),
+  ]);
   return NextResponse.json({
     vector: profile.vector,
     swipeCount: profile.swipeCount,
@@ -26,6 +33,11 @@ export async function GET(req: NextRequest) {
       googleConfigured,
       authRequired,
     },
+    /* WHAT IS SWITCHED ON AND WHAT IS BROKEN. Verdicts and fault categories
+       only — no metrics, no counts, no device ids. Those stay behind
+       STATS_TOKEN; this is the half a person needs to know why the app went
+       quiet, on the screen where it already admits where their profile lives. */
+    features,
   });
 }
 
