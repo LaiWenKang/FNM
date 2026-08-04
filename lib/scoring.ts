@@ -34,6 +34,8 @@ export interface ScoredPlace {
   place: Place;
   /** The craving term that matched, for the UI to name. */
   cravingHit?: string | null;
+  /** The same terms as `matchScore` before rounding — the sort tie-breaker
+      when two picks display the same ring. Never shown to anyone. */
   score: number;
   /** 1–99, and the sum of `breakdown`. The one number the UI ever renders. */
   matchScore: number;
@@ -130,10 +132,19 @@ function clamp(x: number, lo: number, hi: number): number {
 }
 
 /**
- * Presentation scale for the same terms the ranking uses. The RANKING formula is
- * untouched — this only converts those terms into signed points so the card can
- * draw them. Each part is rounded BEFORE summing, so the five bars on screen add
- * up to the number in the ring exactly.
+ * THE score — every term, in signed points, and the only formula there is.
+ *
+ * This used to be "presentation scale for the same terms the ranking uses",
+ * which was false twice over: the sort ran on a private formula that weighted
+ * distance differently and skipped the saved and budget terms entirely. So the
+ * headline pick could draw a LOWER ring than its own backup, and saving a
+ * place — advertised as +28 — never once changed which place won. Now the
+ * ranking IS this number: one formula, so the two can never drift apart again.
+ *
+ * Each part is rounded BEFORE summing, so the bars on screen add up to the
+ * number in the ring exactly; `rankScore` keeps the unrounded sum as the sort
+ * tie-breaker, because ranking on the rounded bars would let two roundings
+ * quietly swap an order the display can't explain.
  */
 function breakDown(
   flavorMatch: number,
@@ -144,24 +155,23 @@ function breakDown(
   profile: Profile,
   cravingScore: number,
   palateKnown = true,
-): { breakdown: ScoreBreakdown; matchScore: number } {
-  const breakdown: ScoreBreakdown = {
+): { breakdown: ScoreBreakdown; matchScore: number; rankScore: number } {
+  const exact: ScoreBreakdown = {
     // 62 -> 54 to make room for quality without inflating the total, so the
     // ring keeps the same range it had before the term existed.
-    palate: Math.round(flavorMatch * 54),
-    distance: Math.round(clamp(18 - distanceKm * 15, -8, 18)),
-    weather: Math.round(clamp(ctxDelta * 82, -15, 14)),
-    budget: Math.round(clamp((profile.priceMax - place.priceLevel) * 2.4 + 1, -7, 8)),
+    palate: flavorMatch * 54,
+    distance: clamp(18 - distanceKm * 15, -8, 18),
+    weather: clamp(ctxDelta * 82, -15, 14),
+    budget: clamp((profile.priceMax - place.priceLevel) * 2.4 + 1, -7, 8),
     /* The repeat penalty is real evidence — it comes from meals actually
        eaten. The adventure bonus beside it is palate-derived, so before
        calibration it takes the same flat midpoint as the palate term: a
        smaller version of the same bug, worth ~4 points of phantom ranking. */
-    novelty: Math.round(
+    novelty:
       clamp(recencyDelta * 100, -30, 0) +
-        (palateKnown
-          ? clamp(4 * (1 - Math.abs(place.flavor.adventure - profile.vector.adventure)), 0, 4)
-          : 2),
-    ),
+      (palateKnown
+        ? clamp(4 * (1 - Math.abs(place.flavor.adventure - profile.vector.adventure)), 0, 4)
+        : 2),
     quality: qualityTerm(place),
     /* A CRAVING OUTRANKS THE LEARNED PALATE. Someone who typed "ramen" told us
        in plain words; a profile is an inference. A direct hit is therefore
@@ -176,7 +186,7 @@ function breakDown(
                  user asked for something this street does not sell. The
                  fallback to palate should be quiet, not punitive.
          AVOIDED −34, because "no pork" is an instruction, not a preference. */
-    craving: Math.round(cravingScore >= 0 ? cravingScore * 45 : -34),
+    craving: cravingScore >= 0 ? cravingScore * 45 : -34,
     /* YOU ALREADY DECIDED YOU WANTED THIS. Saving a post is a deliberate act
        of intent, made when you were not even hungry — which is cleaner
        evidence than most of what the profile infers. The app's job is to
@@ -184,6 +194,19 @@ function breakDown(
        surface it over a marginally better stranger without steamrolling an
        explicit craving. */
     saved: place.wantToTry ? 28 : 0,
+  };
+  const rankScore =
+    exact.palate + exact.distance + exact.weather + exact.budget +
+    exact.novelty + exact.quality + exact.craving + exact.saved;
+  const breakdown: ScoreBreakdown = {
+    palate: Math.round(exact.palate),
+    distance: Math.round(exact.distance),
+    weather: Math.round(exact.weather),
+    budget: Math.round(exact.budget),
+    novelty: Math.round(exact.novelty),
+    quality: exact.quality,
+    craving: Math.round(exact.craving),
+    saved: exact.saved,
   };
 
   /* THE RING CANNOT LIE. The card states "sums to match", and with seven terms
@@ -226,7 +249,7 @@ function breakDown(
       const biggest = keys.reduce((a, b) => (Math.abs(breakdown[b]) > Math.abs(breakdown[a]) ? b : a));
       breakdown[biggest] += drift;
     }
-    return { breakdown, matchScore: goal };
+    return { breakdown, matchScore: goal, rankScore };
   };
 
   /* THE RING CANNOT LIE AT EITHER END. The overflow case was fixed when the
@@ -238,7 +261,7 @@ function breakDown(
      uncovers. */
   if (raw > 99) return fitTo(99, "positive");
   if (raw < 1) return fitTo(1, "negative");
-  return { breakdown, matchScore: raw };
+  return { breakdown, matchScore: raw, rankScore };
 }
 
 /**
@@ -337,12 +360,11 @@ export function recommend(
     const cf = contextFit(place, ctx);
     const rp = recencyPenalty(place, profile, now);
     const cr = cravingFit(place, craving);
-    const score =
-      flavorMatch + cf.delta + rp.delta - distanceKm * 0.04 + qualityTerm(place) / 100 + cr.score * 1.2;
 
-    // ONE NUMBER. The why-sentence is derived from the SAME value the ring
-    // draws, so the card can never show 92 and say 89% four lines apart.
-    const { breakdown, matchScore } = breakDown(
+    // ONE NUMBER. The ranking, the ring and the why-sentence all come from the
+    // SAME value, so the card can never show 92 and say 89% four lines apart —
+    // and the #1 pick can never draw a lower ring than its own backup.
+    const { breakdown, matchScore, rankScore } = breakDown(
       flavorMatch, distanceKm, cf.delta, rp.delta, place, profile, cr.score, palateKnown,
     );
 
@@ -365,7 +387,7 @@ export function recommend(
     scored.push({
       place,
       cravingHit: cr.hit,
-      score,
+      score: rankScore,
       matchScore,
       breakdown,
       distanceKm,
@@ -376,7 +398,10 @@ export function recommend(
   }
 
   if (!scored.length) return null;
-  scored.sort((a, b) => b.score - a.score);
+  // The displayed number decides; the unrounded sum only breaks ties among
+  // picks whose rings look identical. Sorting on the exact sum alone would let
+  // per-term rounding put a lower ring above a higher one.
+  scored.sort((a, b) => b.matchScore - a.matchScore || b.score - a.score);
 
   const best = scored[0];
   const rest = scored.slice(1);
