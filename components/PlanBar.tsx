@@ -169,8 +169,18 @@ export default function PlanBar({ onChange }: PlanBarProps) {
     if (stored.locationMode !== "auto" || !navigator.geolocation) return;
     setLocating(true);
     setStatus("resolving");
+    /* THE BUTTON MUST ALWAYS COME BACK. The geolocation `timeout` option only
+       starts counting once permission is granted — a permission sheet left
+       unanswered (one tap away on iOS) calls NEITHER callback, ever, and the
+       label read "Locating…" until the tab died. Wall-clock deadline, cleared
+       by whichever fires first. */
+    const deadline = window.setTimeout(() => {
+      setLocating(false);
+      setStatus("rest");
+    }, 12000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        window.clearTimeout(deadline);
         setLocating(false);
         const next = planFromCoords(pos.coords.latitude, pos.coords.longitude, stored);
         const moved = kmBetween(stored.lat, stored.lng, next.lat, next.lng) > MOVED_KM;
@@ -183,11 +193,13 @@ export default function PlanBar({ onChange }: PlanBarProps) {
         relent.current = window.setTimeout(() => setStatus("rest"), 600);
       },
       () => {
+        window.clearTimeout(deadline);
         setLocating(false); // silent on load — the user didn't ask yet
         setStatus("rest");
       },
       { timeout: 4000, maximumAge: 120000 },
     );
+    return () => window.clearTimeout(deadline);
   }, []);
 
   function useMyLocation() {
@@ -198,13 +210,23 @@ export default function PlanBar({ onChange }: PlanBarProps) {
     setLocating(true);
     setStatus("resolving");
     setGeoError(null);
+    // Same wall-clock guarantee as the on-load fix: an unanswered permission
+    // sheet fires neither callback, and `timeout` doesn't cover that.
+    const deadline = window.setTimeout(() => {
+      setLocating(false);
+      setStatus("rest");
+      setGeoError("Couldn't get a fix — pick an area below instead.");
+    }, 15000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        window.clearTimeout(deadline);
         setLocating(false);
+        setGeoError(null); // a slow fix can land after the deadline's message
         apply(planFromCoords(pos.coords.latitude, pos.coords.longitude, plan));
         hold("locked", 600);
       },
       (err) => {
+        window.clearTimeout(deadline);
         setLocating(false);
         setStatus("rest");
         setGeoError(

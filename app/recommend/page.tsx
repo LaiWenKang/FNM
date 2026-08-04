@@ -42,6 +42,8 @@ interface Pick {
   openHour: number;
   closeHour: number;
   sheltered: boolean;
+  /** False when the hours are a placeholder, not a reading — see serialize(). */
+  hoursKnown?: boolean;
 }
 
 interface RecommendResponse {
@@ -97,6 +99,11 @@ function bearing(from: { lat: number; lng: number }, to: { lat: number; lng: num
  * conditional.
  */
 function closesLabel(pick: Pick, hour: number): { text: string; soon: boolean } | null {
+  /* UNKNOWN HOURS SAY NOTHING. The API marks placeholder hours (0→24) with
+     hoursKnown:false, and this function used to read exactly that placeholder
+     as a fact and print "Open 24h" on a place that shuts at six. No chip beats
+     a confident lie. */
+  if (pick.hoursKnown === false) return null;
   if (pick.closeHour >= 24 && pick.openHour <= 0) return { text: "Open 24h", soon: false };
   let until = pick.closeHour - hour;
   if (until <= 0) until += 24;

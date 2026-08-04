@@ -5822,3 +5822,38 @@ body:has(.sheet-layer) .tab-bar {
 .feature-note:empty {
   display: none;
 }
+
+/* ===== The 44pt floor =====
+   Apple's minimum touch target, met WITHOUT inflating the visuals: the small
+   controls — chips, segment labels, steppers, HUD links — keep their drawn
+   size, and a transparent, centred overlay extends what a thumb can actually
+   hit. Width stays at the element's own (they sit in rows; widening the hit
+   area sideways would overlap a neighbour), height is guaranteed. */
+.chip,
+.seg-btn,
+.stepper-btn,
+.hud-link {
+  position: relative;
+}
+
+.chip::before,
+.seg-btn::before,
+.stepper-btn::before,
+.hud-link::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: max(100%, 44px);
+  transform: translateY(-50%);
+}
+
+/* The stepper is narrow as well as short; it has breathing room on both
+   sides, so its hit area grows in both directions. */
+.stepper-btn::before {
+  left: 50%;
+  right: auto;
+  width: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}

@@ -47,7 +47,11 @@ describe("meal periods", () => {
     expect(mealPeriod(10)).toBe("breakfast");
     expect(mealPeriod(11)).toBe("lunch");
     expect(mealPeriod(14)).toBe("lunch");
-    expect(mealPeriod(15)).toBe("dinner");
+    // 15:00 was "dinner", and the model dutifully wrote "perfect for dinner"
+    // onto 3pm snacks. A long lunch is odd; dinner at three is a lie.
+    expect(mealPeriod(15)).toBe("lunch");
+    expect(mealPeriod(16)).toBe("lunch");
+    expect(mealPeriod(17)).toBe("dinner");
     expect(mealPeriod(20)).toBe("dinner");
     expect(mealPeriod(21)).toBe("supper");
   });
