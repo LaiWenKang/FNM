@@ -257,7 +257,11 @@ function ensureSchema(): Promise<void> {
         PRIMARY KEY (owner_id, id)
       )
     `;
-  })();
+  })().catch((e) => {
+    // Never cache the rejection - see the note in lib/db.ts ensureSchema.
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 

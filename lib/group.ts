@@ -92,7 +92,11 @@ function ensureSchema(): Promise<void> {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `;
-  })();
+  })().catch((e) => {
+    // Never cache the rejection - see the note in lib/db.ts ensureSchema.
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 

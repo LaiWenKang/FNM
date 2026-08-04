@@ -30,7 +30,16 @@ function ensureSchema(): Promise<void> {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `;
-  })();
+  })().catch((e) => {
+    /* NEVER CACHE THE REJECTION. `??=` memoises whatever the first attempt
+       produced — including a rejected promise from one cold-start timeout,
+       which would then be re-thrown to every caller for the LIFE of the
+       instance: hours of "database down" caused by one bad second. Reset so
+       the next request simply tries again. (The same pattern is used by every
+       ensureSchema in this codebase; this comment lives here once.) */
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 
