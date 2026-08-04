@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { MAX_MEMBERS, loadGroup, normalizeCode, saveGroup } from "@/lib/group";
 import { SWIPE_CARDS } from "@/lib/data/seed";
 import { DIMS, neutralVector } from "@/lib/flavor";
-import { track } from "@/lib/metrics";
+import { trackLater } from "@/lib/metrics";
 import { readProfile } from "@/lib/profile";
-import { memberIdFrom, setMemberCookie } from "@/lib/member";
+import { memberIdFrom, publicMemberId, setMemberCookie } from "@/lib/member";
 
 export const dynamic = "force-dynamic";
 
@@ -100,13 +100,14 @@ export async function POST(req: NextRequest) {
     });
   }
   await saveGroup(group);
-  if (!existing) void track(req, "group_joined", { members: group.members.length });
+  if (!existing) trackLater(req, "group_joined", { members: group.members.length });
 
+  // Public handles only — the raw id stays in the httpOnly cookie. It is the
+  // bearer key to a device's saved list, and this body is readable by script.
   const res = NextResponse.json({
     ok: true,
-    memberId: id,
     seeded,
-    members: group.members.map((m) => ({ id: m.id, name: m.name, seeded: m.seeded })),
+    members: group.members.map((m) => ({ id: publicMemberId(m.id), name: m.name, seeded: m.seeded })),
   });
   if (isNew) setMemberCookie(res, id);
   return res;

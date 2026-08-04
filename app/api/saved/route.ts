@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { memberIdFrom, setMemberCookie } from "@/lib/member";
+import { clientKey, rateLimited } from "@/lib/ratelimit";
 import { currentUserId } from "@/lib/profile";
 import {
   addSaved,
@@ -32,6 +33,14 @@ export async function GET(req: NextRequest) {
 
 /** POST { text, lat, lng } — paste a share blob, get back a resolved place. */
 export async function POST(req: NextRequest) {
+  // Each import spends a paid text search and usually a model call. Ten a
+  // minute is faster than anyone can paste; a script can wait.
+  if (rateLimited(`saved:${clientKey(req)}`, 10)) {
+    return NextResponse.json(
+      { error: "Slow down a moment — imports are limited to a few per minute." },
+      { status: 429 },
+    );
+  }
   const body = (await req.json().catch(() => ({}))) as {
     text?: string;
     lat?: number;

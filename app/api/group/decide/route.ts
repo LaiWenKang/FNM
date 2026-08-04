@@ -3,7 +3,9 @@ import { buildContext } from "@/lib/context";
 import { decideForGroup, groupVector, loadGroup, normalizeCode, saveGroup } from "@/lib/group";
 import { debts, fairnessDurable, recordMeal } from "@/lib/fairness";
 import { getCandidatePlaces } from "@/lib/places";
-import { track } from "@/lib/metrics";
+import { memberIdFrom, publicMemberId } from "@/lib/member";
+import { clientKey, rateLimited } from "@/lib/ratelimit";
+import { trackLater } from "@/lib/metrics";
 import { dishGlyph } from "@/lib/glyphs";
 import { similarity } from "@/lib/flavor";
 
@@ -11,6 +13,11 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/group/decide?code=ABC123 — one pick the whole group can live with. */
 export async function GET(req: NextRequest) {
+  // Paid work behind a guessable six-character code: same ceiling as the solo
+  // endpoint, so holding a code is not a licence to spend the quota.
+  if (rateLimited(`decide:${clientKey(req)}`, 30)) {
+    return NextResponse.json({ error: "Slow down a moment." }, { status: 429 });
+  }
   const code = normalizeCode(new URL(req.url).searchParams.get("code") ?? "");
   if (code.length !== 6) return NextResponse.json({ error: "Bad code" }, { status: 400 });
 
@@ -73,7 +80,9 @@ export async function GET(req: NextRequest) {
       meanScore: p.meanScore,
       minScore: p.minScore,
       weakestMemberName: p.weakestMemberName,
-      perMember: p.perMember,
+      // Public handles — the raw member id is the key to a device's saved
+      // list, and this body goes to everyone who has the code.
+      perMember: p.perMember.map((m) => ({ id: publicMemberId(m.id), name: m.name, score: m.score })),
       dish: dish ? { name: dish.name, priceSgd: dish.priceSgd, glyph: dishGlyph(dish.id, p.place.cuisine, dish.flavor, dish.name) } : null,
     };
   });
@@ -117,7 +126,23 @@ export async function POST(req: NextRequest) {
   const group = await loadGroup(code);
   if (!group) return NextResponse.json({ error: "That group has expired." }, { status: 404 });
 
-  const placeId = typeof body.placeId === "string" ? body.placeId.slice(0, 80) : null;
+  /* ONLY A MEMBER LOCKS THE ANSWER. This had no check at all: anyone who had
+     ever seen the code — or guessed one — could decide where six people eat,
+     or un-decide it after they had left for the restaurant. Joining is one
+     tap, so the bar costs a legitimate user nothing. */
+  const { id } = memberIdFrom(req);
+  if (!group.members.some((m) => m.id === id)) {
+    return NextResponse.json({ error: "Join the group before deciding for it." }, { status: 403 });
+  }
+
+  /* Shape-checked, not free text: this string is stored and then broadcast to
+     every member's lobby. Real place ids are slugs and `g-`-prefixed Google
+     ids, nothing else. Null stays legal — that is how a group un-decides. */
+  const rawPlaceId = typeof body.placeId === "string" ? body.placeId.slice(0, 80) : null;
+  const placeId = rawPlaceId && /^[A-Za-z0-9_-]+$/.test(rawPlaceId) ? rawPlaceId : null;
+  if (rawPlaceId && !placeId) {
+    return NextResponse.json({ error: "Bad placeId" }, { status: 400 });
+  }
   const alreadyDecided = group.decidedPlaceId;
   group.decidedPlaceId = placeId;
   await saveGroup(group);
@@ -125,7 +150,7 @@ export async function POST(req: NextRequest) {
   // Only on the FIRST lock-in for a given place, so re-opening the link or
   // double-tapping cannot bill somebody twice for the same lunch.
   if (placeId && placeId !== alreadyDecided) {
-    void track(req, "group_decided", { members: group.members.length });
+    trackLater(req, "group_decided", { members: group.members.length });
     try {
       const ctx = await buildContext(group.lat, group.lng, group.hour ?? undefined);
       const voters = group.members.filter((m) => m.seeded);

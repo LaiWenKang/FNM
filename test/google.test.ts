@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getCandidatePlaces } from "@/lib/places";
+import { clearNearbyCache, getCandidatePlaces } from "@/lib/places";
 import { SEED_PLACES } from "@/lib/data/seed";
 import { clearHealth } from "@/lib/health";
 
@@ -15,10 +15,11 @@ import { clearHealth } from "@/lib/health";
 const KEY = "GOOGLE_PLACES_API_KEY";
 
 function googleReturns(places: unknown[]) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ places }) }) as unknown as Response),
+  const spy = vi.fn(
+    async () => ({ ok: true, status: 200, json: async () => ({ places }) }) as unknown as Response,
   );
+  vi.stubGlobal("fetch", spy);
+  return spy;
 }
 
 const place = (over: Record<string, unknown> = {}) => ({
@@ -36,6 +37,7 @@ const live = (all: Awaited<ReturnType<typeof getCandidatePlaces>>) =>
 
 beforeEach(() => {
   clearHealth();
+  clearNearbyCache();
   vi.stubEnv(KEY, "test-key");
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -263,6 +265,67 @@ describe("merging with the curated catalogue", () => {
     googleReturns([place({ id: "dup", displayName: { text: dup.name.toUpperCase() } })]);
     const all = await getCandidatePlaces(1.2841, 103.8515, 2, 12);
     expect(all.length).toBe(SEED_PLACES.length);
+  });
+});
+
+describe("the two-minute nearby cache", () => {
+  // Two people at the same MRT exit — or one curl loop — used to cost one
+  // paid search EACH. The cache is also half of the answer to the audit's
+  // "unauthenticated endpoint spends money flat out" finding.
+
+  it("answers a repeat of the same spot from memory", async () => {
+    const spy = googleReturns([place()]);
+    await getCandidatePlaces(1.2841, 103.8515, 2, 12);
+    await getCandidatePlaces(1.2841, 103.8515, 2, 12);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("hands back clones, so one request's flags cannot leak into another", async () => {
+    /* The recommend route marks pool entries with wantToTry from the
+       REQUESTER'S saved list. Sharing cached objects would surface one
+       device's bookmarks in a stranger's ranking — a privacy bug wearing a
+       performance optimisation's clothes. */
+    googleReturns([place()]);
+    const first = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12))[0];
+    first.wantToTry = true;
+    const second = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12))[0];
+    expect(second.wantToTry).toBeFalsy();
+  });
+
+  it("expires, because 'open now' is only true for so long", async () => {
+    vi.useFakeTimers();
+    try {
+      const spy = googleReturns([place()]);
+      await getCandidatePlaces(1.2841, 103.8515, 2, 12);
+      vi.advanceTimersByTime(121_000);
+      await getCandidatePlaces(1.2841, 103.8515, 2, 12);
+      expect(spy).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keys on the radius, so a widened relax step is a real refetch", async () => {
+    const spy = googleReturns([place()]);
+    await getCandidatePlaces(1.2841, 103.8515, 1.5, 12);
+    await getCandidatePlaces(1.2841, 103.8515, 3, 12);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("remembers a genuinely empty street", async () => {
+    const spy = googleReturns([]);
+    await getCandidatePlaces(1.2841, 103.8515, 2, 12);
+    await getCandidatePlaces(1.2841, 103.8515, 2, 12);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("never remembers an outage as an empty street", async () => {
+    // A timeout cached for two minutes would tell everyone at Raffles Place
+    // that no restaurants exist during exactly the lunch rush that caused it.
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("ECONNRESET"); }));
+    await getCandidatePlaces(1.2841, 103.8515, 2, 12);
+    googleReturns([place()]);
+    expect(live(await getCandidatePlaces(1.2841, 103.8515, 2, 12))).toHaveLength(1);
   });
 });
 
