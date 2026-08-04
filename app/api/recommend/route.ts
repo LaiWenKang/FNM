@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildContext } from "@/lib/context";
-import { track } from "@/lib/metrics";
+import { trackLater } from "@/lib/metrics";
 import { Craving, parseCraving } from "@/lib/craving";
 import { enrichPicks } from "@/lib/dishes";
 import { enrichGenerics } from "@/lib/enrich";
@@ -8,7 +8,8 @@ import { explain } from "@/lib/explain";
 import { applyMoods, isValidMood } from "@/lib/mood";
 import { getCandidatePlaces, placeFromSaved } from "@/lib/places";
 import { listSaved } from "@/lib/social";
-import { memberIdFrom } from "@/lib/member";
+import { memberIdFrom, setMemberCookie } from "@/lib/member";
+import { clientKey, rateLimited } from "@/lib/ratelimit";
 import { currentUserId } from "@/lib/profile";
 import { readProfile } from "@/lib/profile";
 import { pickBestDish, recommend, ScoredPlace } from "@/lib/scoring";
@@ -58,6 +59,15 @@ function serialize(pick: ScoredPlace | null, explanation?: string) {
 }
 
 export async function GET(req: NextRequest) {
+  /* THE ONE UNAUTHENTICATED ENDPOINT THAT SPENDS MONEY on every call — a
+     nearby search, up to three Details fetches, a model question. 30/min is an
+     order of magnitude past any human tap rate and a wall for a curl loop. */
+  if (rateLimited(clientKey(req), 30)) {
+    return NextResponse.json(
+      { error: "Slow down a moment — that's more picks than anyone can eat." },
+      { status: 429 },
+    );
+  }
   const { searchParams } = new URL(req.url);
   const lat = parseFloat(searchParams.get("lat") ?? "") || DEFAULT_ORIGIN.lat;
   const lng = parseFloat(searchParams.get("lng") ?? "") || DEFAULT_ORIGIN.lng;
@@ -73,7 +83,21 @@ export async function GET(req: NextRequest) {
   /* A craving is a stated intent, so it overrides the LEARNED vector on the
      dimensions it speaks to — but only those. Saying "spicy" should not reset
      what the app knows about how rich or adventurous you are. */
-  const craving: Craving | null = cravingText ? await parseCraving(cravingText) : null;
+  let craving: Craving | null = cravingText ? await parseCraving(cravingText) : null;
+  /* A CRAVING THAT PARSED TO NOTHING IS NOT A CRAVING. "pls la" tokenises to
+     zero terms, zero flavour and zero avoids — yet a non-null object here used
+     to flip palateKnown and make the card claim "matches your taste" on the
+     strength of a string the app could not read. Empty means null, and the
+     user is told below rather than silently ignored. */
+  if (
+    craving &&
+    !craving.terms.length &&
+    !craving.avoid.length &&
+    !Object.keys(craving.vector).length &&
+    !craving.priceMax
+  ) {
+    craving = null;
+  }
   if (craving) {
     for (const [dim, v] of Object.entries(craving.vector)) {
       profile.vector[dim as keyof typeof profile.vector] = v as number;
@@ -84,44 +108,59 @@ export async function GET(req: NextRequest) {
   // opening periods are matched against the hour the user is actually
   // planning for — not against whatever time the server thinks it is.
   const ctx = await buildContext(lat, lng, hour);
-  let places = await getCandidatePlaces(lat, lng, profile.maxKm, ctx.hourSg);
 
-  /* BEFORE RANKING, DELIBERATELY — and the opposite call to dish mining below.
-     That one runs AFTER ranking because enriching twenty candidates to show
-     three would waste eighteen calls in Google's priciest SKU. This one fixes
-     the RANKING itself, so running it afterwards would fix only the labels on
-     a list that was already ordered wrong: measured across the island, two
-     thirds of live candidates have no flavour and share the cuisine string
-     "restaurant", which both flattens the palate term and makes them all count
-     as repeats of each other.
-
-     It is affordable here because it costs no Places call at all — the name
-     and types are already in hand — and because the answer is cached per place
-     for six months. The first request in a new neighbourhood pays; every
-     request after it, for anyone, is free. */
-  places = await enrichGenerics(places);
-
-  /* THE SAVED LIST JOINS THE POOL. A bookmark folder you never reopen is not a
-     feature; the value of saving a post is the app remembering it FOR you and
-     raising it the day you happen to be nearby. Unvisited only — once you have
-     eaten there it is a normal place like any other. */
-  const savedOwner = (await currentUserId()) ?? memberIdFrom(req).id;
-  const ownerKey = (await currentUserId()) ? `u:${savedOwner}` : `d:${savedOwner}`;
+  /* The member id is minted here if the browser arrived without one, and it
+     MUST then be set on the response: this used to read the id and throw it
+     away, so a cookieless device got a brand-new identity on every request —
+     its saved list could never attach, and the retention metrics counted one
+     person as a parade of strangers. */
+  const userId = await currentUserId();
+  const member = memberIdFrom(req);
+  const ownerKey = userId ? `u:${userId}` : `d:${member.id}`;
   const saved = await listSaved(ownerKey).catch(() => []);
-  const known = new Set(places.map((p) => p.id));
-  for (const post of saved) {
-    if (!post.resolved || post.visitedAt) continue;
-    if (known.has(post.resolved.placeId)) {
-      // Already in the pool from the nearby search — just flag the intent.
-      const existing = places.find((p) => p.id === post.resolved!.placeId);
-      if (existing) {
-        existing.wantToTry = true;
-        existing.savedDish = post.dishName;
+
+  // The whole candidate pool for a given radius, built the same way every
+  // time — callable again when a relax step widens past what was fetched.
+  const buildPool = async (maxKm: number) => {
+    const pool = await getCandidatePlaces(lat, lng, maxKm, ctx.hourSg);
+
+    /* ENRICH BEFORE RANKING, DELIBERATELY — and the opposite call to dish
+       mining below. That one runs AFTER ranking because enriching twenty
+       candidates to show three would waste eighteen calls in Google's priciest
+       SKU. This one fixes the RANKING itself, so running it afterwards would
+       fix only the labels on a list that was already ordered wrong: measured
+       across the island, two thirds of live candidates have no flavour and
+       share the cuisine string "restaurant", which both flattens the palate
+       term and makes them all count as repeats of each other.
+
+       It is affordable here because it costs no Places call at all — the name
+       and types are already in hand — and because the answer is cached per
+       place for six months. The first request in a new neighbourhood pays;
+       every request after it, for anyone, is free. */
+    const enriched = await enrichGenerics(pool);
+
+    /* THE SAVED LIST JOINS THE POOL. A bookmark folder you never reopen is not
+       a feature; the value of saving a post is the app remembering it FOR you
+       and raising it the day you happen to be nearby. Unvisited only — once
+       you have eaten there it is a normal place like any other. */
+    const known = new Set(enriched.map((p) => p.id));
+    for (const post of saved) {
+      if (!post.resolved || post.visitedAt) continue;
+      if (known.has(post.resolved.placeId)) {
+        // Already in the pool from the nearby search — just flag the intent.
+        const existing = enriched.find((p) => p.id === post.resolved!.placeId);
+        if (existing) {
+          existing.wantToTry = true;
+          existing.savedDish = post.dishName;
+        }
+        continue;
       }
-      continue;
+      enriched.push(placeFromSaved(post.resolved, post.dishName));
     }
-    places.push(placeFromSaved(post.resolved, post.dishName));
-  }
+    return enriched;
+  };
+
+  let places = await buildPool(profile.maxKm);
 
   // Never dead-end: if the strict filters leave nothing, relax them step by
   // step (wider radius, then any budget, then nearest matches anywhere) and
@@ -143,12 +182,34 @@ export async function GET(req: NextRequest) {
      swiped". A mood is a tap that means "lighter" or "nearer"; a craving is a
      sentence they typed. Both write real intent into the vector, so a first-run
      user who taps SPICY and gets told the palate is unknown would be watching
-     the app ignore what they just said. Any one of the three counts. */
-  const palateKnown = profile.swipeCount > 0 || moods.length > 0 || craving !== null;
+     the app ignore what they just said. Any one of the three counts — but a
+     craving only counts when it actually says something about TASTE: "no pork"
+     or "under $10" is a real instruction and still not a palate. */
+  const cravingSpeaksToTaste =
+    craving !== null && (craving.terms.length > 0 || Object.keys(craving.vector).length > 0);
+  const palateKnown = profile.swipeCount > 0 || moods.length > 0 || cravingSpeaksToTaste;
+
+  /* "WIDENED THE SEARCH" HAS TO MEAN A WIDER SEARCH. These steps used to
+     re-filter a pool fetched once at the profile's own radius, so the note
+     could claim an ~8 km search over live candidates that were never fetched
+     past ~1.5 km — the curated catalogue widened, the actual search did not.
+     A step that grows past what was fetched now refetches the pool. Only on
+     the empty path, so the common case still costs exactly one Places call;
+     the live fetch itself is bounded at 5 km (lib/places.ts), so steps beyond
+     that widen only the island-wide catalogue and skip the refetch. */
+  const FETCH_CAP_KM = 5;
+  let fetchedKm = profile.maxKm;
 
   let rec = null;
   let note: string | null = null;
   for (const step of relaxSteps) {
+    if (
+      process.env.GOOGLE_PLACES_API_KEY &&
+      Math.min(step.maxKm, FETCH_CAP_KM) > Math.min(fetchedKm, FETCH_CAP_KM)
+    ) {
+      places = await buildPool(step.maxKm);
+      fetchedKm = step.maxKm;
+    }
     rec = recommend(
       { ...profile, maxKm: step.maxKm, priceMax: step.priceMax },
       places,
@@ -173,8 +234,8 @@ export async function GET(req: NextRequest) {
     const refusedEverything = exclude.length > 0;
     // THE FAILURE SIGNAL PLAN.md ASKS FOR. Not awaited: a metrics write must
     // never sit between a hungry user and their answer, even a failed one.
-    if (refusedEverything) void track(req, "dead_end");
-    return NextResponse.json(
+    if (refusedEverything) trackLater(req, "dead_end");
+    const res = NextResponse.json(
       {
         error: refusedEverything
           ? "That's everything open near you turned down. Start over, or widen the search in You."
@@ -184,6 +245,8 @@ export async function GET(req: NextRequest) {
       },
       { status: 404 },
     );
+    if (member.isNew) setMemberCookie(res, member.id);
+    return res;
   }
 
   /* NOTHING MATCHED WHAT THEY ASKED FOR. Never a dead end — the pick still
@@ -191,6 +254,11 @@ export async function GET(req: NextRequest) {
      app that ignored you and one that looked and came up short. */
   if (craving && craving.terms.length && !rec.best.cravingHit) {
     note = `Nothing nearby matches "${craving.text}" right now — here's the closest thing.`;
+  }
+  /* And an app that could not READ the request says that too, instead of
+     serving the usual pick while implying it listened. */
+  if (cravingText && !craving) {
+    note = `Couldn't find a food wish in "${cravingText}" — this pick stands on your palate and what's around.`;
   }
 
   /* TIER 2 — MINE DISHES FOR THE PICKS ACTUALLY BEING SHOWN.
@@ -216,9 +284,9 @@ export async function GET(req: NextRequest) {
   // structured template.
   const bestExplanation = await explain(rec.best, profile, ctx, palateKnown);
 
-  void track(req, "served");
+  trackLater(req, "served");
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     // Echo back exactly what the pick was computed from, so the UI can show the
     // user the inputs rather than making them trust a guess.
     context: {
@@ -243,4 +311,6 @@ export async function GET(req: NextRequest) {
     safer: serialize(rec.safer ?? null),
     adventurous: serialize(rec.adventurous ?? null),
   });
+  if (member.isNew) setMemberCookie(res, member.id);
+  return res;
 }
