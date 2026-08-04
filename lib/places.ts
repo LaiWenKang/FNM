@@ -217,12 +217,14 @@ const FIELD_MASK = [
   "places.regularOpeningHours.periods",
 ].join(",");
 
+/** Null means the FETCH failed — distinct from an honestly empty street, so
+    the cache above never remembers an outage as a fact about the area. */
 async function fetchGooglePlaces(
   lat: number,
   lng: number,
   radiusM: number,
   hourSg: number,
-): Promise<Place[]> {
+): Promise<Place[] | null> {
   const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key) return [];
   try {
@@ -256,7 +258,7 @@ async function fetchGooglePlaces(
          "unknown", while the identical message from the model path was
          correctly read as an auth failure. The reason is in the prose. */
       noteFault("places", classify(body, res.status), `${res.status} ${body}`);
-      return [];
+      return null;
     }
     const data = (await res.json()) as { places?: GooglePlace[] };
     noteOk("places");
@@ -305,7 +307,7 @@ async function fetchGooglePlaces(
     // a rejection: one means the network is slow, the other means the key is
     // dead, and they call for opposite reactions.
     noteFault("places", classify(e), e instanceof Error ? e.message : String(e));
-    return [];
+    return null;
   }
 }
 
@@ -349,13 +351,62 @@ export function placeFromSaved(saved: {
   };
 }
 
+/* ── A SHORT MEMORY FOR THE NEARBY SEARCH ─────────────────────────────────
+   Two people at the same MRT exit, or one person tapping "not feeling it"
+   four times, used to cost four identical paid searches inside a minute. Two
+   minutes is short enough that "open now" stays honest and long enough to
+   absorb both the tap-loop and the cheap version of a cost attack.
+
+   The cache hands back CLONES, never its own objects: the recommend route
+   marks pool entries with wantToTry from the requester's saved list, and a
+   shared object would leak one device's bookmarks into a stranger's ranking. */
+const NEARBY_TTL_MS = 2 * 60_000;
+const MAX_NEARBY_ENTRIES = 500;
+const nearbyCache = new Map<string, { at: number; places: Place[] }>();
+
+/** Tests only — mirrors the other module-level caches in this codebase. */
+export function clearNearbyCache(): void {
+  nearbyCache.clear();
+}
+
+async function cachedGooglePlaces(
+  lat: number,
+  lng: number,
+  radiusM: number,
+  hourSg: number,
+): Promise<Place[]> {
+  // ~110 m grid: close enough that the walk-times stay truthful, coarse
+  // enough that a GPS jitter does not defeat the cache.
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)},${radiusM},${hourSg}`;
+  const hit = nearbyCache.get(key);
+  if (hit && Date.now() - hit.at < NEARBY_TTL_MS) {
+    return hit.places.map((p) => ({ ...p, flavor: { ...p.flavor }, dishes: [...p.dishes] }));
+  }
+  const fetched = await fetchGooglePlaces(lat, lng, radiusM, hourSg);
+  // Only a real answer is worth remembering. A null is a timeout or a dead
+  // key, and caching it would pin "no restaurants exist" on a healthy street
+  // for two minutes; a genuinely empty street IS worth remembering.
+  if (fetched === null) return [];
+  nearbyCache.set(key, {
+    at: Date.now(),
+    places: fetched.map((p) => ({ ...p, flavor: { ...p.flavor }, dishes: [...p.dishes] })),
+  });
+  if (nearbyCache.size > MAX_NEARBY_ENTRIES) {
+    for (const k of nearbyCache.keys()) {
+      nearbyCache.delete(k);
+      if (nearbyCache.size <= MAX_NEARBY_ENTRIES) break;
+    }
+  }
+  return fetched;
+}
+
 export async function getCandidatePlaces(
   lat: number,
   lng: number,
   maxKm: number,
   hourSg: number,
 ): Promise<Place[]> {
-  const google = await fetchGooglePlaces(lat, lng, Math.min(maxKm * 1000, 5000), hourSg);
+  const google = await cachedGooglePlaces(lat, lng, Math.min(maxKm * 1000, 5000), hourSg);
   const seenNames = new Set(SEED_PLACES.map((p) => p.name.toLowerCase()));
   const merged = [...SEED_PLACES];
   for (const g of google) {

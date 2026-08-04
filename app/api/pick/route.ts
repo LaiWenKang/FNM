@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DIMS, FlavorVector, nudge, vec } from "@/lib/flavor";
-import { track } from "@/lib/metrics";
+import { trackLater } from "@/lib/metrics";
 import { readProfile, writeProfile } from "@/lib/profile";
 import { ASK_AFTER_MS, ASK_UNTIL_MS, type Verdict } from "@/lib/profile-shape";
 
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   profile.recent.push({ placeId, cuisine, at: Date.now(), ...(flavor ? { flavor } : {}) });
   if (flavor) profile.vector = nudge(profile.vector, flavor, true, ACCEPT_WEIGHT);
 
-  void track(req, "picked", {
+  trackLater(req, "picked", {
     slot: body?.slot === "safer" || body?.slot === "adventurous" ? body.slot : "best",
     ...(typeof body?.decisionMs === "number" ? { decisionMs: body.decisionMs } : {}),
   });
@@ -121,7 +121,7 @@ export async function PATCH(req: NextRequest) {
     profile.vector = nudge(profile.vector, meal.flavor, verdict === "again", weight);
   }
 
-  void track(req, "rated", { verdict });
+  trackLater(req, "rated", { verdict });
 
   const res = NextResponse.json({ ok: true, vector: profile.vector });
   await writeProfile(res, profile);
@@ -170,7 +170,7 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  void track(req, "rejected", { ...(reason ? { reason } : {}) });
+  trackLater(req, "rejected", { ...(reason ? { reason } : {}) });
 
   const res = NextResponse.json({ ok: true, vector: profile.vector });
   await writeProfile(res, profile);

@@ -162,6 +162,66 @@ describe("a craving outranks the learned palate", () => {
   });
 });
 
+describe("the ring IS the ranking", () => {
+  /* THE AUDIT FINDING THIS GUARDS AGAINST: the sort used to run on a private
+     formula that skipped the saved and budget terms the ring displays. Two
+     consequences, both user-visible lies: the headline pick could render a
+     LOWER ring than its own backup two lines beneath it, and saving a place —
+     the code promised +28 points for it — changed the display but never once
+     changed which place won. The picks must be ordered by the same number the
+     user is shown. */
+
+  it("never lets the headline pick show a lower ring than its own backup", () => {
+    const cravings = ["", "wings", "salad", "noodles", "spicy", "not spicy", "sushi", "rice"];
+    const vectors = [
+      vec({}),
+      vec({ heat: 1, sweet: 1, soupy: 1, fried: 1, rich: 1, adventure: 1 }),
+      vec({ heat: 0.7, soupy: 0.9, rich: 0.8 }),
+    ];
+    // A saved place in the pool is what historically forced the contradiction.
+    const pool = [
+      ...SEED_PLACES,
+      { ...SEED_PLACES[0], id: "g-saved-pool", name: "Saved One", wantToTry: true },
+    ];
+    for (const c of cravings) {
+      for (const v of vectors) {
+        for (const maxKm of [0.5, 2, 50]) {
+          const profile = { ...defaultProfile(), vector: v, maxKm, priceMax: 4 as const };
+          const rec = recommend(profile, pool, CTX, ORIGIN, [], c ? parseCravingLocal(c) : null);
+          if (!rec) continue;
+          for (const backup of [rec.safer, rec.adventurous]) {
+            if (!backup) continue;
+            expect(
+              rec.best.matchScore,
+              `craving="${c}" maxKm=${maxKm}: ${rec.best.place.name} (${rec.best.matchScore}) ` +
+                `headlined over ${backup.place.name} (${backup.matchScore})`,
+            ).toBeGreaterThanOrEqual(backup.matchScore);
+          }
+        }
+      }
+    }
+  });
+
+  it("lets a saved place actually WIN, not just display a bigger number", () => {
+    // The stranger is marginally closer and listed first, so neither the old
+    // formula nor sort stability can hand the saved place the win by accident.
+    // Only the 28-point saved term — counted in the ranking — gets it there.
+    const profile = { ...defaultProfile(), maxKm: 50 };
+    const base = SEED_PLACES[0];
+    const stranger: Place = {
+      ...base, id: "t-near", name: "Closer Stranger", wantToTry: false,
+      lat: ORIGIN.lat, lng: ORIGIN.lng,
+    };
+    const saved: Place = {
+      ...base, id: "t-saved", name: "Saved, A Street Over", wantToTry: true,
+      lat: ORIGIN.lat + 0.005, lng: ORIGIN.lng, // ~0.55 km farther
+    };
+    const rec = recommend(profile, [stranger, saved], CTX, ORIGIN)!;
+    expect(rec.best.place.id).toBe("t-saved");
+    expect(rec.best.matchScore).toBeGreaterThan(rec.safer!.matchScore);
+  });
+});
+
 describe("saved posts", () => {
   const savedPlace: Place = {
     ...SEED_PLACES[0],
@@ -173,7 +233,9 @@ describe("saved posts", () => {
   it("earns a real boost over an identical place you never saved", () => {
     const profile = { ...defaultProfile(), maxKm: 50 };
     const twin: Place = { ...savedPlace, id: "g-twin", name: "Same But Unsaved", wantToTry: false };
-    const rec = recommend(profile, [savedPlace, twin], CTX, ORIGIN);
+    // The saved place is listed SECOND: a stable sort on a saved-blind score
+    // would put the twin on top, so this only passes if the term really ranks.
+    const rec = recommend(profile, [twin, savedPlace], CTX, ORIGIN);
     expect(rec!.best.place.id).toBe("g-saved-1");
     expect(rec!.best.breakdown.saved).toBeGreaterThan(0);
   });

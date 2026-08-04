@@ -38,6 +38,9 @@ function writeCookieProfile(res: NextResponse, profile: Profile): void {
   res.cookies.set(COOKIE_NAME, JSON.stringify(profile), {
     httpOnly: true,
     sameSite: "lax",
+    // Same rule as the member cookie: over the wire only under TLS. A palate
+    // is not a password, but there is no reason to ever send it in the clear.
+    secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 365,
     path: "/",
   });

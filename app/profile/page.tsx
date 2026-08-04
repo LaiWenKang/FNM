@@ -294,7 +294,7 @@ export default function ProfilePage() {
               <span className="data-num">{settings.recentCount}</span> recent meals){" "}
               {settings.account?.storage === "cloud"
                 ? "is stored in our database against your account, so it follows you across devices."
-                : "lives in this device's browser only — nothing leaves your phone."}{" "}
+                : "lives in this device's browser — there's no server copy of it. Saved posts, group shares and anonymous usage counts are kept under a random device id instead, never a name."}{" "}
               We never store contacts, payments, or a location history.
             </p>
           </div>

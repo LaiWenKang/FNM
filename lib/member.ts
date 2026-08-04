@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 // WHO IS WHO ON A SHARED LINK.
@@ -23,6 +24,22 @@ export function memberIdFrom(req: NextRequest): { id: string; isNew: boolean } {
   crypto.getRandomValues(bytes);
   const id = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 24);
   return { id, isNew: true };
+}
+
+/**
+ * The handle a member id wears in any response OTHER people can read.
+ *
+ * The raw id is a bearer credential: it is the whole of what identifies a
+ * device, so whoever presents it IS that device — including its saved list.
+ * The group endpoints used to broadcast every member's raw id to anyone
+ * holding a six-character code, which turned "join my lunch group" into
+ * "here is the key to my saved restaurants, and everyone else's too".
+ *
+ * One-way and deterministic: stable enough for the client to key a list on
+ * across polls, useless for walking back to the cookie it came from.
+ */
+export function publicMemberId(id: string): string {
+  return "m" + createHash("sha256").update(`fnm-member-public:${id}`).digest("hex").slice(0, 12);
 }
 
 export function setMemberCookie(res: NextResponse, id: string): void {

@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, after } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { classify, noteFault, noteOk } from "@/lib/health";
 import { memberIdFrom } from "@/lib/member";
@@ -76,7 +76,11 @@ function ensureSchema(): Promise<void> {
     `;
     await sql`CREATE INDEX IF NOT EXISTS events_at ON events (at)`;
     await sql`CREATE INDEX IF NOT EXISTS events_device ON events (device_id, at)`;
-  })();
+  })().catch((e) => {
+    // Never cache the rejection - see the note in lib/db.ts ensureSchema.
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 
@@ -107,6 +111,25 @@ export async function track(
        metrics down with it, and "the numbers are all zero" would otherwise be
        indistinguishable from a quiet week. */
     noteFault("db", classify(e), e instanceof Error ? e.message : String(e));
+  }
+}
+
+/**
+ * Fire-and-forget WITHOUT the forget. Every route used to write `void
+ * track(...)`, which on a serverless platform is a quiet way to lose the
+ * event: the instance freezes the moment the response is sent, and work that
+ * was merely un-awaited never runs. `after()` tells the platform to keep the
+ * function alive until the write settles — the response still goes out first,
+ * so the user pays nothing for the dashboard.
+ */
+export function trackLater(req: NextRequest, event: MetricEvent, props: MetricProps = {}): void {
+  const write = track(req, event, props); // never rejects — see track()
+  try {
+    after(write);
+  } catch {
+    // Outside a request scope (tests, scripts) there is no instance about to
+    // freeze, so the un-awaited promise is genuinely fine.
+    void write;
   }
 }
 

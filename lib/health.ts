@@ -217,7 +217,11 @@ function ensureSchema(): Promise<void> {
       )
     `;
     await sql`CREATE INDEX IF NOT EXISTS incidents_at ON incidents (at)`;
-  })();
+  })().catch((e) => {
+    // Never cache the rejection - see the note in lib/db.ts ensureSchema.
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 

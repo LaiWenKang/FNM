@@ -58,7 +58,11 @@ function ensureSchema(): Promise<void> {
       )
     `;
     await sql`CREATE INDEX IF NOT EXISTS group_fairness_member ON group_fairness (member_id)`;
-  })();
+  })().catch((e) => {
+    // Never cache the rejection - see the note in lib/db.ts ensureSchema.
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 

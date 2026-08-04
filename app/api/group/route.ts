@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Group, MAX_MEMBERS, groupsDurable, loadGroup, newCode, normalizeCode, saveGroup } from "@/lib/group";
 import { labelForCoords } from "@/lib/areas";
-import { track } from "@/lib/metrics";
+import { trackLater } from "@/lib/metrics";
 import { readProfile } from "@/lib/profile";
-import { memberIdFrom, setMemberCookie } from "@/lib/member";
+import { memberIdFrom, publicMemberId, setMemberCookie } from "@/lib/member";
 
 export const dynamic = "force-dynamic";
 
@@ -44,9 +44,11 @@ export async function POST(req: NextRequest) {
   };
   await saveGroup(group);
 
-  void track(req, "group_created");
+  trackLater(req, "group_created");
 
-  const res = NextResponse.json({ code: group.code, durable: groupsDurable, memberId: id });
+  // The member id travels ONLY in the httpOnly cookie. Echoing it in the body
+  // would hand a bearer credential to anything that can read a JSON response.
+  const res = NextResponse.json({ code: group.code, durable: groupsDurable });
   if (isNew) setMemberCookie(res, id);
   return res;
 }
@@ -75,6 +77,10 @@ export async function GET(req: NextRequest) {
     full: group.members.length >= MAX_MEMBERS,
     youAreIn: group.members.some((m) => m.id === id),
     decidedPlaceId: group.decidedPlaceId,
-    members: group.members.map((m) => ({ id: m.id, name: m.name, seeded: m.seeded })),
+    /* PUBLIC handles, never raw ids. The raw member id doubles as the key to
+       that device's saved list, and this response goes to anyone who has the
+       six-character code — which is exactly the population "share this link"
+       is designed to grow. */
+    members: group.members.map((m) => ({ id: publicMemberId(m.id), name: m.name, seeded: m.seeded })),
   });
 }

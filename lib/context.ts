@@ -17,8 +17,11 @@ export function sgHour(now = new Date()): number {
 
 export function mealPeriod(hour: number): MealPeriod {
   if (hour >= 6 && hour < 11) return "breakfast";
-  if (hour >= 11 && hour < 15) return "lunch";
-  if (hour >= 15 && hour < 21) return "dinner";
+  // Lunch runs to 17:00 because dinner starting at 15:00 wrote sentences like
+  // "perfect for dinner" onto a 3pm snack — the model was handed the word and
+  // trusted it. A late lunch at four is odd; dinner at three is a lie.
+  if (hour >= 11 && hour < 17) return "lunch";
+  if (hour >= 17 && hour < 21) return "dinner";
   return "supper";
 }
 
