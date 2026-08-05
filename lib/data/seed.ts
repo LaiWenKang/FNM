@@ -43,6 +43,18 @@ export interface Place {
   wantToTry?: boolean;
   /** The dish that post was actually about, if it named one. */
   savedDish?: string | null;
+  /**
+   * 0–1. Google's own text search returned this place FOR the diner's craving,
+   * and how strongly (its relevance rank).
+   *
+   * This is EVIDENCE THE APP CANNOT DERIVE ITSELF. Matching craving words
+   * against a name only ever sees the name — so "Xiao Long Kan Hotpot" scored
+   * zero for "spicy soup" while being exactly that, and the card printed
+   * "nothing nearby matches" above a Sichuan hotpot. Google matched it across
+   * its category, menu and reviews, which is a better read of what a kitchen
+   * actually serves than its signage is.
+   */
+  cravingEvidence?: number;
 }
 
 export const SEED_PLACES: Place[] = [

@@ -122,7 +122,12 @@ export async function GET(req: NextRequest) {
   // The whole candidate pool for a given radius, built the same way every
   // time — callable again when a relax step widens past what was fetched.
   const buildPool = async (maxKm: number) => {
-    const pool = await getCandidatePlaces(lat, lng, maxKm, ctx.hourSg);
+    /* THE CRAVING GOES TO GOOGLE, not just to the scorer. Without this the
+       pool was always "the twenty nearest restaurants" and a craving could
+       only reorder them — which is exactly how "spicy soup" returned a
+       McDonald's. Passing the words through means the search itself looks for
+       the thing that was asked for. */
+    const pool = await getCandidatePlaces(lat, lng, maxKm, ctx.hourSg, craving?.text ?? "");
 
     /* ENRICH BEFORE RANKING, DELIBERATELY — and the opposite call to dish
        mining below. That one runs AFTER ranking because enriching twenty

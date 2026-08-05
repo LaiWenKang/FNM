@@ -15,8 +15,11 @@ import { clearHealth } from "@/lib/health";
 const KEY = "GOOGLE_PLACES_API_KEY";
 
 function googleReturns(places: unknown[]) {
+  // Args typed so a test can assert WHICH endpoint was called and with what
+  // body — the difference between a proximity search and a text search.
   const spy = vi.fn(
-    async () => ({ ok: true, status: 200, json: async () => ({ places }) }) as unknown as Response,
+    async (_url: string, _init?: RequestInit) =>
+      ({ ok: true, status: 200, json: async () => ({ places }) }) as unknown as Response,
   );
   vi.stubGlobal("fetch", spy);
   return spy;
@@ -326,6 +329,89 @@ describe("the two-minute nearby cache", () => {
     await getCandidatePlaces(1.2841, 103.8515, 2, 12);
     googleReturns([place()]);
     expect(live(await getCandidatePlaces(1.2841, 103.8515, 2, 12))).toHaveLength(1);
+  });
+});
+
+describe("asking Google for what the diner actually wants", () => {
+  /* THE REPORTED BUG. "spicy soup near me" on Google returns spicy soup; the
+     app returned a McDonald's. The cause was not the scorer — it was that the
+     craving never left the building. getCandidatePlaces only ever ran a
+     proximity search, so a craving could re-rank the twenty nearest doors and
+     nothing more. */
+
+  const bodyOf = (spy: ReturnType<typeof googleReturns>, i: number) =>
+    JSON.parse(String(spy.mock.calls[i][1]?.body ?? "{}"));
+  const urlOf = (spy: ReturnType<typeof googleReturns>, i: number) => String(spy.mock.calls[i][0]);
+
+  it("sends the craving to Google's TEXT search, not just the nearby one", async () => {
+    const spy = googleReturns([place()]);
+    await getCandidatePlaces(1.2841, 103.8515, 2, 12, "spicy soup");
+
+    const endpoints = spy.mock.calls.map((_, i) => urlOf(spy, i));
+    expect(endpoints.some((u) => u.includes("searchText"))).toBe(true);
+    expect(endpoints.some((u) => u.includes("searchNearby"))).toBe(true);
+
+    const textCall = spy.mock.calls.findIndex((_, i) => urlOf(spy, i).includes("searchText"));
+    expect(bodyOf(spy, textCall).textQuery).toBe("spicy soup");
+  });
+
+  it("biases the text search to the diner rather than restricting it", async () => {
+    // A restriction returns NOTHING when the street has no spicy soup, and an
+    // empty answer is worse than a near-miss the scorer can rank down.
+    const spy = googleReturns([place()]);
+    await getCandidatePlaces(1.2841, 103.8515, 2, 12, "ramen");
+    const i = spy.mock.calls.findIndex((_, n) => urlOf(spy, n).includes("searchText"));
+    expect(bodyOf(spy, i).locationBias).toBeTruthy();
+    expect(bodyOf(spy, i).locationRestriction).toBeUndefined();
+  });
+
+  it("costs exactly one call when nothing was asked for", async () => {
+    // The ordinary "Eat now" path must not start paying for a second SKU.
+    const spy = googleReturns([place()]);
+    await getCandidatePlaces(1.2841, 103.8515, 2, 12);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(urlOf(spy, 0)).toContain("searchNearby");
+  });
+
+  it("keeps both branches of a chain, deduping only on id", async () => {
+    /* Two McDonald's are two different places that share a name. Deduping the
+       merged pool by NAME would silently drop the nearer one. */
+    googleReturns([
+      place({ id: "a", displayName: { text: "McDonald's" } }),
+      place({ id: "b", displayName: { text: "McDonald's" } }),
+    ]);
+    const got = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12, "burger"));
+    expect(got.filter((p) => p.name === "McDonald's")).toHaveLength(2);
+  });
+
+  it("carries Google's relevance rank through as craving evidence", async () => {
+    /* Position in a text-search result IS information: the top hit is what
+       Google thinks best answers the craving, the last is a stretch. Without
+       it a place whose name never says "soup" can serve nothing else and still
+       score zero. */
+    googleReturns([
+      place({ id: "a", displayName: { text: "Best Match" } }),
+      place({ id: "b", displayName: { text: "Middling" } }),
+      place({ id: "c", displayName: { text: "Stretch" } }),
+    ]);
+    const got = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12, "spicy soup"));
+    const ev = (n: string) => got.find((p) => p.name === n)!.cravingEvidence!;
+    expect(ev("Best Match")).toBeCloseTo(0.55, 5);
+    expect(ev("Stretch")).toBeCloseTo(0.2, 5);
+    expect(ev("Best Match")).toBeGreaterThan(ev("Middling"));
+    expect(ev("Middling")).toBeGreaterThan(ev("Stretch"));
+  });
+
+  it("gives nearby-only results no craving evidence at all", async () => {
+    googleReturns([place()]);
+    const got = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12));
+    expect(got[0].cravingEvidence).toBeUndefined();
+  });
+
+  it("returns each place once when both searches find it", async () => {
+    googleReturns([place({ id: "same" })]);
+    const got = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12, "test kitchen"));
+    expect(got.filter((p) => p.id === "g-same")).toHaveLength(1);
   });
 });
 
