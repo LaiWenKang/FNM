@@ -384,6 +384,30 @@ describe("asking Google for what the diner actually wants", () => {
     expect(got.filter((p) => p.name === "McDonald's")).toHaveLength(2);
   });
 
+  it("carries Google's relevance rank through as craving evidence", async () => {
+    /* Position in a text-search result IS information: the top hit is what
+       Google thinks best answers the craving, the last is a stretch. Without
+       it a place whose name never says "soup" can serve nothing else and still
+       score zero. */
+    googleReturns([
+      place({ id: "a", displayName: { text: "Best Match" } }),
+      place({ id: "b", displayName: { text: "Middling" } }),
+      place({ id: "c", displayName: { text: "Stretch" } }),
+    ]);
+    const got = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12, "spicy soup"));
+    const ev = (n: string) => got.find((p) => p.name === n)!.cravingEvidence!;
+    expect(ev("Best Match")).toBeCloseTo(0.8, 5);
+    expect(ev("Stretch")).toBeCloseTo(0.4, 5);
+    expect(ev("Best Match")).toBeGreaterThan(ev("Middling"));
+    expect(ev("Middling")).toBeGreaterThan(ev("Stretch"));
+  });
+
+  it("gives nearby-only results no craving evidence at all", async () => {
+    googleReturns([place()]);
+    const got = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12));
+    expect(got[0].cravingEvidence).toBeUndefined();
+  });
+
   it("returns each place once when both searches find it", async () => {
     googleReturns([place({ id: "same" })]);
     const got = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12, "test kitchen"));

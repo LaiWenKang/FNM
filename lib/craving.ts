@@ -297,7 +297,23 @@ export function cravingFit(place: Place, craving: Craving | null): CravingFit {
       first ??= found;
     }
   }
-  if (!hits) return { score: 0, hit: null };
+  const literal = hits / groups.length;
 
-  return { score: Math.min(1, hits / groups.length), hit: first };
+  /* WHAT THE NAME SAYS IS NOT ALL WE KNOW. When Google's text search returned
+     this place FOR the craving, that is a reading of its category, menu and
+     reviews — a better guide to what a kitchen serves than its signage. Left
+     out, "Xiao Long Kan Hotpot" scored zero on "spicy soup" while being
+     precisely that, and the card announced "nothing nearby matches" directly
+     above a Sichuan hotpot.
+
+     The stronger of the two signals wins rather than the sum: a place that
+     both reads right AND was returned for the craving is not twice as
+     relevant, and adding them would push ordinary matches into the ceiling. */
+  const evidence = place.cravingEvidence ?? 0;
+  const score = Math.max(literal, evidence);
+  if (score <= 0) return { score: 0, hit: null };
+
+  // Name the literal word where there is one; otherwise say what was asked
+  // for, because that is what this place is being credited for.
+  return { score: Math.min(1, score), hit: first ?? (evidence > 0 ? craving.text : null) };
 }

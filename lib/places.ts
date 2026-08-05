@@ -487,6 +487,15 @@ export async function getCandidatePlaces(
     wanted ? cachedGooglePlaces(lat, lng, radiusM, hourSg, wanted) : Promise.resolve([]),
   ]);
 
+  /* GOOGLE'S RANKING IS ITSELF EVIDENCE, and throwing it away was the last
+     piece of the same bug. searchText returns results in relevance order, so
+     position carries information: the top hit is what Google thinks best
+     answers the craving, the twentieth is a stretch. Carried through as a
+     decaying 0.8 → 0.4 so the scorer can credit a place for serving the thing
+     that was asked for even when its name never says so. */
+  const evidenceAt = (i: number, n: number) => 0.8 - 0.4 * (n <= 1 ? 0 : i / (n - 1));
+  const credited = matching.map((p, i) => ({ ...p, cravingEvidence: evidenceAt(i, matching.length) }));
+
   const merged = [...SEED_PLACES];
   // Names dedupe against the CURATED catalogue only — a curated entry carries
   // real dish data a live duplicate would lose. Among live results the key is
@@ -496,8 +505,9 @@ export async function getCandidatePlaces(
   const seedNames = new Set(SEED_PLACES.map((p) => p.name.toLowerCase()));
   const seenIds = new Set<string>();
   // Craving matches first: where both searches returned the same place, the
-  // record fetched FOR the craving is the one worth keeping.
-  for (const g of [...matching, ...nearby]) {
+  // record fetched FOR the craving is the one worth keeping — it is the only
+  // one of the two carrying the evidence.
+  for (const g of [...credited, ...nearby]) {
     if (seedNames.has(g.name.toLowerCase()) || seenIds.has(g.id)) continue;
     seenIds.add(g.id);
     merged.push(g);

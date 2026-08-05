@@ -141,6 +141,44 @@ describe("cravingFit", () => {
     expect(cravingFit(salad, c).score).toBe(1);
   });
 
+  it("credits a place Google returned FOR the craving, whatever its name says", () => {
+    /* THE SECOND HALF OF THE REPORTED BUG. Searching "spicy soup" surfaced
+       Xiao Long Kan Hotpot — correct — and the card printed "nothing nearby
+       matches spicy soup" directly above it, because the name contains neither
+       word. Google matched it on category, menu and reviews; that is better
+       evidence about a kitchen than its signage. */
+    const hotpot: Place = {
+      ...wingstop,
+      id: "g-hotpot",
+      name: "Xiao Long Kan Hotpot Clarke Quay",
+      cuisine: "restaurant",
+      dishes: [],
+      cravingEvidence: 0.8,
+    };
+    const fit = cravingFit(hotpot, parseCravingLocal("spicy soup"));
+    expect(fit.score).toBeCloseTo(0.8, 5);
+    // Something must be nameable, or the UI still says nothing matched.
+    expect(fit.hit).toBe("spicy soup");
+  });
+
+  it("takes the stronger signal, never the sum", () => {
+    // A place that both reads right and was returned for the craving is not
+    // twice as relevant; adding them would push ordinary matches to the top.
+    const both: Place = {
+      ...wingstop,
+      id: "g-both",
+      name: "Spicy Soup House",
+      dishes: [],
+      cravingEvidence: 0.6,
+    };
+    expect(cravingFit(both, parseCravingLocal("spicy soup")).score).toBe(1);
+  });
+
+  it("leaves places the craving search never returned completely alone", () => {
+    const plain: Place = { ...wingstop, id: "g-plain", name: "Kopitiam Corner", dishes: [] };
+    expect(cravingFit(plain, parseCravingLocal("spicy soup")).score).toBe(0);
+  });
+
   it("does nothing at all with no craving", () => {
     expect(cravingFit(wingstop, null).score).toBe(0);
   });
