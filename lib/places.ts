@@ -217,18 +217,30 @@ const FIELD_MASK = [
   "places.regularOpeningHours.periods",
 ].join(",");
 
-/** Null means the FETCH failed — distinct from an honestly empty street, so
+/* ── TWO WAYS TO ASK GOOGLE, AND MISSING THE SECOND IS WHY THIS LOOKED DUMB ──
+   searchNearby answers "what restaurants are close to me". That is the right
+   question for "Eat now" and completely the wrong one for "spicy soup":
+   somebody who types a craving has said in words what they want, and feeding
+   that to a proximity search threw the words away and re-ranked the twenty
+   nearest doors instead. It is precisely why a plain Google search beat this
+   app at its own job — Google was running a TEXT search across names,
+   categories and reviews, and we were not running one at all.
+
+   searchText is the same request Google itself answers with. It runs ONLY when
+   there is something to search for, so the ordinary "Eat now" path still costs
+   exactly one nearby call and nothing changes for it. */
+
+/** Null means the REQUEST failed — distinct from an honestly empty street, so
     the cache above never remembers an outage as a fact about the area. */
-async function fetchGooglePlaces(
-  lat: number,
-  lng: number,
-  radiusM: number,
+async function placesRequest(
+  endpoint: "searchNearby" | "searchText",
+  body: Record<string, unknown>,
   hourSg: number,
 ): Promise<Place[] | null> {
   const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key) return [];
   try {
-    const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+    const res = await fetch(`https://places.googleapis.com/v1/places:${endpoint}`, {
       method: "POST",
       signal: AbortSignal.timeout(4000),
       headers: {
@@ -236,14 +248,7 @@ async function fetchGooglePlaces(
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask": FIELD_MASK,
       },
-      body: JSON.stringify({
-        includedTypes: ["restaurant"],
-        maxResultCount: 20,
-        rankPreference: "DISTANCE",
-        locationRestriction: {
-          circle: { center: { latitude: lat, longitude: lng }, radius: radiusM },
-        },
-      }),
+      body: JSON.stringify(body),
     });
     /* ONE LINE, TWO COMPLETELY DIFFERENT MEANINGS. This used to be a bare
        `if (!res.ok) return []`, which made a 403 from a key restricted to the
@@ -311,6 +316,58 @@ async function fetchGooglePlaces(
   }
 }
 
+/** "What's near me" — the pool for an ordinary pick with nothing asked for. */
+async function fetchGooglePlaces(
+  lat: number,
+  lng: number,
+  radiusM: number,
+  hourSg: number,
+): Promise<Place[] | null> {
+  return placesRequest(
+    "searchNearby",
+    {
+      includedTypes: ["restaurant"],
+      maxResultCount: 20,
+      rankPreference: "DISTANCE",
+      locationRestriction: {
+        circle: { center: { latitude: lat, longitude: lng }, radius: radiusM },
+      },
+    },
+    hourSg,
+  );
+}
+
+/**
+ * "Who near me serves THIS" — the search the app was missing.
+ *
+ * locationBias, deliberately, not locationRestriction: a restriction makes
+ * Google return nothing at all when the street genuinely has no spicy soup,
+ * and an empty answer is worse than a near-miss the scorer can rank down.
+ * The distance filter still applies afterwards, so a bias cannot smuggle in
+ * somewhere across the island.
+ */
+async function fetchGoogleByText(
+  query: string,
+  lat: number,
+  lng: number,
+  radiusM: number,
+  hourSg: number,
+): Promise<Place[] | null> {
+  return placesRequest(
+    "searchText",
+    {
+      textQuery: query.slice(0, 120),
+      maxResultCount: 20,
+      includedType: "restaurant",
+      openNow: true,
+      locationBias: {
+        circle: { center: { latitude: lat, longitude: lng }, radius: radiusM },
+      },
+    },
+    hourSg,
+  );
+}
+
 /**
  * A place you saved from a video, converted into a real candidate.
  *
@@ -369,28 +426,31 @@ export function clearNearbyCache(): void {
   nearbyCache.clear();
 }
 
+const clone = (p: Place): Place => ({ ...p, flavor: { ...p.flavor }, dishes: [...p.dishes] });
+
+/** One cache for both search modes. `query` is part of the key, so a craving
+    search can never be served the generic nearby pool, or vice versa. */
 async function cachedGooglePlaces(
   lat: number,
   lng: number,
   radiusM: number,
   hourSg: number,
+  query = "",
 ): Promise<Place[]> {
   // ~110 m grid: close enough that the walk-times stay truthful, coarse
   // enough that a GPS jitter does not defeat the cache.
-  const key = `${lat.toFixed(3)},${lng.toFixed(3)},${radiusM},${hourSg}`;
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)},${radiusM},${hourSg},${query}`;
   const hit = nearbyCache.get(key);
-  if (hit && Date.now() - hit.at < NEARBY_TTL_MS) {
-    return hit.places.map((p) => ({ ...p, flavor: { ...p.flavor }, dishes: [...p.dishes] }));
-  }
-  const fetched = await fetchGooglePlaces(lat, lng, radiusM, hourSg);
+  if (hit && Date.now() - hit.at < NEARBY_TTL_MS) return hit.places.map(clone);
+
+  const fetched = query
+    ? await fetchGoogleByText(query, lat, lng, radiusM, hourSg)
+    : await fetchGooglePlaces(lat, lng, radiusM, hourSg);
   // Only a real answer is worth remembering. A null is a timeout or a dead
   // key, and caching it would pin "no restaurants exist" on a healthy street
   // for two minutes; a genuinely empty street IS worth remembering.
   if (fetched === null) return [];
-  nearbyCache.set(key, {
-    at: Date.now(),
-    places: fetched.map((p) => ({ ...p, flavor: { ...p.flavor }, dishes: [...p.dishes] })),
-  });
+  nearbyCache.set(key, { at: Date.now(), places: fetched.map(clone) });
   if (nearbyCache.size > MAX_NEARBY_ENTRIES) {
     for (const k of nearbyCache.keys()) {
       nearbyCache.delete(k);
@@ -400,17 +460,47 @@ async function cachedGooglePlaces(
   return fetched;
 }
 
+/**
+ * The candidate pool. When the diner said what they want, ASK GOOGLE FOR IT —
+ * the nearby search alone could only ever re-rank the closest twenty doors,
+ * which is how "spicy soup" once returned a McDonald's 90 m away.
+ *
+ * Both sets are merged rather than swapped: the text search knows what you
+ * asked for, the nearby search knows what is convenient, and the scorer is
+ * what weighs those against each other. Sending only text results would trade
+ * one blind spot for another.
+ */
 export async function getCandidatePlaces(
   lat: number,
   lng: number,
   maxKm: number,
   hourSg: number,
+  cravingText = "",
 ): Promise<Place[]> {
-  const google = await cachedGooglePlaces(lat, lng, Math.min(maxKm * 1000, 5000), hourSg);
-  const seenNames = new Set(SEED_PLACES.map((p) => p.name.toLowerCase()));
+  const radiusM = Math.min(maxKm * 1000, 5000);
+  const wanted = cravingText.trim().slice(0, 120);
+
+  const [nearby, matching] = await Promise.all([
+    cachedGooglePlaces(lat, lng, radiusM, hourSg),
+    // Text search runs only when there is something to search FOR, so an
+    // ordinary "Eat now" still costs exactly one call.
+    wanted ? cachedGooglePlaces(lat, lng, radiusM, hourSg, wanted) : Promise.resolve([]),
+  ]);
+
   const merged = [...SEED_PLACES];
-  for (const g of google) {
-    if (!seenNames.has(g.name.toLowerCase())) merged.push(g);
+  // Names dedupe against the CURATED catalogue only — a curated entry carries
+  // real dish data a live duplicate would lose. Among live results the key is
+  // the id, because the two searches return the same place with the same id,
+  // while two branches of one chain are genuinely different places that share
+  // a name and must both survive.
+  const seedNames = new Set(SEED_PLACES.map((p) => p.name.toLowerCase()));
+  const seenIds = new Set<string>();
+  // Craving matches first: where both searches returned the same place, the
+  // record fetched FOR the craving is the one worth keeping.
+  for (const g of [...matching, ...nearby]) {
+    if (seedNames.has(g.name.toLowerCase()) || seenIds.has(g.id)) continue;
+    seenIds.add(g.id);
+    merged.push(g);
   }
   return merged;
 }

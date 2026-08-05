@@ -32,8 +32,20 @@ import { DIMS, FlavorVector } from "@/lib/flavor";
 export interface Craving {
   /** What the user typed, trimmed. Echoed back so the UI can show its work. */
   text: string;
-  /** Lowercased tokens matched literally against names. */
+  /** Lowercased tokens matched literally against names. The flat union of
+      `groups`, kept because callers and the UI already read it. */
   terms: string[];
+  /**
+   * The same terms, grouped BY THE WORD THE DINER ACTUALLY TYPED — one group
+   * per typed concept, holding its synonyms.
+   *
+   * The distinction decides whether a match is good: synonyms are ALTERNATIVES
+   * (typing "salad" should be satisfied by "poke"), while separate words are
+   * REQUIREMENTS ("spicy soup" wants both). Scoring over the flat list
+   * conflated the two and scored a genuine salad 1-in-3 because the lexicon
+   * had expanded one word into three.
+   */
+  groups: string[][];
   /** Flavour intent, applied to the session vector like a mood. */
   vector: Partial<FlavorVector>;
   /** Terms that must NOT appear — "no pork", "not spicy". */
@@ -105,6 +117,8 @@ export function parseCravingLocal(text: string): Craving {
   const vector: Partial<FlavorVector> = {};
   const terms = new Set<string>();
   const avoid = new Set<string>();
+  // One entry per word the diner actually typed — see Craving.groups.
+  const groups: string[][] = [];
 
   let negating = false;
   for (const raw of tokens) {
@@ -129,14 +143,19 @@ export function parseCravingLocal(text: string): Craving {
     }
     if (entry) {
       Object.assign(vector, entry.vector ?? {});
-      for (const term of entry.terms ?? [t]) terms.add(term);
+      // The lexicon's synonyms for ONE typed word are alternatives to it, so
+      // they travel together as a single group.
+      const alts = entry.terms ?? [t];
+      groups.push([...alts]);
+      for (const term of alts) terms.add(term);
     } else {
       // Unknown word — still a literal target. This is the line that makes the
       // zero-key version genuinely useful.
+      groups.push([t]);
       terms.add(t);
     }
   }
-  return { text: clean, terms: [...terms], vector, avoid: [...avoid] };
+  return { text: clean, terms: [...terms], groups, vector, avoid: [...avoid] };
 }
 
 /** Model refinement — handles negation, cuisine and vagueness a lexicon can't. */
@@ -186,6 +205,11 @@ export async function parseCraving(text: string): Promise<Craving> {
     // the user typed in favour of a synonym, and the typed word is the one
     // thing we know for certain they meant.
     terms: [...new Set([...terms, ...local.terms])],
+    /* The model is asked for synonyms, so everything it returns is one more
+       way of naming the SAME request — one extra alternatives-group, never a
+       set of new requirements. Grouping them any other way would let a
+       three-synonym answer quietly triple what the diner has to match. */
+    groups: terms.length ? [...local.groups, terms] : local.groups,
     avoid: [...new Set([...strs(p.avoid), ...local.avoid])],
     vector: Object.keys(vector).length ? vector : local.vector,
     priceMax: price,
@@ -216,6 +240,27 @@ export interface CravingFit {
   hit: string | null;
 }
 
+/**
+ * WHOLE WORDS ONLY. Plain `includes` is why "spicy soup" once recommended a
+ * McDonald's: the haystack contains the dish "McSpicy", `"mcspicy".includes(
+ * "spicy")` is true, and a burger scored a direct hit on a soup craving.
+ * Matching on a word boundary costs nothing and removes a whole class of
+ * nonsense — while still letting "laksa" find "Laksa Bowl", because that is a
+ * word, and "bubble tea" find "bubble-tea" once separators are normalised.
+ */
+function hasWord(hay: string, term: string): boolean {
+  let from = 0;
+  for (;;) {
+    const i = hay.indexOf(term, from);
+    if (i === -1) return false;
+    const before = i === 0 ? "" : hay[i - 1];
+    const after = hay[i + term.length] ?? "";
+    // A letter or digit on either side means we landed inside a longer word.
+    if (!/[a-z0-9]/.test(before) && !/[a-z0-9]/.test(after)) return true;
+    from = i + 1;
+  }
+}
+
 export function cravingFit(place: Place, craving: Craving | null): CravingFit {
   // THE GUARD HAS TO ADMIT PURE NEGATIONS. It used to require `terms`, and
   // "no pork" produces NO terms — the word goes to `avoid` — so an outright
@@ -225,20 +270,34 @@ export function cravingFit(place: Place, craving: Craving | null): CravingFit {
   const hay = haystack(place);
 
   for (const bad of craving.avoid) {
-    if (bad.length > 2 && hay.includes(bad)) return { score: -1, hit: null };
+    if (bad.length > 2 && hasWord(hay, bad)) return { score: -1, hit: null };
   }
+
+  /* SCORED BY HOW MUCH OF THE REQUEST WAS ACTUALLY MET. A flat 0.7 for any
+     single hit meant "spicy soup" paid a stall almost as much for the word
+     "spicy" alone as it paid a real spicy soup for both — a partial match was
+     worth 70% of a perfect one, which is how a burger out-ranked the thing
+     that was asked for.
+
+     Coverage is counted over GROUPS, not raw terms: a group is one word the
+     diner typed, and it is satisfied by ANY of its synonyms. So "salad" still
+     scores a full 1.0 when a place matches "poke", while "spicy soup" needs
+     both halves to earn the whole bonus. */
+  const groups = (craving.groups?.length ? craving.groups : craving.terms.map((t) => [t]))
+    .map((g) => g.filter((t) => t.length > 2))
+    .filter((g) => g.length > 0);
+  if (!groups.length) return { score: 0, hit: null };
 
   let hits = 0;
   let first: string | null = null;
-  for (const term of craving.terms) {
-    if (term.length > 2 && hay.includes(term)) {
+  for (const group of groups) {
+    const found = group.find((term) => hasWord(hay, term));
+    if (found) {
       hits += 1;
-      first ??= term;
+      first ??= found;
     }
   }
   if (!hits) return { score: 0, hit: null };
 
-  // Two matched terms is a strong signal; beyond that there are diminishing
-  // returns, and a long craving should not out-score a precise one.
-  return { score: Math.min(1, 0.7 + 0.3 * (hits - 1)), hit: first };
+  return { score: Math.min(1, hits / groups.length), hit: first };
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SEED_PLACES } from "@/lib/data/seed";
+import { Place, SEED_PLACES } from "@/lib/data/seed";
+import { vec } from "@/lib/flavor";
 import { cravingFit, parseCravingLocal } from "@/lib/craving";
 
 // The zero-key parser is the one that actually ships for most users, so it is
@@ -91,8 +92,53 @@ describe("cravingFit", () => {
 
   it("ignores terms too short to be meaningful", () => {
     // A two-letter term would match almost every name by accident.
-    const fit = cravingFit(wingstop, { text: "a", terms: ["a"], vector: {}, avoid: [] });
+    const fit = cravingFit(wingstop, { text: "a", terms: ["a"], groups: [["a"]], vector: {}, avoid: [] });
     expect(fit.score).toBe(0);
+  });
+
+  it("does not let 'spicy' match 'McSpicy'", () => {
+    /* THE REPORTED BUG, PINNED. Searching "spicy soup" in the CBD returned a
+       McDonald's: matching was raw substring, "mcspicy".includes("spicy") is
+       true, so a burger scored a direct hit on a soup craving and its +31
+       bonus carried it past everything actually near the diner. */
+    const mcd: Place = {
+      ...wingstop,
+      id: "cbd-mcdonalds",
+      name: "McDonald's (One Raffles Place, 24h)",
+      cuisine: "fast-food",
+      dishes: [{ id: "mcd-mcspicy", name: "McSpicy", flavor: vec({ heat: 0.7 }), priceSgd: 9 }],
+    };
+    expect(cravingFit(mcd, parseCravingLocal("spicy soup")).score).toBe(0);
+    expect(cravingFit(mcd, parseCravingLocal("spicy soup")).hit).toBeNull();
+  });
+
+  it("still matches a whole word inside a longer name", () => {
+    // The boundary rule must not become so strict it stops finding real food.
+    const laksa: Place = { ...wingstop, id: "l", name: "928 Yishun Laksa", dishes: [] };
+    expect(cravingFit(laksa, parseCravingLocal("laksa")).score).toBeGreaterThan(0);
+  });
+
+  it("pays a half-match half the bonus", () => {
+    /* A flat 0.7 for any single hit meant matching one word of two was worth
+       70% of matching both — near enough that distance and rating decided it
+       instead of the food. */
+    const soupOnly: Place = { ...wingstop, id: "s", name: "Fishball Soup Stall", dishes: [] };
+    const both: Place = { ...wingstop, id: "b", name: "Spicy Soup House", dishes: [] };
+    const half = cravingFit(soupOnly, parseCravingLocal("spicy soup")).score;
+    const full = cravingFit(both, parseCravingLocal("spicy soup")).score;
+    expect(full).toBe(1);
+    expect(half).toBeCloseTo(0.5, 5);
+  });
+
+  it("treats a lexicon's synonyms as alternatives, not as extra requirements", () => {
+    /* "salad" expands to salad/grain/poke. Those are three ways of naming ONE
+       thing the diner asked for, so matching any of them is a complete answer
+       — counting them as three requirements scored a real salad 1-in-3 and
+       let the learned palate overrule what was typed. */
+    const c = parseCravingLocal("salad");
+    expect(c.terms.length).toBeGreaterThan(1);
+    expect(c.groups).toHaveLength(1);
+    expect(cravingFit(salad, c).score).toBe(1);
   });
 
   it("does nothing at all with no craving", () => {
