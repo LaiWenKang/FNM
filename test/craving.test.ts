@@ -153,12 +153,22 @@ describe("cravingFit", () => {
       name: "Xiao Long Kan Hotpot Clarke Quay",
       cuisine: "restaurant",
       dishes: [],
-      cravingEvidence: 0.8,
+      cravingEvidence: 0.55,
     };
     const fit = cravingFit(hotpot, parseCravingLocal("spicy soup"));
-    expect(fit.score).toBeCloseTo(0.8, 5);
+    expect(fit.score).toBeCloseTo(0.55, 5);
     // Something must be nameable, or the UI still says nothing matched.
     expect(fit.hit).toBe("spicy soup");
+  });
+
+  it("keeps a literal match worth clearly more than mere provenance", () => {
+    /* Set by watching it fail: at 0.8 the top text hit outscored the ramen bar
+       down the road, because a big hawker centre is loosely relevant to every
+       food query and Google returns it for all of them. */
+    const named: Place = { ...wingstop, id: "g-named", name: "Torasho Ramen Bar", dishes: [] };
+    const merely: Place = { ...wingstop, id: "g-hawker", name: "Lau Pa Sat", dishes: [], cravingEvidence: 0.55 };
+    const c = parseCravingLocal("ramen");
+    expect(cravingFit(named, c).score).toBeGreaterThan(cravingFit(merely, c).score + 0.3);
   });
 
   it("takes the stronger signal, never the sum", () => {

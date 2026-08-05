@@ -490,10 +490,17 @@ export async function getCandidatePlaces(
   /* GOOGLE'S RANKING IS ITSELF EVIDENCE, and throwing it away was the last
      piece of the same bug. searchText returns results in relevance order, so
      position carries information: the top hit is what Google thinks best
-     answers the craving, the twentieth is a stretch. Carried through as a
-     decaying 0.8 → 0.4 so the scorer can credit a place for serving the thing
-     that was asked for even when its name never says so. */
-  const evidenceAt = (i: number, n: number) => 0.8 - 0.4 * (n <= 1 ? 0 : i / (n - 1));
+     answers the craving, the twentieth is a stretch.
+
+     DELIBERATELY WEAKER THAN A LITERAL MATCH, and this range was set by
+     watching it get the answer wrong. At 0.8 the top text hit earned +36, and
+     "ramen" started returning Lau Pa Sat instead of the ramen bar down the
+     road — a big hawker centre is loosely relevant to EVERY food query, so
+     Google returns it for all of them, and a credit that large let generic
+     places outrank specific ones. Provenance says "something here probably
+     fits"; a name that says "Ramen" says what it is. The first is worth real
+     points, the second is worth more. */
+  const evidenceAt = (i: number, n: number) => 0.55 - 0.35 * (n <= 1 ? 0 : i / (n - 1));
   const credited = matching.map((p, i) => ({ ...p, cravingEvidence: evidenceAt(i, matching.length) }));
 
   const merged = [...SEED_PLACES];

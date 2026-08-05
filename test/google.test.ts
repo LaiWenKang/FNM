@@ -396,8 +396,8 @@ describe("asking Google for what the diner actually wants", () => {
     ]);
     const got = live(await getCandidatePlaces(1.2841, 103.8515, 2, 12, "spicy soup"));
     const ev = (n: string) => got.find((p) => p.name === n)!.cravingEvidence!;
-    expect(ev("Best Match")).toBeCloseTo(0.8, 5);
-    expect(ev("Stretch")).toBeCloseTo(0.4, 5);
+    expect(ev("Best Match")).toBeCloseTo(0.55, 5);
+    expect(ev("Stretch")).toBeCloseTo(0.2, 5);
     expect(ev("Best Match")).toBeGreaterThan(ev("Middling"));
     expect(ev("Middling")).toBeGreaterThan(ev("Stretch"));
   });
