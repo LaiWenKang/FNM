@@ -22,6 +22,41 @@ const row = (
   at: new Date(over.at ?? t0).toISOString(),
 });
 
+describe("how many people, not just how well it went", () => {
+  /* EVERY OTHER NUMBER HERE IS A RATE ON THIS ONE, and the report could not
+     state it — so "is anyone using this" had no answer and a 100% pick rate
+     off two events looked like a triumph. */
+
+  it("counts distinct devices, not events", () => {
+    const rows = [
+      row("served", { device: "d1" }),
+      row("picked", { device: "d1" }),
+      row("served", { device: "d2" }),
+    ];
+    const m = summarise(rows, 28);
+    expect(m.activeDevices).toBe(2);
+    expect(m.totalEvents).toBe(3);
+  });
+
+  it("counts a device that came back a week later as returning", () => {
+    const rows = [
+      row("served", { device: "d1", at: t0 }),
+      row("served", { device: "d1", at: t0 + 8 * DAY }),
+      row("served", { device: "d2", at: t0 }),
+    ];
+    const m = summarise(rows, 28);
+    expect(m.activeDevices).toBe(2);
+    expect(m.returningDevices).toBe(1);
+  });
+
+  it("is zero on an empty table rather than null", () => {
+    // A headcount of "we do not know" is not a thing — nobody is nobody.
+    const m = summarise([], 28);
+    expect(m.activeDevices).toBe(0);
+    expect(m.returningDevices).toBe(0);
+  });
+});
+
 describe("refusing to make numbers up", () => {
   it("reports nothing at all from an empty table", () => {
     const m = summarise([], 28);
