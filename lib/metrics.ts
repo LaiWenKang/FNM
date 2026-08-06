@@ -140,6 +140,17 @@ export function trackLater(req: NextRequest, event: MetricEvent, props: MetricPr
 export interface Metrics {
   /** Days of data behind these numbers. */
   windowDays: number;
+  /**
+   * HOW MANY PEOPLE, which every other number here is a rate ON and which the
+   * report could not previously state. Distinct devices seen in the window —
+   * the honest unit, because a signed-out diner is a browser, not an account:
+   * one person on a phone and a laptop counts twice, and a cleared cookie
+   * starts over. It is a floor on reach, not a headcount, and a rate without
+   * it is unreadable — 100% pick rate off two events is not a good week.
+   */
+  activeDevices: number;
+  /** Of those, how many were still turning up a week or more later. */
+  returningDevices: number;
   /** PRIMARY METRIC: successful food decisions per active user per week. */
   decisionsPerActiveUserPerWeek: number | null;
   /** Median seconds from opening the pick screen to committing. */
@@ -161,6 +172,8 @@ export interface Metrics {
 
 const EMPTY: Metrics = {
   windowDays: 0,
+  activeDevices: 0,
+  returningDevices: 0,
   decisionsPerActiveUserPerWeek: null,
   medianDecisionSeconds: null,
   pickRate: null,
@@ -230,6 +243,8 @@ export function summarise(rows: Row[], windowDays: number): Metrics {
 
   return {
     windowDays,
+    activeDevices: devices.size,
+    returningDevices: returned,
     decisionsPerActiveUserPerWeek: devices.size
       ? Math.round((picked.length / devices.size / weeks) * 100) / 100
       : null,
